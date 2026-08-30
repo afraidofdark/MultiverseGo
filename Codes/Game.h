@@ -43,8 +43,17 @@ namespace ToolKit
     void EndPlayerTurn();
     void HandlePlayerClick();
 
-    // True when a unit already stands on the node.
-    bool IsNodeOccupied(GridNode* node) const;
+    // True when the node is blocked for the player's move: only the player's
+    // own tile. Every other tile is reachable -- a free tile is a move, and a
+    // patrol's tile is a capture attempt (see ResolvePatrolContact). This is
+    // the predicate Player::TryMove treats as "occupied".
+    bool IsMoveBlocked(GridNode* node) const;
+
+    // Applies the patrol rule after the player's move. A patrol eats the player
+    // standing on the tile it watches (defeat); otherwise stepping onto a
+    // patrol's own tile captures it and the patrol leaves the grid. Returns
+    // true when the game is over.
+    bool ResolvePatrolContact();
 
     // True when the node is the one the target marker stands on.
     bool IsTargetNode(GridNode* node) const;
@@ -56,6 +65,7 @@ namespace ToolKit
 
     TurnPhase m_phase = TurnPhase::Idle;
     bool m_won        = false;
+    bool m_lost       = false;
   };
 
 } // namespace ToolKit

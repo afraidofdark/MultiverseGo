@@ -56,6 +56,7 @@ namespace ToolKit
   {
     m_phase    = TurnPhase::Idle;
     m_won      = false;
+    m_lost     = false;
     m_enemies.clear();
     m_grid.Clear();
     m_target = nullptr;
@@ -126,6 +127,7 @@ namespace ToolKit
   {
     m_phase    = TurnPhase::Idle;
     m_won      = false;
+    m_lost     = false;
     m_enemies.clear();
     m_grid.Clear();
     m_target = nullptr;
@@ -158,7 +160,7 @@ namespace ToolKit
 
   void Game::HandlePlayerClick()
   {
-    if (m_won)
+    if (m_won || m_lost)
     {
       return;
     }
@@ -189,9 +191,16 @@ namespace ToolKit
       return; // Clicked outside the grid.
     }
 
-    TK_LOG("Game: click node (%d, %d)", node->ix, node->iz);
-    if (m_player.TryMove(node, [this](GridNode* n) { return IsNodeOccupied(n); }))
+    if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }))
     {
+      // The patrol rule resolves before the win check: a patrol eats the player
+      // that steps onto its watched tile, even when that tile also holds the
+      // target.
+      if (ResolvePatrolContact())
+      {
+        return;
+      }
+
       if (IsTargetNode(m_player.GetNode()))
       {
         m_won = true;
@@ -207,23 +216,52 @@ namespace ToolKit
     }
   }
 
-  bool Game::IsNodeOccupied(GridNode* node) const
+  bool Game::IsMoveBlocked(GridNode* node) const
   {
     if (node == nullptr)
-    {
-      return false;
-    }
-
-    if (m_player.GetNode() == node)
     {
       return true;
     }
 
+    // Only the player's own tile blocks the move. Free tiles are moves, and a
+    // patrol's tile is a capture attempt resolved by ResolvePatrolContact.
+    return m_player.GetNode() == node;
+  }
+
+  bool Game::ResolvePatrolContact()
+  {
+    GridNode* playerNode = m_player.GetNode();
+    if (playerNode == nullptr)
+    {
+      return false;
+    }
+
+    // A patrol eats the player standing on the tile it watches.
     for (const StationaryPatrol& enemy : m_enemies)
     {
-      if (enemy.GetNode() == node)
+      if (enemy.WatchedNode() == playerNode)
       {
+        m_lost  = true;
+        m_phase = TurnPhase::Idle;
+        TK_LOG("Game: patrol ate the player. You lose!");
         return true;
+      }
+    }
+
+    // Otherwise, stepping onto a patrol's own tile captures it: the patrol
+    // leaves the grid.
+    for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
+    {
+      if (it->GetNode() == playerNode)
+      {
+        EntityPtr root = it->GetRoot();
+        if (root != nullptr)
+        {
+          GetSceneManager()->GetCurrentScene()->RemoveEntity(root);
+        }
+        TK_LOG("Game: player captured a patrol.");
+        m_enemies.erase(it);
+        break;
       }
     }
 

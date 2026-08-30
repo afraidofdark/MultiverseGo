@@ -55,6 +55,11 @@ namespace ToolKit
     // World position of the root entity.
     Vec3 GetWorldPosition() const;
 
+    // The grid-axis direction the unit faces: its world forward (local -Z)
+    // snapped to the nearest axis. Grid movement is axis-aligned, so a unit
+    // faces either straight along X or straight along Z.
+    GridDir GetFacingDir() const;
+
     // Clears the unit (used when a play session ends).
     virtual void Reset();
 
@@ -95,12 +100,20 @@ namespace ToolKit
     bool m_hasMoved = false;
   };
 
-  // A stationary enemy guard. Its fixed patrol behaviour comes later; for now it
-  // stands in place and simply ends its turn.
+  // A stationary enemy guard. It stands in place and watches the single tile
+  // its facing passage opens onto: the tile is only threatened when the two
+  // tiles are connected, because navigation is exclusively over connections.
+  // Any unit that steps onto the watched tile is eaten; a unit that reaches
+  // the patrol itself from any other direction captures it instead.
   class StationaryPatrol : public Unit
   {
    public:
     void OnTurn() override {}
+
+    // The single tile the patrol watches: its neighbour in the facing
+    // direction, but only when the two tiles are connected. Null when the
+    // passage is blocked or the patrol stands at the grid edge.
+    GridNode* WatchedNode() const;
   };
 
 } // namespace ToolKit

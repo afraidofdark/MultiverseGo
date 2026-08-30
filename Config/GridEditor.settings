@@ -5,8 +5,8 @@
 			<P t="2" name="TileSize" v="5.000000"/>
 			<P t="3" name="GridCols" v="4"/>
 			<P t="3" name="GridRows" v="4"/>
-			<P t="9" name="PlacementPath" v="Prefabs/player.scene"/>
-			<P t="3" name="PlacementDir" v="2"/>
+			<P t="9" name="PlacementPath" v="Prefabs/stationary-patrol.scene"/>
+			<P t="3" name="PlacementDir" v="0"/>
 		</PB>
 		<Window version="v0.4.9" name="Grid Editor" id="19" visible="1" shown="1">
 			<Size x="640" y="480"/>

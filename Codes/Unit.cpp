@@ -9,6 +9,8 @@
 
 #include <MathUtil.h>
 
+#include <cmath>
+
 namespace ToolKit
 {
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -55,6 +57,26 @@ namespace ToolKit
     }
 
     return m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+  }
+
+  GridDir Unit::GetFacingDir() const
+  {
+    if (m_root == nullptr)
+    {
+      return GridDir::Zm; // Fallback: model forward is -Z.
+    }
+
+    // World forward is the local -Z rotated by the root's world orientation.
+    Quaternion q = m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD);
+    Vec3 fwd     = glm::normalize(glm::vec3(q * Vec3(0.0f, 0.0f, -1.0f)));
+
+    // Snap to the nearest grid axis. Grid movement is horizontal, so the Y
+    // component of the facing is ignored.
+    if (std::fabs(fwd.x) >= std::fabs(fwd.z))
+    {
+      return (fwd.x < 0.0f) ? GridDir::Xm : GridDir::Xp;
+    }
+    return (fwd.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
   }
 
   void Unit::Reset()
@@ -154,6 +176,25 @@ namespace ToolKit
   {
     Unit::Reset();
     m_hasMoved = false;
+  }
+
+  GridNode* StationaryPatrol::WatchedNode() const
+  {
+    if (m_node == nullptr || m_grid == nullptr)
+    {
+      return nullptr;
+    }
+
+    // Navigation is exclusively over connections, so the patrol's threat is
+    // too: a blocked passage means the watched tile is not reachable through
+    // the patrol's side and the patrol sees nothing there.
+    GridNode* watched = m_grid->Neighbor(*m_node, GetFacingDir());
+    if (watched == nullptr || !m_grid->Connected(*m_node, *watched))
+    {
+      return nullptr;
+    }
+
+    return watched;
   }
 
 } // namespace ToolKit
