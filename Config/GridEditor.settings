@@ -1,0 +1,17 @@
+<GridEditor>
+	<Object Cl="GridEditor">
+		<PB>
+			<P t="11" name="Id" v="5056271147179260050"/>
+			<P t="2" name="TileSize" v="5.000000"/>
+			<P t="3" name="GridCols" v="4"/>
+			<P t="3" name="GridRows" v="4"/>
+			<P t="9" name="PlacementPath" v="Prefabs/player.scene"/>
+			<P t="3" name="PlacementDir" v="2"/>
+		</PB>
+		<Window version="v0.4.9" name="Grid Editor" id="19" visible="1" shown="1">
+			<Size x="640" y="480"/>
+			<Location x="223" y="209"/>
+		</Window>
+	</Object>
+</GridEditor>
+
