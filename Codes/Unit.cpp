@@ -178,7 +178,7 @@ namespace ToolKit
     m_hasMoved = false;
   }
 
-  GridNode* StationaryPatrol::WatchedNode() const
+  GridNode* StationaryPatrol::ThreatTile() const
   {
     if (m_node == nullptr || m_grid == nullptr)
     {
@@ -195,6 +195,43 @@ namespace ToolKit
     }
 
     return watched;
+  }
+
+  void LinearPatrol::OnTurn()
+  {
+    if (m_node == nullptr || m_grid == nullptr)
+    {
+      return;
+    }
+
+    // One tile per turn along the facing line. A connected neighbour keeps the
+    // patrol moving; a missing or blocked one means the line ends, so the
+    // patrol turns 180 degrees in place and walks back next turn. Enemies do
+    // not block each other, so the tile ahead is only checked for a connection.
+    GridNode* next = m_grid->Neighbor(*m_node, GetFacingDir());
+    if (next != nullptr && m_grid->Connected(*m_node, *next))
+    {
+      PlaceOnNode(next);
+    }
+    else
+    {
+      FlipFacing();
+    }
+  }
+
+  void LinearPatrol::FlipFacing()
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    // Face back along the line: the current world forward, negated. RotationTo
+    // handles the 180-degree (antiparallel) case.
+    Quaternion q   = m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD);
+    Vec3 fwd       = glm::normalize(glm::vec3(q * Vec3(0.0f, 0.0f, -1.0f)));
+    Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), -fwd);
+    m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
   }
 
 } // namespace ToolKit

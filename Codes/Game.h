@@ -10,6 +10,8 @@
 #include <Plugin.h>
 #include <ToolKit.h>
 
+#include <memory>
+
 #include "GridGraph.h"
 #include "Unit.h"
 
@@ -61,7 +63,12 @@ namespace ToolKit
 
     GridGraph m_grid;
     Player m_player;
-    std::vector<StationaryPatrol> m_enemies;
+
+    // Every enemy in the scene, regardless of type. Enemies never block each
+    // other (several may occupy the same tile), so the enemy phase lets them
+    // all act from the state at the start of the phase.
+    std::vector<std::unique_ptr<Unit>> m_enemies;
+
     EntityPtr m_target;      // Optional entity tagged "target".
 
     TurnPhase m_phase = TurnPhase::Idle;

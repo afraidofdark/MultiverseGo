@@ -98,14 +98,26 @@ namespace ToolKit
       return;
     }
 
-    // Enemies: every placed prefab root tagged "stationary-patrol".
+    // Enemies: every placed prefab root tagged "stationary-patrol", which
+    // stand in place and guard the tile in front of them.
     EntityPtrArray enemyRoots = scene->GetByTag("stationary-patrol");
     for (EntityPtr root : enemyRoots)
     {
-      StationaryPatrol enemy;
-      if (enemy.Init(root, &m_grid))
+      auto enemy = std::make_unique<StationaryPatrol>();
+      if (enemy->Init(root, &m_grid))
       {
-        m_enemies.push_back(enemy);
+        m_enemies.push_back(std::move(enemy));
+      }
+    }
+
+    // And every "linear-patrol", which walks its line back and forth.
+    EntityPtrArray linearRoots = scene->GetByTag("linear-patrol");
+    for (EntityPtr root : linearRoots)
+    {
+      auto enemy = std::make_unique<LinearPatrol>();
+      if (enemy->Init(root, &m_grid))
+      {
+        m_enemies.push_back(std::move(enemy));
       }
     }
 
@@ -147,12 +159,30 @@ namespace ToolKit
     m_player.SetActive(false);
     m_phase = TurnPhase::Enemies;
 
-    // Every enemy takes its fixed action, then the turn returns to the player.
-    for (StationaryPatrol& enemy : m_enemies)
+    // All enemies act on this phase, from the state at its start. Enemies do
+    // not block each other, so each unit's move depends only on the grid and
+    // the player's fixed position -- order does not matter.
+    GridNode* playerNode = m_player.GetNode();
+    bool caught          = false;
+    for (auto& enemy : m_enemies)
     {
-      enemy.SetActive(true);
-      enemy.OnTurn(); // No-op for now (StationaryPatrol stands in place).
-      enemy.SetActive(false);
+      enemy->SetActive(true);
+      enemy->OnTurn();
+      enemy->SetActive(false);
+
+      // A patrol that walks onto the player's tile eats them.
+      if (enemy->GetNode() == playerNode)
+      {
+        caught = true;
+      }
+    }
+
+    if (caught)
+    {
+      m_lost  = true;
+      m_phase = TurnPhase::Idle;
+      TK_LOG("Game: a patrol caught the player. You lose!");
+      return;
     }
 
     StartPlayerTurn();
@@ -236,13 +266,13 @@ namespace ToolKit
       return false;
     }
 
-    // Stacked order, capture first. Stepping onto a patrol's own tile removes
+    // Stacked order, capture first. Stepping onto an enemy's own tile removes
     // it from the grid.
     for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
     {
-      if (it->GetNode() == playerNode)
+      if ((*it)->GetNode() == playerNode)
       {
-        EntityPtr root = it->GetRoot();
+        EntityPtr root = (*it)->GetRoot();
         if (root != nullptr)
         {
           GetSceneManager()->GetCurrentScene()->RemoveEntity(root);
@@ -253,13 +283,15 @@ namespace ToolKit
       }
     }
 
-    // Then the remaining patrols react: any one that watches the player's tile
-    // eats the player. Because this runs after the capture, a tile that is both
-    // a patrol's own and another's watched tile resolves as a trade -- the
-    // player captures it and still gets eaten by the other patrol.
-    for (const StationaryPatrol& enemy : m_enemies)
+    // Then the remaining enemies react: any static guard whose threat tile is
+    // the player's tile eats the player. Moving patrols threaten by walking
+    // onto the player during the enemy phase, so they report no static threat.
+    // Because this runs after the capture, a tile that is both an enemy's own
+    // and another's threat tile resolves as a trade -- the player captures it
+    // and still gets eaten by the other patrol.
+    for (const auto& enemy : m_enemies)
     {
-      if (enemy.WatchedNode() == playerNode)
+      if (enemy->ThreatTile() == playerNode)
       {
         m_lost  = true;
         m_phase = TurnPhase::Idle;

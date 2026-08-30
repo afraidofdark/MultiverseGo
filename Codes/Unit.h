@@ -38,6 +38,11 @@ namespace ToolKit
     // Called every frame while this unit is the active one (player input).
     virtual void Frame(float deltaTime) {}
 
+    // The tile whose occupation would make this unit eat the player: a static
+    // guard zone. Null for units with no static threat (moving patrols
+    // threaten by walking onto the player, not by a fixed zone).
+    virtual GridNode* ThreatTile() const { return nullptr; }
+
     // True while this unit is the active one and may act.
     void SetActive(bool active) { m_active = active; }
     bool IsActive() const { return m_active; }
@@ -110,10 +115,24 @@ namespace ToolKit
    public:
     void OnTurn() override {}
 
-    // The single tile the patrol watches: its neighbour in the facing
-    // direction, but only when the two tiles are connected. Null when the
-    // passage is blocked or the patrol stands at the grid edge.
-    GridNode* WatchedNode() const;
+    // The tile the patrol watches: its neighbour in the facing direction, but
+    // only when the two tiles are connected. A player standing on it is eaten.
+    // Null when the passage is blocked or the patrol stands at the grid edge.
+    GridNode* ThreatTile() const override;
+  };
+
+  // A patrol that walks its line: one tile per turn along its facing direction,
+  // turning 180 degrees in place when the connected line ends, then walking
+  // back along it. Enemies never block each other, so it walks straight through
+  // occupied tiles and eats the player by landing on its tile.
+  class LinearPatrol : public Unit
+  {
+   public:
+    void OnTurn() override;
+
+   private:
+    // Rotates the unit 180 degrees around Y, to face back along its line.
+    void FlipFacing();
   };
 
 } // namespace ToolKit
