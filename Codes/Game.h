@@ -58,6 +58,14 @@ namespace ToolKit
     // when the game is over.
     bool ResolvePatrolContact();
 
+    // Ends the run with the player devoured. The player leaves the scene exactly
+    // the way a captured patrol does -- its root entity is removed and the unit
+    // forgets its tile -- so being eaten is visible instead of a figure frozen on
+    // a tile. Every loss goes through here: a guard's bite in
+    // ResolvePatrolContact and a moving patrol landing on the player in
+    // EndPlayerTurn.
+    void EatPlayer();
+
     // True when the node is the one the target marker stands on.
     bool IsTargetNode(GridNode* node) const;
 

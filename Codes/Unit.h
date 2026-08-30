@@ -45,6 +45,13 @@ namespace ToolKit
     // threaten by walking onto the player, not by a fixed zone).
     virtual GridNode* ThreatTile() const { return nullptr; }
 
+    // Performs this unit's bite: the forward lunge onto the tile it threatens,
+    // made just before the player standing there is eaten, so the kill reads as
+    // a real strike instead of an invisible rule. Only a guard that eats from a
+    // static zone needs it -- a moving patrol already lunges onto the player as
+    // its step, so it keeps this empty default.
+    virtual void Lunge() {}
+
     // True while this unit is the active one and may act.
     void SetActive(bool active) { m_active = active; }
     bool IsActive() const { return m_active; }
@@ -107,11 +114,13 @@ namespace ToolKit
     bool m_hasMoved = false;
   };
 
-  // A stationary enemy guard. It stands in place and watches the single tile
-  // its facing passage opens onto: the tile is only threatened when the two
-  // tiles are connected, because navigation is exclusively over connections.
-  // Any unit that steps onto the watched tile is eaten; a unit that reaches
-  // the patrol itself from any other direction captures it instead.
+  // A stationary enemy guard. It holds its post and watches the single tile its
+  // facing passage opens onto: the tile is only threatened when the two tiles
+  // are connected, because navigation is exclusively over connections. Any unit
+  // that steps onto the watched tile is eaten, and the guard does not eat from
+  // where it stands -- it lunges the one tile forward onto its prey as it
+  // strikes. A unit that reaches the patrol itself from any other direction
+  // captures it instead.
   class StationaryPatrol : public Unit
   {
    public:
@@ -121,6 +130,10 @@ namespace ToolKit
     // only when the two tiles are connected. A player standing on it is eaten.
     // Null when the passage is blocked or the patrol stands at the grid edge.
     GridNode* ThreatTile() const override;
+
+    // The bite: steps the single tile forward onto the watched tile and ends up
+    // standing on it. Does nothing when there is no watched tile to lunge into.
+    void Lunge() override;
   };
 
   // A patrol that walks its line: one tile per turn along its facing direction,

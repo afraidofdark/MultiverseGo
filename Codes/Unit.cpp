@@ -215,6 +215,28 @@ namespace ToolKit
     return watched;
   }
 
+  void StationaryPatrol::Lunge()
+  {
+    GridNode* watched = ThreatTile();
+    if (watched == nullptr)
+    {
+      // Nothing lungeable in front -- the passage is blocked or the guard stands
+      // at the grid edge. Whether that still counts as a bite is the caller's
+      // call, which already decided it from ThreatTile().
+      TK_LOG("Guard: holds its post, no open passage to lunge through.");
+      return;
+    }
+
+    // The one step forward onto the prey's tile. ThreatTile() only answers with
+    // a connected neighbour, so this is a legal move and not a reach across a
+    // wall. The guard already faces this way and PlaceOnNode keeps that heading,
+    // so the step reads purely as a strike.
+    PlaceOnNode(watched);
+    TK_LOG("Guard: lunges forward onto (%d, %d) and bites.",
+           watched->ix,
+           watched->iz);
+  }
+
   void LinearPatrol::OnTurn(GridNode* playerNode, GridDir playerFacing)
   {
     if (m_node == nullptr || m_grid == nullptr)

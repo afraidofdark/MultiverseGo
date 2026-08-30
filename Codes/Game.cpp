@@ -227,9 +227,10 @@ namespace ToolKit
 
     if (caught)
     {
-      m_lost  = true;
-      m_phase = TurnPhase::Idle;
+      // The patrol is already standing on the player's tile -- that step was its
+      // bite -- so the player is simply gone.
       TK_LOG("Game: a patrol caught the player. You lose!");
+      EatPlayer();
       return;
     }
 
@@ -341,14 +342,37 @@ namespace ToolKit
     {
       if (enemy->ThreatTile() == playerNode)
       {
-        m_lost  = true;
-        m_phase = TurnPhase::Idle;
+        // The guard does not eat from its post: it lunges onto the player's tile
+        // first, so the strike is visible, and only then is the player gone.
+        enemy->Lunge();
         TK_LOG("Game: patrol ate the player. You lose!");
+        EatPlayer();
         return true;
       }
     }
 
     return false;
+  }
+
+  void Game::EatPlayer()
+  {
+    m_lost  = true;
+    m_phase = TurnPhase::Idle;
+
+    // The devoured player leaves the scene exactly like a patrol the player
+    // captures: the root entity is removed and the unit forgets its tile, so
+    // nothing keeps drawing or driving a player that has been eaten.
+    EntityPtr playerRoot = m_player.GetRoot();
+    if (playerRoot != nullptr)
+    {
+      ScenePtr scene = GetSceneManager()->GetCurrentScene();
+      if (scene != nullptr)
+      {
+        scene->RemoveEntity(playerRoot);
+        TK_LOG("Game: the player has been removed from the scene.");
+      }
+    }
+    m_player.Reset();
   }
 
   bool Game::IsTargetNode(GridNode* node) const
