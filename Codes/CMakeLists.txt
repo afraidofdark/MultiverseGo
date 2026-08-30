@@ -22,7 +22,14 @@ project(${GAME_PROJECT_NAME})
 string(TOLOWER ${CMAKE_CXX_COMPILER_ID} TK_COMPILER)
 message("Compiling ${GAME_PROJECT_NAME} with ${TK_COMPILER} for platform ${TK_PLATFORM} (${TK_BUILD_TYPE})")
 
-set(HEADERS Game.h)
+set(HEADERS Game.h Unit.h)
+
+# The grid data model lives in the grider plugin and is shared verbatim: the
+# game compiles its GridGraph.cpp in place rather than keeping a second copy.
+# (The two plugins can't link each other, so the game carries its own copy of
+# the source -- same code, no duplication to maintain.)
+get_filename_component(GRIDER_CODE_DIR "${GAME_CODE_DIR}/../Plugins/grider/Codes" REALPATH)
+set(GRIDGRAPH_SRC "${GRIDER_CODE_DIR}/GridGraph.cpp")
 
 if(${PLUGIN_BUILD})
     # ----------------------------------------------------------------------- #
@@ -33,7 +40,7 @@ if(${PLUGIN_BUILD})
     # SDL2/imgui symbols are provided at runtime by the host editor process.
     # ----------------------------------------------------------------------- #
     set(CMAKE_DEBUG_POSTFIX d) # Matches TK_PLUGIN_DEBUG_EXT ("d.so" / "d.dll").
-    add_library(${GAME_PROJECT_NAME} SHARED Game.cpp ${HEADERS})
+    add_library(${GAME_PROJECT_NAME} SHARED Game.cpp Unit.cpp ${GRIDGRAPH_SRC} ${HEADERS})
 
     # The editor loads the project name verbatim -- strip the default "lib" prefix.
     set_target_properties(${GAME_PROJECT_NAME} PROPERTIES PREFIX "")
@@ -44,9 +51,9 @@ else()
     # Standalone build: executable hosting the engine.
     # ----------------------------------------------------------------------- #
     if("${TK_PLATFORM}" STREQUAL "${TK_WINDOWS}")
-        add_executable(${GAME_PROJECT_NAME} WIN32 Game.cpp Main.cpp ${HEADERS})
+        add_executable(${GAME_PROJECT_NAME} WIN32 Game.cpp Main.cpp ${GRIDGRAPH_SRC} ${HEADERS})
     else()
-        add_executable(${GAME_PROJECT_NAME} Game.cpp Main.cpp ${HEADERS})
+        add_executable(${GAME_PROJECT_NAME} Game.cpp Main.cpp ${GRIDGRAPH_SRC} ${HEADERS})
     endif()
 
     # Pre-built vendored deps consumed directly by the standalone app.
@@ -155,8 +162,10 @@ else()
 endif()
 
 # Project's own headers (Game.h, Platform/*_main.h). Required so the platform
-# main shims can resolve "../Codes/Game.h" and the sources find Game.h.
-target_include_directories(${GAME_PROJECT_NAME} PRIVATE ${GAME_CODE_DIR})
+# main shims can resolve "../Codes/Game.h" and the sources find Game.h. The
+# grider Codes dir is included so "#include GridGraph.h" (shared with the
+# editor plugin) resolves.
+target_include_directories(${GAME_PROJECT_NAME} PRIVATE ${GAME_CODE_DIR} ${GRIDER_CODE_DIR})
 
 # Shared precompiled header. The engine's stdafx.h provides Platform.h, STL,
 # GLM config, RapidXml and the core ToolKit types for every translation unit.

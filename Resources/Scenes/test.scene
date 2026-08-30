@@ -1,0 +1,100 @@
+<S name="test" version="v0.4.9">
+	<Object Cl="GradientSky">
+		<PB>
+			<P t="11" name="Id" v="3835758595842138209"/>
+			<P t="9" name="Name" v="GradientSky"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="DrawSky" v="1"/>
+			<P t="10" name="Illuminate" v="1"/>
+			<P t="2" name="Intensity" v="1.000000"/>
+			<P t="18" name="BakeIrradianceMap"/>
+			<P t="9" name="IrradianceBakeFile" v=""/>
+			<P t="5" name="TopColor" x="0.300000" y="0.300000" z="1.000000"/>
+			<P t="5" name="MiddleColor" x="1.000000" y="1.000000" z="0.800000"/>
+			<P t="5" name="BottomColor" x="0.500000" y="0.300000" z="0.100000"/>
+			<P t="2" name="GradientExponent" v="0.300000"/>
+			<P t="18" name="ReGenerateIrradianceMap"/>
+		</PB>
+		<Entity>
+			<N is="0">
+				<T x="0.000000" y="0.000000" z="0.000000"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="EnvironmentComponent">
+					<PB>
+						<P t="11" name="Id" v="2956596653388264138"/>
+						<P t="15" name="Hdri"/>
+						<P t="5" name="PositionOffset" x="0.000000" y="0.000000" z="0.000000"/>
+						<P t="5" name="Size" x="340282346638528859811704183484516925440.000000" y="340282346638528859811704183484516925440.000000" z="340282346638528859811704183484516925440.000000"/>
+						<P t="10" name="Illuminate" v="1"/>
+						<P t="10" name="ParallaxCorrection" v="0"/>
+						<P t="10" name="Interior" v="0"/>
+						<P t="2" name="Intensity" v="1.000000"/>
+						<P t="2" name="Fade" v="1.000000"/>
+						<P t="2" name="CaptureFar" v="0.000000"/>
+						<P t="19" name="CaptureResolution">
+							<List size="3">
+								<CurrVal v="1"/>
+								<0 valType="3" valName="128" v="128"/>
+								<1 valType="3" valName="256" v="256"/>
+								<2 valType="3" valName="512" v="512"/>
+							</List>
+						</P>
+						<P t="18" name="Capture"/>
+						<P t="18" name="CenterToEnvironment"/>
+					</PB>
+					<Component>
+						<EnvironmentComponent/>
+					</Component>
+				</Object>
+			</Ca>
+			<SkyBase>
+				<GradientSky/>
+			</SkyBase>
+		</Entity>
+	</Object>
+	<PostProcessingSettings>
+		<Object Cl="PostProcessingSettings">
+			<PB>
+				<P t="11" name="Id" v="16696936497225242447"/>
+				<P t="19" name="TonemapperMode">
+					<List size="2">
+						<CurrVal v="1"/>
+						<0 valType="3" valName="Reinhard" v="0"/>
+						<1 valType="3" valName="ACES" v="1"/>
+					</List>
+				</P>
+				<P t="10" name="TonemappingEnabled" v="1"/>
+				<P t="10" name="BloomEnabled" v="0"/>
+				<P t="2" name="BloomIntensity" v="1.000000"/>
+				<P t="2" name="BloomThreshold" v="1.000000"/>
+				<P t="3" name="BloomIterationCount" v="5"/>
+				<P t="10" name="GammaCorrectionEnabled" v="0"/>
+				<P t="2" name="Gamma" v="2.200000"/>
+				<P t="10" name="SSAOEnabled" v="0"/>
+				<P t="2" name="SSAORadius" v="1.000000"/>
+				<P t="2" name="SSAOBias" v="0.025000"/>
+				<P t="2" name="SSAOSpread" v="1.000000"/>
+				<P t="19" name="SSAOKernelSize">
+					<List size="3">
+						<CurrVal v="1"/>
+						<0 valType="3" valName="8" v="8"/>
+						<1 valType="3" valName="16" v="16"/>
+						<2 valType="3" valName="32" v="32"/>
+					</List>
+				</P>
+				<P t="10" name="SSAOHalfResolution" v="1"/>
+				<P t="10" name="DepthOfFieldEnabled" v="0"/>
+				<P t="2" name="FocusPoint" v="10.500000"/>
+				<P t="2" name="FocusScale" v="1.500000"/>
+				<P t="3" name="DofBlurQuality" v="2"/>
+				<P t="10" name="FXAAEnabled" v="1"/>
+			</PB>
+		</Object>
+	</PostProcessingSettings>
+</S>
+

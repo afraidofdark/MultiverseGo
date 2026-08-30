@@ -10,6 +10,9 @@
 #include <Plugin.h>
 #include <ToolKit.h>
 
+#include "GridGraph.h"
+#include "Unit.h"
+
 namespace ToolKit
 {
 
@@ -25,6 +28,33 @@ namespace ToolKit
     void OnPause() override;
     void OnResume() override;
     void OnStop() override;
+
+   private:
+    // Turn flow: the player acts, then every enemy takes its fixed action, then
+    // the turn comes back to the player.
+    enum class TurnPhase
+    {
+      Idle,   // Not set up yet (no grid / player in the scene).
+      Player, // Waiting for the player's single move.
+      Enemies // Enemies acting in sequence.
+    };
+
+    void StartPlayerTurn();
+    void EndPlayerTurn();
+    void HandlePlayerClick(const Vec2& mousePos);
+
+    // True when a unit already stands on the node.
+    bool IsNodeOccupied(GridNode* node) const;
+
+    // True when the node is the one the target marker stands on.
+    bool IsTargetNode(GridNode* node) const;
+
+    GridGraph m_grid;
+    Player m_player;
+    std::vector<StationaryPatrol> m_enemies;
+    EntityPtr m_target;                  // Optional entity tagged "target".
+    TurnPhase m_phase = TurnPhase::Idle;
+    bool m_won        = false;
   };
 
 } // namespace ToolKit
