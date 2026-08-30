@@ -160,10 +160,16 @@ namespace ToolKit
   // toward the patrol). The patrol turns to that frozen heading and looks down
   // it on the very turn it lands on the last sighting tile -- arriving, turning
   // and seeing are one turn, never three -- so a player running straight ahead
-  // of that heading is caught the instant the patrol gets there. Each homeward
-  // step likewise arrives already turned toward the next step. If the player
-  // shows up it keeps chasing, even mid-return. Back at the start it resumes
-  // the idle stare.
+  // of that heading is caught the instant the patrol gets there. Catching is the
+  // end of the hunt: a patrol that lands on the player's tile has eaten it and
+  // stops dead where it arrived, keeping the facing it walked in with instead of
+  // turning on the body. An empty line is not given up on at once: the patrol
+  // stands on that angle, motionless, for as many turns as kWatchTurns counts,
+  // taking a fresh look down the same line each one, and only hands itself to
+  // Returning once the wait is spent -- so the homeward walk never shares a turn
+  // with the wait. Each homeward step likewise arrives already turned toward the
+  // next step. If the player shows up it keeps chasing, even mid-wait or
+  // mid-return. Back at the start it resumes the idle stare.
   // Enemies do not block each other.
   class SeekerPatrol : public Unit
   {
@@ -177,8 +183,16 @@ namespace ToolKit
     {
       Idle,          // Staring at its fixed point.
       Chasing,       // Walking to the freshest tile where it sees the player.
+      Watching,      // Standing on the arrival tile, staring down its held heading. Still watching.
       Returning      // One homeward step per turn; each step arrives facing the next step. Still watching.
     };
+
+    // How many turns the patrol stands motionless on the tile it arrived at,
+    // staring down the heading frozen at sight loss and taking one fresh look per
+    // turn, before it gives the chase up and turns back. Raise it to make the
+    // patrol hang around the last sighting longer; a player that steps back into
+    // that line during the wait is caught and the chase resumes immediately.
+    static constexpr int kWatchTurns = 1;
 
     // True when the player's tile lies along a straight, connected line in the
     // current facing direction.
@@ -194,10 +208,12 @@ namespace ToolKit
     // neighbours. Empty when the target is unreachable or is the current node.
     std::vector<GridNode*> FindPath(GridNode* to) const;
 
-    // Walks one tile toward the freshest sighting. On the turn it lands on the
-    // target (or finds it unreachable) it turns to the frozen heading and looks
-    // down it in that same turn: seen again means the chase goes on, an empty
-    // line hands the patrol over to Returning.
+    // Walks one tile toward the freshest sighting. Landing on the player's tile
+    // is the bite: the patrol stops there facing the way it walked in, with no
+    // turn and no look. Otherwise, on the turn it lands on the target (or finds
+    // it unreachable) it turns to the frozen heading and looks down it in that
+    // same turn: seen again means the chase goes on, an empty line leaves the
+    // patrol holding that heading for its kWatchTurns watching turns.
     void StepChase(GridNode* playerNode, GridDir playerFacing);
 
     // Walks one tile back along the recorded path; arrival and turning toward the
@@ -215,6 +231,7 @@ namespace ToolKit
     GridNode* m_lastSeen  = nullptr;      // Freshest tile the player was seen on.
     GridDir m_lastHeading = GridDir::Zm;  // Player's heading, refreshed while visible and frozen at the instant sight is lost.
     bool m_sighted = false;               // True while sight is live; triggers the heading snapshot exactly when LOS breaks.
+    int  m_watchLeft = 0;                 // Turns of the wait still owed on the held heading.
     std::vector<GridNode*> m_trail;       // Nodes walked since leaving Idle.
     Quaternion m_idleOrientation;         // Authoring rotation, restored in Idle.
   };

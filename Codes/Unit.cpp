@@ -286,6 +286,7 @@ namespace ToolKit
     m_state           = State::Idle;
     m_lastSeen        = nullptr;
     m_lastHeading     = GridDir::Zm;
+    m_watchLeft       = 0;
     m_trail.clear();
     return true;
   }
@@ -359,6 +360,40 @@ namespace ToolKit
                  GridDirName(m_lastHeading));
         }
         StepChase(playerNode, playerFacing);
+        break;
+
+      case State::Watching:
+        // The waiting turns. The patrol landed here already turned to the frozen
+        // heading, so it holds that angle by staying put and looks down the same
+        // line once per turn. The player's step lands before the patrol acts, so
+        // a body that walked back into the held line is taken. Nothing moves on a
+        // watching turn: giving up only hands the patrol over to Returning, whose
+        // first homeward step comes on the following turn.
+        if (CanSee(playerNode))
+        {
+          TK_LOG("Seeker: player walked into the held angle at (%d, %d); re-engaging.",
+                 playerNode->ix,
+                 playerNode->iz);
+          SpotPlayer(playerNode, playerFacing);
+          m_sighted   = true;
+          m_watchLeft = 0;
+          m_state     = State::Chasing;
+          StepChase(playerNode, playerFacing);
+        }
+        else if (m_watchLeft > 1)
+        {
+          --m_watchLeft;
+          TK_LOG("Seeker: still nobody along %s; holding the angle for %d more turn(s).",
+                 GridDirName(m_lastHeading),
+                 m_watchLeft);
+        }
+        else
+        {
+          TK_LOG("Seeker: nobody along %s after the wait; giving up and turning back.",
+                 GridDirName(m_lastHeading));
+          m_watchLeft = 0;
+          m_state     = State::Returning;
+        }
         break;
 
       case State::Returning:
@@ -485,6 +520,18 @@ namespace ToolKit
       TK_LOG("Seeker: chase step to (%d, %d), %d tile(s) to go.", next->ix, next->iz, (int) path.size() - 2);
     }
 
+    // Landing on the player's tile IS the bite, so the chase ends right here:
+    // there is nobody left to look for. The patrol holds exactly where it
+    // stopped, still facing the way it walked in -- it does not turn to the
+    // memorized heading, does not take an arrival look down a line it is
+    // standing in, and never enters the wait. It stays in Chasing; the game
+    // resolves the loss on this same turn.
+    if (m_node == playerNode)
+    {
+      TK_LOG("Seeker: caught the player at (%d, %d); holding position.", m_node->ix, m_node->iz);
+      return;
+    }
+
     // The chase leg ends when the patrol lands on the last sighting tile, or at
     // once when that tile turns out to be unreachable. Landing, turning to the
     // heading frozen at sight loss and looking down it are ONE turn: the look is
@@ -530,8 +577,16 @@ namespace ToolKit
     }
     else
     {
-      TK_LOG("Seeker: nobody along %s; returning home.", GridDirName(m_lastHeading));
-      m_state = State::Returning;
+      // One empty look is not the end of it. The patrol keeps the angle it was
+      // shown and stands on it for kWatchTurns turns: the player gets that many
+      // extra steps to walk back into the line before the chase is buried. No
+      // homeward step is allowed to share a turn with the wait -- a patrol that
+      // looks and then walks has not visibly waited at all.
+      m_watchLeft = kWatchTurns;
+      TK_LOG("Seeker: nobody along %s; holding this angle for %d turn(s) before turning back.",
+             GridDirName(m_lastHeading),
+             m_watchLeft);
+      m_state = State::Watching;
     }
   }
 
@@ -598,6 +653,7 @@ namespace ToolKit
     m_lastSeen    = nullptr;
     m_lastHeading = GridDir::Zm;
     m_sighted     = false;
+    m_watchLeft   = 0;
     m_state       = State::Idle;
     m_trail.clear();
   }
