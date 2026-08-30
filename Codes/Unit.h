@@ -32,8 +32,10 @@ namespace ToolKit
     // null or its position is not on the grid.
     virtual bool Init(EntityPtr root, GridGraph* grid);
 
-    // Called when it becomes this unit's turn to act.
-    virtual void OnTurn() {}
+    // Called when it becomes this unit's turn to act. playerNode is the
+    // player's current tile and playerFacing the direction it is heading;
+    // chasing units (SeekerPatrol) use them to see and pursue the player.
+    virtual void OnTurn(GridNode* playerNode, GridDir playerFacing) {}
 
     // Called every frame while this unit is the active one (player input).
     virtual void Frame(float deltaTime) {}
@@ -88,7 +90,7 @@ namespace ToolKit
   class Player : public Unit
   {
    public:
-    void OnTurn() override;
+    void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
 
     // True once the player has moved this turn.
     bool HasMoved() const { return m_hasMoved; }
@@ -113,7 +115,7 @@ namespace ToolKit
   class StationaryPatrol : public Unit
   {
    public:
-    void OnTurn() override {}
+    void OnTurn(GridNode* playerNode, GridDir playerFacing) override {}
 
     // The tile the patrol watches: its neighbour in the facing direction, but
     // only when the two tiles are connected. A player standing on it is eaten.
@@ -128,11 +130,77 @@ namespace ToolKit
   class LinearPatrol : public Unit
   {
    public:
-    void OnTurn() override;
+    void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
 
    private:
     // Rotates the unit 180 degrees around Y, to face back along its line.
     void FlipFacing();
+  };
+
+  // A patrol that stares at a fixed point across the grid and investigates what
+  // it sees. Vision is live: in every state it watches its line of sight (a
+  // straight, connected passage in its facing direction) and chases the
+  // freshest sighting. The player's heading is refreshed while it is visible
+  // and frozen at the moment sight is lost -- the direction the player was
+  // moving as it left the view, not the stale heading from the last visible
+  // tile (that one is the direction the player arrived FROM, usually straight
+  // toward the patrol). When the patrol reaches the last sighting tile it
+  // spends a full turn turning in place to face that frozen heading, and
+  // sees along it only on the following turn -- every action (move, turn,
+  // see) is its own turn. If the player shows up it keeps chasing, even
+  // mid-return; otherwise it retraces its path back to its start.
+  // Enemies do not block each other.
+  class SeekerPatrol : public Unit
+  {
+   public:
+    bool Init(EntityPtr root, GridGraph* grid) override;
+    void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
+    void Reset() override;
+
+   private:
+    enum class State
+    {
+      Idle,          // Staring at its fixed point.
+      Chasing,       // Walking to the freshest tile where it sees the player.
+      Investigating, // Arrived there; spending a full turn turning to the player's heading frozen at sight loss.
+      Deciding,      // Facing that heading; looking now: chase again or return.
+      Returning      // Retracing its path back to the start; still watching.
+    };
+
+    // True when the player's tile lies along a straight, connected line in the
+    // current facing direction.
+    bool CanSee(GridNode* playerNode) const;
+
+    // Records a fresh sighting: the tile the player is on and the direction it
+    // is heading this turn. The player typically crosses the line of sight in
+    // a single turn, so the heading must be captured at the moment of the
+    // sighting -- there may never be a second sighting to learn it from.
+    void SpotPlayer(GridNode* playerNode, GridDir playerFacing);
+
+    // Breadth-first path from the current node to the target along connected
+    // neighbours. Empty when the target is unreachable or is the current node.
+    std::vector<GridNode*> FindPath(GridNode* to) const;
+
+    // Walks one tile toward the freshest sighting; transitions to Investigating
+    // when it arrives (or when the target is unreachable).
+    void StepChase();
+
+    // Walks one tile back along the recorded path; returns to Idle at the start.
+    void StepReturn();
+
+    // Rotates in place to face a grid direction.
+    void TurnTo(GridDir dir);
+
+    // Restores the authored orientation used when staring in Idle.
+    void TurnToIdle();
+
+    State m_state = State::Idle;
+    GridNode* m_startNode = nullptr;      // Tile the patrol starts at and returns to.
+    GridNode* m_lastSeen  = nullptr;      // Freshest tile the player was seen on.
+    GridDir m_lastHeading = GridDir::Zm;  // Player's heading, refreshed while visible and frozen at the instant sight is lost.
+    bool m_sighted = false;               // True while sight is live; triggers the heading snapshot exactly when LOS breaks.
+    std::vector<GridNode*> m_trail;       // Nodes walked since leaving Idle.
+    Quaternion m_idleOrientation;         // Authoring rotation, restored in Idle.
   };
 
 } // namespace ToolKit

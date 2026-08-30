@@ -18,6 +18,21 @@ extern "C" TK_PLUGIN_API ToolKit::Game* TK_STDCAL GetInstance() { return &Self; 
 
 namespace ToolKit
 {
+  namespace
+  {
+    // Debug helper: readable name for a grid direction (same table as Unit.cpp).
+    const char* GridDirName(GridDir d)
+    {
+      switch (d)
+      {
+        case GridDir::Xm: return "-X";
+        case GridDir::Xp: return "+X";
+        case GridDir::Zm: return "-Z";
+        default: return "+Z";
+      }
+    }
+  } // namespace
+
   void Game::Init(Main* master) { Main::SetProxy(master); }
 
   void Game::Destroy() {}
@@ -121,6 +136,18 @@ namespace ToolKit
       }
     }
 
+    // And every "seeker-patrol", which stares at a fixed point, chases what it
+    // sees, and returns the way it came.
+    EntityPtrArray seekerRoots = scene->GetByTag("seeker-patrol");
+    for (EntityPtr root : seekerRoots)
+    {
+      auto enemy = std::make_unique<SeekerPatrol>();
+      if (enemy->Init(root, &m_grid))
+      {
+        m_enemies.push_back(std::move(enemy));
+      }
+    }
+
     // Optional target marker: an entity tagged "target" standing on a tile.
     EntityPtrArray targets = scene->GetByTag("target");
     if (!targets.empty())
@@ -143,6 +170,7 @@ namespace ToolKit
     m_enemies.clear();
     m_grid.Clear();
     m_target = nullptr;
+    m_prevPlayerNode = nullptr;
     m_player.Reset();
   }
 
@@ -150,7 +178,11 @@ namespace ToolKit
   {
     m_phase = TurnPhase::Player;
     m_player.SetActive(true);
-    m_player.OnTurn(); // Clears the move flag.
+    m_player.OnTurn(nullptr, GridDir::Zm); // Clears the move flag.
+
+    // Remember where the player stood before its move, so the next enemy phase
+    // can log the actual move ("from -> to heading") for the seeker logs.
+    m_prevPlayerNode = m_player.GetNode();
     TK_LOG("Game: player turn.");
   }
 
@@ -161,13 +193,29 @@ namespace ToolKit
 
     // All enemies act on this phase, from the state at its start. Enemies do
     // not block each other, so each unit's move depends only on the grid and
-    // the player's fixed position -- order does not matter.
+    // the player's fixed position -- order does not matter. Seeker patrols also
+    // need the direction the player is heading, memorized at each sighting.
     GridNode* playerNode = m_player.GetNode();
+    GridDir playerFacing = m_player.GetFacingDir();
     bool caught          = false;
+
+    // Log the move the player actually made this turn. The seeker logs below
+    // carry the "heading" (player's current facing), so printing the real
+    // from->to step next to it makes every heading checkable by eye.
+    if (m_prevPlayerNode != playerNode)
+    {
+      TK_LOG("Game: player moved (%d, %d) -> (%d, %d) heading %s.",
+             m_prevPlayerNode != nullptr ? m_prevPlayerNode->ix : -1,
+             m_prevPlayerNode != nullptr ? m_prevPlayerNode->iz : -1,
+             playerNode->ix,
+             playerNode->iz,
+             GridDirName(playerFacing));
+    }
+
     for (auto& enemy : m_enemies)
     {
       enemy->SetActive(true);
-      enemy->OnTurn();
+      enemy->OnTurn(playerNode, playerFacing);
       enemy->SetActive(false);
 
       // A patrol that walks onto the player's tile eats them.

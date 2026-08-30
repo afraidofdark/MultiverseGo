@@ -7,12 +7,30 @@
 
 #include "Unit.h"
 
+#include <Logger.h>
 #include <MathUtil.h>
 
+#include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
 namespace ToolKit
 {
+  namespace
+  {
+    // Debug helper: readable name for a grid direction.
+    const char* GridDirName(GridDir d)
+    {
+      switch (d)
+      {
+        case GridDir::Xm: return "-X";
+        case GridDir::Xp: return "+X";
+        case GridDir::Zm: return "-Z";
+        default: return "+Z";
+      }
+    }
+  } // namespace
+
   bool Unit::Init(EntityPtr root, GridGraph* grid)
   {
     m_root  = root;
@@ -125,7 +143,7 @@ namespace ToolKit
     m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
   }
 
-  void Player::OnTurn()
+  void Player::OnTurn(GridNode* playerNode, GridDir playerFacing)
   {
     m_hasMoved = false;
   }
@@ -197,7 +215,7 @@ namespace ToolKit
     return watched;
   }
 
-  void LinearPatrol::OnTurn()
+  void LinearPatrol::OnTurn(GridNode* playerNode, GridDir playerFacing)
   {
     if (m_node == nullptr || m_grid == nullptr)
     {
@@ -232,6 +250,331 @@ namespace ToolKit
     Vec3 fwd       = glm::normalize(glm::vec3(q * Vec3(0.0f, 0.0f, -1.0f)));
     Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), -fwd);
     m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
+  }
+
+  bool SeekerPatrol::Init(EntityPtr root, GridGraph* grid)
+  {
+    if (!Unit::Init(root, grid))
+    {
+      return false;
+    }
+
+    m_startNode       = m_node;
+    m_idleOrientation = m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD);
+    m_state           = State::Idle;
+    m_lastSeen        = nullptr;
+    m_lastHeading     = GridDir::Zm;
+    m_trail.clear();
+    return true;
+  }
+
+  void SeekerPatrol::OnTurn(GridNode* playerNode, GridDir playerFacing)
+  {
+    if (m_node == nullptr || m_grid == nullptr)
+    {
+      return;
+    }
+
+    TK_LOG("Seeker: turn, state=%d at (%d, %d) facing %s, player at (%d, %d) heading %s.",
+           (int) m_state,
+           m_node->ix,
+           m_node->iz,
+           GridDirName(GetFacingDir()),
+           playerNode != nullptr ? playerNode->ix : -1,
+           playerNode != nullptr ? playerNode->iz : -1,
+           GridDirName(playerFacing));
+
+    switch (m_state)
+    {
+      case State::Idle:
+        // First sighting: start chasing from here, remembering the way back.
+        if (CanSee(playerNode))
+        {
+          TK_LOG("Seeker: spotted the player at (%d, %d) heading %s; memorized and chasing.",
+                 playerNode->ix,
+                 playerNode->iz,
+                 GridDirName(playerFacing));
+          m_trail.clear();
+          m_trail.push_back(m_node);
+          SpotPlayer(playerNode, playerFacing);
+          m_sighted = true;
+          m_state = State::Chasing;
+          StepChase();
+        }
+        break;
+
+      case State::Chasing:
+        // Live sight: while the player is visible, the chase target and the
+        // known heading stay fresh, so the pursuit follows every turn.
+        if (CanSee(playerNode))
+        {
+          TK_LOG("Seeker: player still in sight at (%d, %d) heading %s.",
+                 playerNode->ix,
+                 playerNode->iz,
+                 GridDirName(playerFacing));
+          SpotPlayer(playerNode, playerFacing);
+          m_sighted = true;
+        }
+        else
+        {
+          // The player just left the view. The heading that matters is the one
+          // it was moving with at the moment it disappeared -- not the heading
+          // from the last visible tile, which is stale by that one step (it is
+          // the direction the player arrived FROM, usually straight toward the
+          // patrol). Snapshot the current heading exactly when sight is lost;
+          // later out-of-sight turns keep it frozen.
+          if (m_sighted)
+          {
+            m_lastHeading = playerFacing;
+            m_sighted = false;
+            TK_LOG("Seeker: lost sight; player left the view heading %s; memorizing that.",
+                   GridDirName(m_lastHeading));
+          }
+
+          TK_LOG("Seeker: player out of sight; walking to last seen (%d, %d), heading %s frozen at sight loss.",
+                 m_lastSeen->ix,
+                 m_lastSeen->iz,
+                 GridDirName(m_lastHeading));
+        }
+        StepChase();
+        break;
+
+      case State::Investigating:
+        // One full turn is spent turning in place to face the heading frozen at
+        // the moment the player left the view. Turning and seeing never share a
+        // turn -- seeing comes on the following turn (Deciding), exactly like a
+        // move takes one turn and a turn takes one turn.
+        TK_LOG("Seeker: investigating at (%d, %d); turning to memorized heading %s.",
+               m_node->ix,
+               m_node->iz,
+               GridDirName(m_lastHeading));
+        TurnTo(m_lastHeading);
+        m_state = State::Deciding;
+        break;
+
+      case State::Deciding:
+        // Now facing the memorized heading: spotting the player resumes the
+        // chase on the spot; an empty view sends the patrol back along its
+        // trail.
+        if (CanSee(playerNode))
+        {
+          TK_LOG("Seeker: player seen again at (%d, %d); chase continues.", playerNode->ix, playerNode->iz);
+          SpotPlayer(playerNode, playerFacing);
+          m_sighted = true;
+          m_state = State::Chasing;
+          StepChase();
+        }
+        else
+        {
+          TK_LOG("Seeker: nobody along %s; returning home.", GridDirName(GetFacingDir()));
+          m_state = State::Returning;
+          StepReturn();
+        }
+        break;
+
+      case State::Returning:
+        // The stare never sleeps: a player crossing its view on the way back
+        // re-engages the same chase from right here. The trail keeps growing,
+        // so the eventual return still finds its way home.
+        if (CanSee(playerNode))
+        {
+          TK_LOG("Seeker: player crossed the view on the way back at (%d, %d); re-engaging.",
+                 playerNode->ix,
+                 playerNode->iz);
+          SpotPlayer(playerNode, playerFacing);
+          m_sighted = true;
+          m_state = State::Chasing;
+          StepChase();
+        }
+        else
+        {
+          StepReturn();
+        }
+        break;
+    }
+  }
+
+  bool SeekerPatrol::CanSee(GridNode* playerNode) const
+  {
+    if (m_node == nullptr || m_grid == nullptr || playerNode == nullptr)
+    {
+      return false;
+    }
+
+    // Line of sight runs along the facing direction through connected tiles,
+    // until a blocked passage, the grid edge, or the player.
+    GridDir dir        = GetFacingDir();
+    GridNode* cursor   = m_node;
+    while (cursor != nullptr)
+    {
+      GridNode* next = m_grid->Neighbor(*cursor, dir);
+      if (next == nullptr || !m_grid->Connected(*cursor, *next))
+      {
+        return false;
+      }
+      if (next == playerNode)
+      {
+        return true;
+      }
+      cursor = next;
+    }
+
+    return false;
+  }
+
+  void SeekerPatrol::SpotPlayer(GridNode* playerNode, GridDir playerFacing)
+  {
+    // Memorize both the tile and the way the player is going right now, so the
+    // investigation can face that way even if the player is never seen again.
+    m_lastSeen    = playerNode;
+    m_lastHeading = playerFacing;
+  }
+
+  std::vector<GridNode*> SeekerPatrol::FindPath(GridNode* to) const
+  {
+    std::vector<GridNode*> result;
+    if (m_node == nullptr || m_grid == nullptr || to == nullptr || m_node == to)
+    {
+      return result;
+    }
+
+    // Breadth-first search over connected neighbours.
+    std::unordered_map<GridNode*, GridNode*> cameFrom;
+    cameFrom[m_node] = nullptr;
+    std::vector<GridNode*> frontier = {m_node};
+    bool found                       = false;
+    while (!frontier.empty() && !found)
+    {
+      std::vector<GridNode*> next;
+      for (GridNode* n : frontier)
+      {
+        const GridDir dirs[4] = {GridDir::Xm, GridDir::Xp, GridDir::Zm, GridDir::Zp};
+        for (GridDir d : dirs)
+        {
+          GridNode* nb = m_grid->Neighbor(*n, d);
+          if (nb == nullptr || !m_grid->Connected(*n, *nb) || cameFrom.count(nb) != 0)
+          {
+            continue;
+          }
+          cameFrom[nb] = n;
+          if (nb == to)
+          {
+            found = true;
+            break;
+          }
+          next.push_back(nb);
+        }
+        if (found)
+        {
+          break;
+        }
+      }
+      frontier = next;
+    }
+
+    if (!found)
+    {
+      return result;
+    }
+
+    for (GridNode* n = to; n != nullptr; n = cameFrom[n])
+    {
+      result.push_back(n);
+    }
+    std::reverse(result.begin(), result.end());
+    return result; // [m_node, ..., to]
+  }
+
+  void SeekerPatrol::StepChase()
+  {
+    std::vector<GridNode*> path = FindPath(m_lastSeen);
+    if (path.size() > 1)
+    {
+      GridNode* next = path[1];
+      PlaceOnNode(next);
+      m_trail.push_back(next);
+      TK_LOG("Seeker: chase step to (%d, %d), %d tile(s) to go.", next->ix, next->iz, (int) path.size() - 2);
+    }
+
+    // Whether it arrived or the target is unreachable, the chase leg ends here:
+    // the next turn is spent investigating.
+    if (m_node == m_lastSeen)
+    {
+      TK_LOG("Seeker: arrived at the last seen tile (%d, %d); investigating next turn.", m_node->ix, m_node->iz);
+      m_state = State::Investigating;
+    }
+    else if (path.size() <= 1)
+    {
+      TK_LOG("Seeker: last seen tile (%d, %d) unreachable; investigating next turn.", m_lastSeen->ix, m_lastSeen->iz);
+      m_state = State::Investigating;
+    }
+  }
+
+  void SeekerPatrol::StepReturn()
+  {
+    if (m_trail.size() > 1)
+    {
+      GridNode* back = m_trail[m_trail.size() - 2];
+      m_trail.pop_back();
+      PlaceOnNode(back);
+      TK_LOG("Seeker: return step to (%d, %d).", back->ix, back->iz);
+
+      if (m_trail.size() == 1 && m_node == m_trail[0])
+      {
+        // Back at the start: resume the idle stare.
+        TK_LOG("Seeker: back at the start; resuming the idle stare.");
+        m_state = State::Idle;
+        TurnToIdle();
+        m_lastSeen = nullptr;
+      }
+    }
+    else
+    {
+      // No path to retrace: already back at the start.
+      m_state = State::Idle;
+      TurnToIdle();
+      m_lastSeen = nullptr;
+    }
+  }
+
+  void SeekerPatrol::TurnTo(GridDir dir)
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    Vec3 forward;
+    switch (dir)
+    {
+      case GridDir::Xm: forward = Vec3(-1.0f, 0.0f, 0.0f); break;
+      case GridDir::Xp: forward = Vec3(1.0f, 0.0f, 0.0f); break;
+      case GridDir::Zm: forward = Vec3(0.0f, 0.0f, -1.0f); break;
+      default: forward = Vec3(0.0f, 0.0f, 1.0f); break;
+    }
+
+    Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), forward);
+    m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
+  }
+
+  void SeekerPatrol::TurnToIdle()
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+    m_root->m_node->SetOrientation(m_idleOrientation, TransformationSpace::TS_WORLD);
+  }
+
+  void SeekerPatrol::Reset()
+  {
+    Unit::Reset();
+    m_startNode   = nullptr;
+    m_lastSeen    = nullptr;
+    m_lastHeading = GridDir::Zm;
+    m_sighted     = false;
+    m_state       = State::Idle;
+    m_trail.clear();
   }
 
 } // namespace ToolKit

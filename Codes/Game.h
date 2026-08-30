@@ -64,6 +64,11 @@ namespace ToolKit
     GridGraph m_grid;
     Player m_player;
 
+    // The tile the player stood on at the start of its turn, before its move.
+    // Used to log the actual move of each turn (from -> to + heading), so the
+    // enemy logs that freeze the player's heading can be read against it.
+    GridNode* m_prevPlayerNode = nullptr;
+
     // Every enemy in the scene, regardless of type. Enemies never block each
     // other (several may occupy the same tile), so the enemy phase lets them
     // all act from the state at the start of the phase.
