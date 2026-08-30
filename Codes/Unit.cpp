@@ -7,6 +7,8 @@
 
 #include "Unit.h"
 
+#include <MathUtil.h>
+
 namespace ToolKit
 {
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -65,11 +67,40 @@ namespace ToolKit
 
   void Unit::PlaceOnNode(GridNode* node)
   {
+    GridNode* prev = m_node;
     m_node = node;
     if (m_root != nullptr && node != nullptr)
     {
       m_root->m_node->SetTranslation(node->center, TransformationSpace::TS_WORLD);
+
+      // Moving between two nodes turns the unit toward its step. Init snaps
+      // onto the starting node with prev == nullptr, so the unit keeps the
+      // rotation it was authored with until it first moves.
+      if (prev != nullptr)
+      {
+        FaceTowards(node->center - prev->center);
+      }
     }
+  }
+
+  void Unit::FaceTowards(const Vec3& direction)
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    Vec3 dir = direction;
+    if (glm::length(dir) < 0.0001f)
+    {
+      return;
+    }
+
+    // Model convention: forward is -Z. Rotate the root so its -Z looks along
+    // the movement direction. World space, because grid movement is
+    // axis-aligned in world space.
+    Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), glm::normalize(dir));
+    m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
   }
 
   void Player::OnTurn()

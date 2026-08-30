@@ -1,0 +1,3 @@
+[submodule "Plugins/grider"]
+	path = Plugins/grider
+	url = https://github.com/afraidofdark/grider.git

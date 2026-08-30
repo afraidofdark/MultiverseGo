@@ -62,6 +62,11 @@ namespace ToolKit
     // Snaps the root entity onto the given node (world position = node center).
     void PlaceOnNode(GridNode* node);
 
+    // Rotates the root entity so its forward (-Z) points along direction. Used
+    // by PlaceOnNode whenever a unit steps from one node to another, so every
+    // moving unit faces where it is going.
+    void FaceTowards(const Vec3& direction);
+
     EntityPtr m_root;
     GridGraph* m_grid = nullptr;
     GridNode* m_node = nullptr;
