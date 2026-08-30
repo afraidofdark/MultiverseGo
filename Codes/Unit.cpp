@@ -29,6 +29,18 @@ namespace ToolKit
         default: return "+Z";
       }
     }
+
+    // Grid-axis direction of a world-space delta (movement between two node
+    // centers). Mirrors the snap in Unit::GetFacingDir: the dominant axis
+    // decides, so a diagonal epsilon snaps to the stronger one.
+    GridDir DirectionFromDelta(const Vec3& delta)
+    {
+      if (std::fabs(delta.x) >= std::fabs(delta.z))
+      {
+        return (delta.x < 0.0f) ? GridDir::Xm : GridDir::Xp;
+      }
+      return (delta.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
+    }
   } // namespace
 
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -368,7 +380,9 @@ namespace ToolKit
         {
           TK_LOG("Seeker: nobody along %s; returning home.", GridDirName(GetFacingDir()));
           m_state = State::Returning;
-          StepReturn();
+          // No return step here. The look finished this turn; the return starts
+          // with its own turn -- a turn-around when needed, then a step per
+          // turn. Turning and moving never share a turn.
         }
         break;
 
@@ -514,7 +528,19 @@ namespace ToolKit
   {
     if (m_trail.size() > 1)
     {
+      // Next tile on the way home and the direction leading to it. One action
+      // per turn: if the patrol is not facing that way yet, this turn is spent
+      // turning in place -- the step only comes on the following turn.
       GridNode* back = m_trail[m_trail.size() - 2];
+      GridDir towardHome = DirectionFromDelta(back->center - m_node->center);
+
+      if (GetFacingDir() != towardHome)
+      {
+        TK_LOG("Seeker: turning to head back %s; no step this turn.", GridDirName(towardHome));
+        TurnTo(towardHome);
+        return;
+      }
+
       m_trail.pop_back();
       PlaceOnNode(back);
       TK_LOG("Seeker: return step to (%d, %d).", back->ix, back->iz);
