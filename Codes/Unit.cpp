@@ -29,18 +29,6 @@ namespace ToolKit
         default: return "+Z";
       }
     }
-
-    // Grid-axis direction of a world-space delta (movement between two node
-    // centers). Mirrors the snap in Unit::GetFacingDir: the dominant axis
-    // decides, so a diagonal epsilon snaps to the stronger one.
-    GridDir DirectionFromDelta(const Vec3& delta)
-    {
-      if (std::fabs(delta.x) >= std::fabs(delta.z))
-      {
-        return (delta.x < 0.0f) ? GridDir::Xm : GridDir::Xp;
-      }
-      return (delta.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
-    }
   } // namespace
 
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -311,7 +299,7 @@ namespace ToolKit
           SpotPlayer(playerNode, playerFacing);
           m_sighted = true;
           m_state = State::Chasing;
-          StepChase();
+          StepChase(playerNode, playerFacing);
         }
         break;
 
@@ -348,42 +336,7 @@ namespace ToolKit
                  m_lastSeen->iz,
                  GridDirName(m_lastHeading));
         }
-        StepChase();
-        break;
-
-      case State::Investigating:
-        // One full turn is spent turning in place to face the heading frozen at
-        // the moment the player left the view. Turning and seeing never share a
-        // turn -- seeing comes on the following turn (Deciding), exactly like a
-        // move takes one turn and a turn takes one turn.
-        TK_LOG("Seeker: investigating at (%d, %d); turning to memorized heading %s.",
-               m_node->ix,
-               m_node->iz,
-               GridDirName(m_lastHeading));
-        TurnTo(m_lastHeading);
-        m_state = State::Deciding;
-        break;
-
-      case State::Deciding:
-        // Now facing the memorized heading: spotting the player resumes the
-        // chase on the spot; an empty view sends the patrol back along its
-        // trail.
-        if (CanSee(playerNode))
-        {
-          TK_LOG("Seeker: player seen again at (%d, %d); chase continues.", playerNode->ix, playerNode->iz);
-          SpotPlayer(playerNode, playerFacing);
-          m_sighted = true;
-          m_state = State::Chasing;
-          StepChase();
-        }
-        else
-        {
-          TK_LOG("Seeker: nobody along %s; returning home.", GridDirName(GetFacingDir()));
-          m_state = State::Returning;
-          // No return step here. The look finished this turn; the return starts
-          // with its own turn -- a turn-around when needed, then a step per
-          // turn. Turning and moving never share a turn.
-        }
+        StepChase(playerNode, playerFacing);
         break;
 
       case State::Returning:
@@ -398,7 +351,7 @@ namespace ToolKit
           SpotPlayer(playerNode, playerFacing);
           m_sighted = true;
           m_state = State::Chasing;
-          StepChase();
+          StepChase(playerNode, playerFacing);
         }
         else
         {
@@ -499,7 +452,7 @@ namespace ToolKit
     return result; // [m_node, ..., to]
   }
 
-  void SeekerPatrol::StepChase()
+  void SeekerPatrol::StepChase(GridNode* playerNode, GridDir playerFacing)
   {
     std::vector<GridNode*> path = FindPath(m_lastSeen);
     if (path.size() > 1)
@@ -510,17 +463,53 @@ namespace ToolKit
       TK_LOG("Seeker: chase step to (%d, %d), %d tile(s) to go.", next->ix, next->iz, (int) path.size() - 2);
     }
 
-    // Whether it arrived or the target is unreachable, the chase leg ends here:
-    // the next turn is spent investigating.
+    // The chase leg ends when the patrol lands on the last sighting tile, or at
+    // once when that tile turns out to be unreachable. Landing, turning to the
+    // heading frozen at sight loss and looking down it are ONE turn: the look is
+    // taken before the player gets another step in, so a player fleeing straight
+    // ahead of that heading is caught the moment the patrol arrives. Handing the
+    // look to a later turn let it stand having already turned, watch the player
+    // walk out of the very line it was staring down, and give up.
+    if (m_node != m_lastSeen && path.size() > 1)
+    {
+      return; // Still walking; the arrival turn has not come yet.
+    }
+
     if (m_node == m_lastSeen)
     {
-      TK_LOG("Seeker: arrived at the last seen tile (%d, %d); investigating next turn.", m_node->ix, m_node->iz);
-      m_state = State::Investigating;
+      TK_LOG("Seeker: arrived at the last seen tile (%d, %d); turning to memorized heading %s and looking.",
+             m_node->ix,
+             m_node->iz,
+             GridDirName(m_lastHeading));
     }
-    else if (path.size() <= 1)
+    else
     {
-      TK_LOG("Seeker: last seen tile (%d, %d) unreachable; investigating next turn.", m_lastSeen->ix, m_lastSeen->iz);
-      m_state = State::Investigating;
+      TK_LOG("Seeker: last seen tile (%d, %d) unreachable; turning to memorized heading %s and looking.",
+             m_lastSeen->ix,
+             m_lastSeen->iz,
+             GridDirName(m_lastHeading));
+    }
+
+    TurnTo(m_lastHeading);
+
+    // The turn above already points the stare, so the very same turn can see
+    // along it. A fresh sighting keeps the chase going from here -- the walk
+    // resumes on the next turn, one step per turn as always -- while an empty
+    // line gives the patrol up and sends it back along its trail.
+    if (CanSee(playerNode))
+    {
+      TK_LOG("Seeker: player caught along %s at (%d, %d) on arrival; chase continues.",
+             GridDirName(m_lastHeading),
+             playerNode->ix,
+             playerNode->iz);
+      SpotPlayer(playerNode, playerFacing);
+      m_sighted = true;
+      m_state   = State::Chasing;
+    }
+    else
+    {
+      TK_LOG("Seeker: nobody along %s; returning home.", GridDirName(m_lastHeading));
+      m_state = State::Returning;
     }
   }
 
@@ -528,21 +517,9 @@ namespace ToolKit
   {
     if (m_trail.size() > 1)
     {
-      // Next tile on the way home and the direction leading to it. One action
-      // per turn: if the patrol is not facing that way yet, this turn is spent
-      // turning in place -- the step only comes on the following turn.
       GridNode* back = m_trail[m_trail.size() - 2];
-      GridDir towardHome = DirectionFromDelta(back->center - m_node->center);
-
-      if (GetFacingDir() != towardHome)
-      {
-        TK_LOG("Seeker: turning to head back %s; no step this turn.", GridDirName(towardHome));
-        TurnTo(towardHome);
-        return;
-      }
-
       m_trail.pop_back();
-      PlaceOnNode(back);
+      PlaceOnNode(back); // Arrival and turning toward the step happen together.
       TK_LOG("Seeker: return step to (%d, %d).", back->ix, back->iz);
 
       if (m_trail.size() == 1 && m_node == m_trail[0])

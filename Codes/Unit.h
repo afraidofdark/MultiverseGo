@@ -144,13 +144,13 @@ namespace ToolKit
   // and frozen at the moment sight is lost -- the direction the player was
   // moving as it left the view, not the stale heading from the last visible
   // tile (that one is the direction the player arrived FROM, usually straight
-  // toward the patrol). When the patrol reaches the last sighting tile it
-  // spends a full turn turning in place to face that frozen heading, and
-  // sees along it only on the following turn -- every action (move, turn,
-  // see) is its own turn. If the player shows up it keeps chasing, even
-  // mid-return. On the way home it first turns to face its trail on its own
-  // turn, then walks back one tile per turn: turning and stepping never share
-  // a turn. Back at the start it resumes the idle stare.
+  // toward the patrol). The patrol turns to that frozen heading and looks down
+  // it on the very turn it lands on the last sighting tile -- arriving, turning
+  // and seeing are one turn, never three -- so a player running straight ahead
+  // of that heading is caught the instant the patrol gets there. Each homeward
+  // step likewise arrives already turned toward the next step. If the player
+  // shows up it keeps chasing, even mid-return. Back at the start it resumes
+  // the idle stare.
   // Enemies do not block each other.
   class SeekerPatrol : public Unit
   {
@@ -164,9 +164,7 @@ namespace ToolKit
     {
       Idle,          // Staring at its fixed point.
       Chasing,       // Walking to the freshest tile where it sees the player.
-      Investigating, // Arrived there; spending a full turn turning to the player's heading frozen at sight loss.
-      Deciding,      // Facing that heading; looking now: chase again or return.
-      Returning      // Heading home: turn toward the trail first (own turn), then one step per turn; still watching.
+      Returning      // One homeward step per turn; each step arrives facing the next step. Still watching.
     };
 
     // True when the player's tile lies along a straight, connected line in the
@@ -183,12 +181,14 @@ namespace ToolKit
     // neighbours. Empty when the target is unreachable or is the current node.
     std::vector<GridNode*> FindPath(GridNode* to) const;
 
-    // Walks one tile toward the freshest sighting; transitions to Investigating
-    // when it arrives (or when the target is unreachable).
-    void StepChase();
+    // Walks one tile toward the freshest sighting. On the turn it lands on the
+    // target (or finds it unreachable) it turns to the frozen heading and looks
+    // down it in that same turn: seen again means the chase goes on, an empty
+    // line hands the patrol over to Returning.
+    void StepChase(GridNode* playerNode, GridDir playerFacing);
 
-    // Walks one tile back along the recorded path; an out-of-alignment turn is
-    // taken on its own turn first. Returns to Idle at the start.
+    // Walks one tile back along the recorded path; arrival and turning toward the
+    // next step happen together. Returns to Idle at the start.
     void StepReturn();
 
     // Rotates in place to face a grid direction.
