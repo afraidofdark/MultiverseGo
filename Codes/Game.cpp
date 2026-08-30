@@ -43,7 +43,7 @@ namespace ToolKit
         continue;
       }
 
-      HandlePlayerClick(Vec2((float) me->absolute[0], (float) me->absolute[1]));
+      HandlePlayerClick();
       break;
     }
   }
@@ -156,7 +156,7 @@ namespace ToolKit
     StartPlayerTurn();
   }
 
-  void Game::HandlePlayerClick(const Vec2& mousePos)
+  void Game::HandlePlayerClick()
   {
     if (m_won)
     {
@@ -164,22 +164,32 @@ namespace ToolKit
     }
 
     // Unproject the click into a ray and intersect it with the tile-top plane.
-    Ray ray                    = m_viewport->RayFromScreenSpacePoint(mousePos);
-    PlaneEquation plane        = PlaneFrom(Vec3(0.0f, m_grid.TopPlaneY(), 0.0f), Y_AXIS);
+    // RayFromMousePosition uses the viewport's own tracked mouse position, so
+    // the click stays in the viewport's coordinate space (no window/title-bar
+    // offset).
+    Ray ray             = m_viewport->RayFromMousePosition();
+    PlaneEquation plane = PlaneFrom(Vec3(0.0f, m_grid.TopPlaneY(), 0.0f), Y_AXIS);
 
+    Vec3 point(0.0f);
     float t = 0.0f;
-    if (!RayPlaneIntersection(ray, plane, t))
+    bool onGrid = RayPlaneIntersection(ray, plane, t);
+    if (onGrid)
+    {
+      point = ray.position + ray.direction * t;
+    }
+
+    if (!onGrid)
     {
       return;
     }
 
-    Vec3 point = ray.position + ray.direction * t;
     GridNode* node = m_grid.NodeAtPoint(point);
     if (node == nullptr)
     {
       return; // Clicked outside the grid.
     }
 
+    TK_LOG("Game: click node (%d, %d)", node->ix, node->iz);
     if (m_player.TryMove(node, [this](GridNode* n) { return IsNodeOccupied(n); }))
     {
       if (IsTargetNode(m_player.GetNode()))
@@ -190,6 +200,10 @@ namespace ToolKit
       }
 
       EndPlayerTurn();
+    }
+    else
+    {
+      TK_LOG("Game: move to (%d, %d) rejected", node->ix, node->iz);
     }
   }
 

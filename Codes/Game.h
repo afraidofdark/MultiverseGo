@@ -41,7 +41,7 @@ namespace ToolKit
 
     void StartPlayerTurn();
     void EndPlayerTurn();
-    void HandlePlayerClick(const Vec2& mousePos);
+    void HandlePlayerClick();
 
     // True when a unit already stands on the node.
     bool IsNodeOccupied(GridNode* node) const;
@@ -52,7 +52,8 @@ namespace ToolKit
     GridGraph m_grid;
     Player m_player;
     std::vector<StationaryPatrol> m_enemies;
-    EntityPtr m_target;                  // Optional entity tagged "target".
+    EntityPtr m_target;      // Optional entity tagged "target".
+
     TurnPhase m_phase = TurnPhase::Idle;
     bool m_won        = false;
   };
