@@ -236,20 +236,8 @@ namespace ToolKit
       return false;
     }
 
-    // A patrol eats the player standing on the tile it watches.
-    for (const StationaryPatrol& enemy : m_enemies)
-    {
-      if (enemy.WatchedNode() == playerNode)
-      {
-        m_lost  = true;
-        m_phase = TurnPhase::Idle;
-        TK_LOG("Game: patrol ate the player. You lose!");
-        return true;
-      }
-    }
-
-    // Otherwise, stepping onto a patrol's own tile captures it: the patrol
-    // leaves the grid.
+    // Stacked order, capture first. Stepping onto a patrol's own tile removes
+    // it from the grid.
     for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
     {
       if (it->GetNode() == playerNode)
@@ -262,6 +250,21 @@ namespace ToolKit
         TK_LOG("Game: player captured a patrol.");
         m_enemies.erase(it);
         break;
+      }
+    }
+
+    // Then the remaining patrols react: any one that watches the player's tile
+    // eats the player. Because this runs after the capture, a tile that is both
+    // a patrol's own and another's watched tile resolves as a trade -- the
+    // player captures it and still gets eaten by the other patrol.
+    for (const StationaryPatrol& enemy : m_enemies)
+    {
+      if (enemy.WatchedNode() == playerNode)
+      {
+        m_lost  = true;
+        m_phase = TurnPhase::Idle;
+        TK_LOG("Game: patrol ate the player. You lose!");
+        return true;
       }
     }
 

@@ -49,10 +49,11 @@ namespace ToolKit
     // the predicate Player::TryMove treats as "occupied".
     bool IsMoveBlocked(GridNode* node) const;
 
-    // Applies the patrol rule after the player's move. A patrol eats the player
-    // standing on the tile it watches (defeat); otherwise stepping onto a
-    // patrol's own tile captures it and the patrol leaves the grid. Returns
-    // true when the game is over.
+    // Resolves the patrol reactions to the player's move, in stacked order:
+    // first a patrol the player stepped onto is captured and leaves the grid,
+    // then the remaining patrols eat the player if any watches its tile. So a
+    // single move can both capture a patrol and die to another. Returns true
+    // when the game is over.
     bool ResolvePatrolContact();
 
     // True when the node is the one the target marker stands on.
