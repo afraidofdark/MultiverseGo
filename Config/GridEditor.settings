@@ -6,12 +6,13 @@
 			<P t="3" name="GridCols" v="4"/>
 			<P t="3" name="GridRows" v="4"/>
 			<P t="3" name="ActiveSlot" v="3"/>
-			<P t="3" name="PlacementDir" v="3"/>
+			<P t="3" name="PlacementDir" v="1"/>
+			<P t="3" name="TileExtendDir" v="3"/>
 			<P t="9" name="PlacementPath" v="Prefabs/linear-patrol.scene"/>
 		</PB>
 		<Window version="v0.4.9" name="Grid Editor" id="19" visible="1" shown="1">
 			<Size x="640" y="480"/>
-			<Location x="707" y="450"/>
+			<Location x="0" y="55"/>
 		</Window>
 	</Object>
 	<PlacementSlots>
