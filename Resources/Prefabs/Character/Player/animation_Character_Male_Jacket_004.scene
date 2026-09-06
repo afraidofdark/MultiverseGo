@@ -1,0 +1,42 @@
+<S name="animation_Character_Male_Jacket_004" version="v0.4.9">
+	<PostProcessingSettings>
+		<Object Cl="PostProcessingSettings">
+			<PB>
+				<P t="11" name="Id" v="13813633200915140921"/>
+				<P t="19" name="TonemapperMode">
+					<List size="2">
+						<CurrVal v="1"/>
+						<0 valType="3" valName="Reinhard" v="0"/>
+						<1 valType="3" valName="ACES" v="1"/>
+					</List>
+				</P>
+				<P t="10" name="TonemappingEnabled" v="1"/>
+				<P t="10" name="BloomEnabled" v="0"/>
+				<P t="2" name="BloomIntensity" v="1.000000"/>
+				<P t="2" name="BloomThreshold" v="1.000000"/>
+				<P t="3" name="BloomIterationCount" v="5"/>
+				<P t="10" name="GammaCorrectionEnabled" v="1"/>
+				<P t="2" name="Gamma" v="2.200000"/>
+				<P t="10" name="SSAOEnabled" v="0"/>
+				<P t="2" name="SSAORadius" v="1.000000"/>
+				<P t="2" name="SSAOBias" v="0.025000"/>
+				<P t="2" name="SSAOSpread" v="1.000000"/>
+				<P t="19" name="SSAOKernelSize">
+					<List size="3">
+						<CurrVal v="1"/>
+						<0 valType="3" valName="8" v="8"/>
+						<1 valType="3" valName="16" v="16"/>
+						<2 valType="3" valName="32" v="32"/>
+					</List>
+				</P>
+				<P t="10" name="SSAOHalfResolution" v="1"/>
+				<P t="10" name="DepthOfFieldEnabled" v="0"/>
+				<P t="2" name="FocusPoint" v="10.500000"/>
+				<P t="2" name="FocusScale" v="1.500000"/>
+				<P t="3" name="DofBlurQuality" v="2"/>
+				<P t="10" name="FXAAEnabled" v="1"/>
+			</PB>
+		</Object>
+	</PostProcessingSettings>
+</S>
+
