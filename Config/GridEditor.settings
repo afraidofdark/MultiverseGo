@@ -5,21 +5,21 @@
 			<P t="2" name="TileSize" v="5.000000"/>
 			<P t="3" name="GridCols" v="4"/>
 			<P t="3" name="GridRows" v="4"/>
-			<P t="3" name="ActiveSlot" v="2"/>
+			<P t="3" name="ActiveSlot" v="3"/>
 			<P t="3" name="PlacementDir" v="3"/>
 			<P t="3" name="TileExtendDir" v="3"/>
 			<P t="9" name="PlacementPath" v="Prefabs/linear-patrol.scene"/>
 		</PB>
 		<Window version="v0.4.9" name="Grid Editor" id="19" visible="1" shown="1">
 			<Size x="640" y="480"/>
-			<Location x="265" y="174"/>
+			<Location x="167" y="138"/>
 		</Window>
 	</Object>
 	<PlacementSlots>
-		<Slot name="Area 1" path="Prefabs/player.scene"/>
 		<Slot name="Area 2" path="Prefabs/stationary-patrol.scene"/>
 		<Slot name="Area 3" path="Prefabs/linear-patrol.scene"/>
 		<Slot name="Area 4" path="Prefabs/seeker-patrol.scene"/>
+		<Slot name="Area 5" path="Meshes/Character/Player/animation_Character_Male_Jacket_004.skinMesh"/>
 	</PlacementSlots>
 </GridEditor>
 
