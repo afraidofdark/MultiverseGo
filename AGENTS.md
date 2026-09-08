@@ -119,6 +119,15 @@ apply to all code in both repositories.
   first and the last root key of the end clip. Reference numbers for the
   current assets: `walk_f_start` ~1.15 units over 0.8 s, `walk_f` ~1.92 units
   per 1.3 s cycle, `walk_f_end` ~0.39 units over 0.8 s.
+- Clip transitions crossfade: every phase switch (idle -> walk_f_start ->
+  walk_f -> walk_f_end -> idle) goes through the helper `BlendTo`, which calls
+  `AnimControllerComponent::SmoothTransition(signal, kWalkBlendDuration)` so
+  the engine fills the record blending data and fades the skeleton pose over
+  `kWalkBlendDuration` (0.2 s) instead of popping. IMPORTANT: before blending,
+  `BlendTo` sets `m_applyRootMotion = false` on the outgoing record; while it
+  still sits in the animation player during the fade it would otherwise keep
+  driving the actor together with the incoming clip (double movement). Only the
+  incoming clip moves the actor.
 - `Player::FinishWalk` anchors the prefab top root on the exact destination
   center and restores the actor's authored local translation
   (`m_actorLocalBase`) so the root-motion offset accumulated on the actor node
