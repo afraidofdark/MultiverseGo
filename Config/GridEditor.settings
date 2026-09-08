@@ -5,8 +5,8 @@
 			<P t="2" name="TileSize" v="5.000000"/>
 			<P t="3" name="GridCols" v="4"/>
 			<P t="3" name="GridRows" v="4"/>
-			<P t="3" name="ActiveSlot" v="3"/>
-			<P t="3" name="PlacementDir" v="2"/>
+			<P t="3" name="ActiveSlot" v="1"/>
+			<P t="3" name="PlacementDir" v="3"/>
 			<P t="3" name="TileExtendDir" v="3"/>
 			<P t="9" name="PlacementPath" v="Prefabs/linear-patrol.scene"/>
 		</PB>
@@ -16,10 +16,8 @@
 		</Window>
 	</Object>
 	<PlacementSlots>
+		<Slot name="Area 1" path="Prefabs/player.scene"/>
 		<Slot name="Area 2" path="Prefabs/stationary-patrol.scene"/>
-		<Slot name="Area 3" path="Prefabs/linear-patrol.scene"/>
-		<Slot name="Area 4" path="Prefabs/seeker-patrol.scene"/>
-		<Slot name="Area 5" path="Prefabs/Character/Player/Player_Male_Jacket.scene"/>
 	</PlacementSlots>
 </GridEditor>
 
