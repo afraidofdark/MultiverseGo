@@ -85,8 +85,9 @@ apply to all code in both repositories.
   (`TransformationSpace::TS_LOCAL`, translate + rotate). It was deliberately
   changed from world space so the actor/prefab orientation decides the walk
   direction: rotate the prefab top root to aim the actor.
-- `AnimRecord`: `m_applyRootMotion`, `m_loop` (`Play` always sets it true),
-  `m_timeMultiplier`, `m_currentTime` (seconds). `AnimControllerComponent::Play`
+- `AnimRecord`: `m_applyRootMotion`, `m_loop` (respected by Play; defaults to
+  false = one-shot, see "Clip looping is explicit" below), `m_timeMultiplier`,
+  `m_currentTime` (seconds). `AnimControllerComponent::Play`
   (`signalName`, `stopPrevAnim = true`) resets `m_currentTime` and
   `m_prevRootMotionTime` and registers the record with the global
   `AnimationPlayer`, which updates every engine frame.
@@ -106,12 +107,17 @@ apply to all code in both repositories.
   2. Enable root motion on `walk_f_start`, `walk_f`, `walk_f_end`.
   3. Build a fresh engine `StateMachine` (`ToolKit::State`/`StateMachine`, one
      per walk, deleted on arrival) with the states:
-     - `WalkStart`: plays `walk_f_start` once (the record keeps looping; the
-       state switches on its own elapsed time reaching the clip duration).
-     - `WalkLoop`: plays `walk_f` looping while the remaining distance is larger
-       than the end clip's root travel.
-     - `WalkEnd`: plays `walk_f_end`; the walk ends when the remaining distance
-       drops below `kWalkArriveEps` (~0.03 units) or the clip plays through.
+     - `WalkStart`: plays the one-shot `walk_f_start` (`m_loop = false`); it
+       holds its final frame at its end and the state switches on its own
+       elapsed time reaching the clip duration.
+     - `WalkLoop`: plays `walk_f` (a looping clip) while the remaining distance
+       is larger than the end clip's root travel.
+     - `WalkEnd`: plays the one-shot `walk_f_end`; the walk ends when the
+       remaining distance drops below `kWalkArriveEps` (~0.03 units) or the
+       clip has fully played.
+- Clip loop flags (app): the walk machine marks the clips explicitly before
+  playing them -- `walk_f_start` and `walk_f_end` are ONE-SHOT
+  (`m_loop = false`), `walk_f` and `idle` loop (`m_loop = true`).
 - Distance math: every frame, `remaining` = horizontal distance from the actor
   node (`m_actor->m_node`) to the destination `node.center`. The loop-to-end
   switch fires when `remaining <= endReach`, where `endReach` is computed at
@@ -128,20 +134,18 @@ apply to all code in both repositories.
   still sits in the animation player during the fade it would otherwise keep
   driving the actor together with the incoming clip (double movement). Only the
   incoming clip moves the actor.
-- Fade timing: clip switches happen at the clip boundary (WalkStart leaves
-  when its clip has fully played). Starting the fade there is safe because the
-  engine holds a fading-out clip at its final frame (see next bullet) instead
-  of letting it wrap. `gWalkBlendDuration` is a GLOBAL float (declared in
-  Unit.h, defined in Unit.cpp, default 0.2 s) so the crossfade length can be
+- Clip looping is explicit (engine): `AnimControllerComponent::Play` no longer
+  forces `m_loop = true`; it respects the record's own flag. One-shot records
+  (`m_loop = false`) reaching their duration HOLD their final frame instead of
+  wrapping to the first frame or being dropped -- the Unity-like behavior that
+  keeps a walk-stop clip on its stopping pose while it crossfades to idle.
+  Looping clips keep looping. `gWalkBlendDuration` is a GLOBAL float (declared
+  in Unit.h, defined in Unit.cpp, default 0.2 s) so the crossfade length can be
   tuned at runtime instead of an inline constant.
-- No-wrap-on-fade (engine): every clip the controller plays keeps
-  `m_loop = true`. In `AnimationPlayer::Update`, a record that is currently
-  fading out (has `recordToBeBlended`) does NOT wrap when its time passes its
-  duration -- it holds its final pose until the blend countdown removes it.
-  Without this, a fading-out walk-stop clip would restart its first stride
-  mid-fade (visible "extra transition after arrival"). The walk end state also
-  arrives a hair before the end clip wraps (`kWalkEndStopMargin`) so the last
-  rendered pose is the clip's final stopped frame.
+- Fade timing: clip switches happen at the clip boundary (WalkStart leaves
+  when its one-shot has fully played). This is seamless because the one-shot
+  holds its final frame at the boundary -- no wrap, no early-leave hacks
+  needed.
 - Debug logs: the walk machine logs every phase switch and `BlendTo` logs the
   outgoing/incoming clips and the fade length. The ENGINE (Animation.cpp,
   temporary) logs the fade-out progress every frame (`AnimBlend: fading out
