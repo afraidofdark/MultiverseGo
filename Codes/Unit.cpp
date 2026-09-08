@@ -65,6 +65,12 @@ namespace ToolKit
     // player snaps over.
     constexpr float kWalkStallTimeout = 1.0f;
 
+    // Pose crossfade length used when the walk machine switches clips (idle ->
+    // walk_f_start -> walk_f -> walk_f_end -> idle). AnimControllerComponent::
+    // SmoothTransition fills the record blending data; the engine crossfades
+    // the skeleton poses over this many seconds so phase cuts do not pop.
+    constexpr float kWalkBlendDuration = 0.2f;
+
     // Signals the walk states use to move the machine through its phases.
     enum WalkSignal : SignalId
     {
@@ -114,6 +120,28 @@ namespace ToolKit
       return glm::sqrt(delta.x * delta.x + delta.z * delta.z);
     }
 
+    // Switches the clip the animation controller plays using a short pose
+    // crossfade (AnimControllerComponent::SmoothTransition fills the record
+    // blending data; the engine fades the skeleton pose between the outgoing
+    // and the incoming clip). The outgoing record must stop contributing root
+    // motion for the blend: while it still sits in the animation player it
+    // would otherwise drive the actor together with the incoming clip and
+    // double the travelled distance.
+    void BlendTo(AnimControllerComponent* anim, const String& signal)
+    {
+      if (anim == nullptr)
+      {
+        return;
+      }
+
+      if (AnimRecordPtr prev = anim->GetActiveRecord())
+      {
+        prev->m_applyRootMotion = false;
+      }
+
+      anim->SmoothTransition(signal, kWalkBlendDuration);
+    }
+
     // First walk phase: plays the wind-up clip (walk_f_start) once with root
     // motion. Hands over to the stride loop (or straight to the end clip when
     // the remaining gap already fits it) once the clip has played through.
@@ -127,7 +155,7 @@ namespace ToolKit
         m_elapsed = 0.0f;
         if (m_ctx != nullptr && m_ctx->anim != nullptr)
         {
-          m_ctx->anim->Play("walk_f_start");
+          BlendTo(m_ctx->anim, "walk_f_start");
         }
       }
 
@@ -192,7 +220,7 @@ namespace ToolKit
         m_elapsed = 0.0f;
         if (m_ctx != nullptr && m_ctx->anim != nullptr)
         {
-          m_ctx->anim->Play("walk_f");
+          BlendTo(m_ctx->anim, "walk_f");
         }
       }
 
@@ -252,7 +280,7 @@ namespace ToolKit
         m_elapsed = 0.0f;
         if (m_ctx != nullptr && m_ctx->anim != nullptr)
         {
-          m_ctx->anim->Play("walk_f_end");
+          BlendTo(m_ctx->anim, "walk_f_end");
         }
       }
 
@@ -460,7 +488,7 @@ namespace ToolKit
       {
         idle->m_applyRootMotion = false;
       }
-      m_walkAnim->Play("idle");
+      BlendTo(m_walkAnim, "idle");
     }
 
     return true;
@@ -689,14 +717,16 @@ namespace ToolKit
       m_actor->m_node->SetTranslation(m_actorLocalBase, TransformationSpace::TS_LOCAL);
     }
 
-    // Settle the character back into the idle loop.
+    // Settle the character back into the idle loop with a crossfade. BlendTo
+    // also turns off the root motion of the outgoing walk clip, so the
+    // snapped-to-node actor does not drift while the end clip fades out.
     if (m_walkAnim != nullptr)
     {
       if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
       {
         idle->m_applyRootMotion = false;
       }
-      m_walkAnim->Play("idle");
+      BlendTo(m_walkAnim, "idle");
     }
 
     if (dest != nullptr)
