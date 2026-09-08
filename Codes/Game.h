@@ -45,6 +45,12 @@ namespace ToolKit
     void EndPlayerTurn();
     void HandlePlayerClick();
 
+    // Runs the post-move flow once the player actually stands on the tile it
+    // moved to: patrol contact, win check and hand-over to the enemy turn.
+    // Called right after an instant (non-animated) move and, for animated
+    // walks, when the walk reaches the destination node.
+    void CompletePlayerMove();
+
     // True when the node is blocked for the player's move: only the player's
     // own tile. Every other tile is reachable -- a free tile is a move, and a
     // patrol's tile is a capture attempt (see ResolvePatrolContact). This is

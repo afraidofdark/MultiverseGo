@@ -15,6 +15,12 @@
 
 namespace ToolKit
 {
+  // Forward declarations for the animation walk state machine. The engine
+  // provides the State/StateMachine building blocks and the
+  // AnimControllerComponent that owns the animation records.
+  class AnimControllerComponent;
+  class StateMachine;
+
   // Base class for every actor placed on the grid (player, enemies).
   //
   // Wraps the root entity of a placed prefab instance. The root node sits at
@@ -94,24 +100,80 @@ namespace ToolKit
 
   // The player. Moves one tile per turn along connected tiles, driven by mouse
   // input. Movement is the player rule: exactly one tile, on a connected edge.
+  // A move on the animated player is not an instant snap: it starts a walk
+  // that plays the walk_f_start / walk_f / walk_f_end clips (root motion
+  // enabled) through a StateMachine until the actor stands exactly on the
+  // destination node, whatever the node spacing is.
   class Player : public Unit
   {
    public:
+    ~Player() override;
+
+    // Binds the player to the prefab's top root (the tagged "root" node the
+    // game rotates to aim the character). The skinned actor that owns the
+    // animation controller usually hangs under it as a child; root motion
+    // plays on that child in its local space, so the top root's rotation
+    // points the walk direction. Falls back cleanly when the actor has no
+    // animation controller, so non-animated scenes keep working.
+    bool Init(EntityPtr root, GridGraph* grid) override;
+
     void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
 
     // True once the player has moved this turn.
     bool HasMoved() const { return m_hasMoved; }
 
+    // Drives the animation walk while it is running. Does nothing when the
+    // player is standing still.
+    void Frame(float deltaTime) override;
+
+    // True while the player is animating a walk between two nodes. The turn
+    // flow must wait for the arrival before it resolves the move.
+    bool IsWalking() const { return m_walkSM != nullptr; }
+
     // Attempts to move one tile toward node. Valid only when node is the
     // current neighbour, both sides flag the facing connection, and isOccupied
-    // (when provided) reports the node as free. Returns true when the player
-    // moved. Only the first successful move of a turn counts.
+    // (when provided) reports the node as free. On the animated player this
+    // starts a root-motion walk instead of snapping; returns true when the
+    // move was accepted (walking or, without animation support, already
+    // landed). Only the first successful move of a turn counts.
     bool TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied);
+
+    // Stops the animation controller (used when play ends in the editor while
+    // the scene entities are still alive).
+    void StopAnimation();
 
     void Reset() override;
 
+    // Shared data the walk state machine operates on. One instance lives per
+    // walk (created by StartWalk, owned by the player); the FSM states only
+    // read/write this context and never reach into the Player. Defined in
+    // Unit.cpp.
+    struct WalkContext;
+
    private:
+    // Starts a root-motion walk toward node. Returns true when the move was
+    // accepted; on actors without animation support it snaps in place and
+    // still reports success. Callers check IsWalking() to tell the two apart.
+    bool StartWalk(GridNode* node);
+
+    // Ends the current walk: tears down the state machine and settles the
+    // actor onto the destination node. forceSnap teleports (stalled/failed
+    // walk); otherwise the actor is already within snap range of the center.
+    void FinishWalk(bool forceSnap);
+
     bool m_hasMoved = false;
+    StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
+    WalkContext* m_walkCtx = nullptr;        // Shared data for the FSM states.
+    AnimControllerComponent* m_walkAnim = nullptr; // Actor's animation controller.
+
+    // The skinned actor that carries the animation controller. It is a child
+    // of the prefab top root (m_root) in the character prefabs; root motion
+    // moves its node in local space while the top root gives the direction.
+    EntityPtr m_actor;
+    // The actor's authored local translation inside the prefab. Restored when
+    // a walk ends so the accumulated root-motion offset folds back into the
+    // top root and future turns start from a clean frame.
+    Vec3 m_actorLocalBase;
   };
 
   // A stationary enemy guard. It holds its post and watches the single tile its

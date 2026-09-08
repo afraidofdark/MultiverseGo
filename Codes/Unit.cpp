@@ -7,8 +7,11 @@
 
 #include "Unit.h"
 
+#include <Animation.h>
+#include <AnimationControllerComponent.h>
 #include <Logger.h>
 #include <MathUtil.h>
+#include <StateMachine.h>
 
 #include <algorithm>
 #include <cmath>
@@ -29,6 +32,257 @@ namespace ToolKit
         default: return "+Z";
       }
     }
+  } // namespace
+
+  // Data the player's walk state machine operates on. One instance lives per
+  // walk (created by Player::StartWalk, owned by the player). The FSM states
+  // only read/write this context; they never reach into the Player.
+  struct Player::WalkContext
+  {
+    Node* actorNode = nullptr;              // Node root motion moves.
+    AnimControllerComponent* anim = nullptr; // Controller playing the clips.
+    GridNode* to = nullptr;                 // Destination tile.
+    Vec3 startPos;                          // Actor position at walk start.
+    Vec3 targetPos;                         // Destination node center.
+    float startDur = 0.0f;                  // walk_f_start duration (seconds).
+    float endDur = 0.0f;                    // walk_f_end duration (seconds).
+    float endReach = 0.0f;                  // Root travel of the full end clip.
+    float totalDist = 0.0f;                 // Horizontal gap start -> target.
+    float bestRemaining = 0.0f;             // Smallest gap seen (stall watchdog).
+    float sinceProgress = 0.0f;             // Seconds since the gap last shrank.
+    bool arrived = false;                   // True once the walk reached the tile.
+  };
+
+  namespace
+  {
+    // Tolerance (engine units) for "reached the node". Below this the actor is
+    // snapped onto the exact node center, so the walk ends cleanly whatever the
+    // grid spacing is.
+    constexpr float kWalkArriveEps = 0.03f;
+
+    // If the gap does not shrink for this long the walk is assumed broken
+    // (e.g. root motion axes misaligned with the prefab orientation) and the
+    // player snaps over.
+    constexpr float kWalkStallTimeout = 1.0f;
+
+    // Signals the walk states use to move the machine through its phases.
+    enum WalkSignal : SignalId
+    {
+      WalkLoop = 1, // Start clip finished; stride in the loop clip.
+      WalkEnd  = 2  // Close enough; play the end clip to the stop.
+    };
+
+    // Horizontal distance between two world points.
+    float HorizontalDistance(const Vec3& a, const Vec3& b)
+    {
+      float dx = b.x - a.x;
+      float dz = b.z - a.z;
+      return glm::sqrt(dx * dx + dz * dz);
+    }
+
+    // Remaining horizontal distance from the moving actor to the target.
+    float WalkRemaining(const Player::WalkContext& ctx)
+    {
+      if (ctx.actorNode == nullptr)
+      {
+        return 0.0f;
+      }
+
+      Vec3 pos = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+      return HorizontalDistance(pos, ctx.targetPos);
+    }
+
+    // Net horizontal root travel a clip makes when played from its first to its
+    // last key. The engine applies per-frame deltas whose sum telescopes to
+    // (last - first), so this is the exact distance the clip walks its actor.
+    // Zero when the animation has no usable root track.
+    float ClipRootTravel(AnimRecordPtr record)
+    {
+      AnimationPtr anim = record != nullptr ? record->m_animation : nullptr;
+      if (anim == nullptr || anim->m_rootKey.empty())
+      {
+        return 0.0f;
+      }
+
+      const KeyArray* keys = anim->m_keys.Find(anim->m_rootKey);
+      if (keys == nullptr || keys->size() < 2)
+      {
+        return 0.0f;
+      }
+
+      Vec3 delta = keys->back().m_position - keys->front().m_position;
+      return glm::sqrt(delta.x * delta.x + delta.z * delta.z);
+    }
+
+    // First walk phase: plays the wind-up clip (walk_f_start) once with root
+    // motion. Hands over to the stride loop (or straight to the end clip when
+    // the remaining gap already fits it) once the clip has played through.
+    class PlayerWalkStartState : public State
+    {
+     public:
+      explicit PlayerWalkStartState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx != nullptr && m_ctx->anim != nullptr)
+        {
+          m_ctx->anim->Play("walk_f_start");
+        }
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        m_elapsed += deltaTime;
+        float remaining = WalkRemaining(*m_ctx);
+
+        // A gap shorter than the wind-up clip: finish the moment the actor
+        // reaches the node (the final snap closes the leftover distance).
+        if (remaining <= kWalkArriveEps)
+        {
+          m_ctx->arrived = true;
+          return State::NullSignal;
+        }
+
+        if (m_elapsed >= m_ctx->startDur)
+        {
+          // Wind-up played through; stride in place until the gap is small
+          // enough for the end clip to finish the walk on the node.
+          return (remaining <= m_ctx->endReach) ? WalkEnd : WalkLoop;
+        }
+
+        return State::NullSignal;
+      }
+
+      String Signaled(SignalId signal) override
+      {
+        switch (signal)
+        {
+          case WalkLoop: return "WalkLoop";
+          case WalkEnd: return "WalkEnd";
+          default: return "";
+        }
+      }
+
+      String GetType() override { return "WalkStart"; }
+
+     private:
+      Player::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+    };
+
+    // Middle phase: keeps the stride clip (walk_f) looping while root motion
+    // covers the gap. Leaves for the end clip the moment the remaining distance
+    // fits the end clip's own root travel, so the walk can stop exactly on the
+    // destination node no matter how long the gap is.
+    class PlayerWalkLoopState : public State
+    {
+     public:
+      explicit PlayerWalkLoopState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx != nullptr && m_ctx->anim != nullptr)
+        {
+          m_ctx->anim->Play("walk_f");
+        }
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        float remaining = WalkRemaining(*m_ctx);
+        if (remaining <= kWalkArriveEps)
+        {
+          // No end-clip data or a gap closed by a loop boundary: stop here and
+          // let the final snap take over.
+          m_ctx->arrived = true;
+          return State::NullSignal;
+        }
+
+        if (m_ctx->endReach > kWalkArriveEps && remaining <= m_ctx->endReach)
+        {
+          return WalkEnd;
+        }
+
+        return State::NullSignal;
+      }
+
+      String Signaled(SignalId signal) override
+      {
+        switch (signal)
+        {
+          case WalkEnd: return "WalkEnd";
+          default: return "";
+        }
+      }
+
+      String GetType() override { return "WalkLoop"; }
+
+     private:
+      Player::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+    };
+
+    // Final phase: plays the landing clip (walk_f_end) with root motion. The
+    // state ends the walk (ctx->arrived) when the actor reaches the node or the
+    // clip plays through; Player::FinishWalk then snaps the actor onto the
+    // exact node center and returns it to the idle loop.
+    class PlayerWalkEndState : public State
+    {
+     public:
+      explicit PlayerWalkEndState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx != nullptr && m_ctx->anim != nullptr)
+        {
+          m_ctx->anim->Play("walk_f_end");
+        }
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        m_elapsed += deltaTime;
+        float remaining = WalkRemaining(*m_ctx);
+        if (remaining <= kWalkArriveEps || m_elapsed >= m_ctx->endDur)
+        {
+          m_ctx->arrived = true;
+        }
+
+        return State::NullSignal;
+      }
+
+      String Signaled(SignalId signal) override { return ""; }
+
+      String GetType() override { return "WalkEnd"; }
+
+     private:
+      Player::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+    };
   } // namespace
 
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -143,14 +397,136 @@ namespace ToolKit
     m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
   }
 
+  bool Player::Init(EntityPtr root, GridGraph* grid)
+  {
+    // The unit stays bound to the prefab's top root (the tagged "root" node):
+    // the game rotates this node to aim the character and anchors it on the
+    // grid tiles. The skinned character (mesh + skeleton + animation
+    // controller) hangs under it as a child and is the actor root motion
+    // plays on. Actors without an animation controller (legacy simple actors)
+    // simply have no walk animation.
+    if (!Unit::Init(root, grid))
+    {
+      return false;
+    }
+
+    m_actor    = root;
+    m_walkAnim = nullptr;
+
+    if (root != nullptr)
+    {
+      AnimControllerComponentPtr anim = root->GetComponent<AnimControllerComponent>();
+      if (anim == nullptr)
+      {
+        TraverseEntityHierarchyBottomUp(
+            root,
+            [&](EntityPtr ntt) -> void
+            {
+              if (m_walkAnim == nullptr && ntt != nullptr)
+              {
+                if (AnimControllerComponentPtr c = ntt->GetComponent<AnimControllerComponent>())
+                {
+                  m_walkAnim = c.get();
+                  m_actor    = ntt;
+                }
+              }
+            });
+      }
+      else
+      {
+        m_walkAnim = anim.get();
+        m_actor    = root;
+      }
+    }
+
+    // Remember the actor's authored local pose inside the prefab. Root motion
+    // accumulates local translation on this node while it walks; restoring the
+    // base folds the travelled distance back into the top root on arrival.
+    if (m_actor != nullptr && m_actor->m_node != m_root->m_node)
+    {
+      m_actorLocalBase = m_actor->m_node->GetTranslation(TransformationSpace::TS_LOCAL);
+    }
+    else
+    {
+      m_actorLocalBase = Vec3(0.0f);
+    }
+
+    m_hasMoved = false;
+
+    // Settle the character into the idle loop between turns.
+    if (m_walkAnim != nullptr)
+    {
+      if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+      {
+        idle->m_applyRootMotion = false;
+      }
+      m_walkAnim->Play("idle");
+    }
+
+    return true;
+  }
+
+  Player::~Player() { Reset(); }
+
   void Player::OnTurn(GridNode* playerNode, GridDir playerFacing)
   {
     m_hasMoved = false;
   }
 
+  void Player::Frame(float deltaTime)
+  {
+    if (m_walkSM == nullptr || m_walkCtx == nullptr)
+    {
+      return;
+    }
+
+    // Engine frame deltas arrive in milliseconds; clip durations and the state
+    // machine timers work in seconds, and the AnimationPlayer advances records
+    // with the same millisecond-to-second conversion.
+    float dt = deltaTime * 0.001f;
+
+    WalkContext* ctx = m_walkCtx;
+    if (ctx->actorNode == nullptr)
+    {
+      FinishWalk(true);
+      return;
+    }
+
+    // Stall watchdog: root motion that never converges (misaligned direction,
+    // missing walk data) must not lock the turn forever. The gap shrinking at
+    // least a little every frame keeps the timer at zero.
+    if (dt < 0.5f)
+    {
+      float remaining = WalkRemaining(*ctx);
+      if (remaining < ctx->bestRemaining - 0.001f)
+      {
+        ctx->bestRemaining = remaining;
+        ctx->sinceProgress = 0.0f;
+      }
+      else
+      {
+        ctx->sinceProgress += dt;
+      }
+
+      if (ctx->sinceProgress >= kWalkStallTimeout)
+      {
+        TK_LOG("Player: walk stalled (gap %.3f not shrinking); snapping to the tile.",
+               remaining);
+        FinishWalk(true);
+        return;
+      }
+    }
+
+    m_walkSM->Update(dt);
+    if (ctx->arrived)
+    {
+      FinishWalk(false);
+    }
+  }
+
   bool Player::TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied)
   {
-    if (m_root == nullptr || m_grid == nullptr || m_hasMoved)
+    if (m_root == nullptr || m_grid == nullptr || m_hasMoved || IsWalking())
     {
       return false;
     }
@@ -173,6 +549,7 @@ namespace ToolKit
 
     // The player rule: exactly one tile per turn, along a connected edge. The
     // target must be a direct neighbour AND both sides must open the passage.
+    bool connected = false;
     const GridDir dirs[4] = {GridDir::Xm, GridDir::Xp, GridDir::Zm, GridDir::Zp};
     for (GridDir dir : dirs)
     {
@@ -180,20 +557,177 @@ namespace ToolKit
       {
         if (nb == node && m_grid->Connected(*current, *nb))
         {
-          PlaceOnNode(nb);
-          m_hasMoved = true;
-          return true;
+          connected = true;
+          break;
         }
       }
     }
 
-    return false;
+    if (!connected)
+    {
+      return false;
+    }
+
+    if (!StartWalk(node))
+    {
+      TK_LOG("Player: move to (%d, %d) rejected", node->ix, node->iz);
+      return false;
+    }
+
+    m_hasMoved = true;
+    return true;
+  }
+
+  bool Player::StartWalk(GridNode* node)
+  {
+    if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr)
+    {
+      // Legacy actor without animation support: keep the instant step.
+      PlaceOnNode(node);
+      return true;
+    }
+
+    AnimRecordPtr startRec = m_walkAnim->GetAnimRecord("walk_f_start");
+    AnimRecordPtr loopRec  = m_walkAnim->GetAnimRecord("walk_f");
+    AnimRecordPtr endRec   = m_walkAnim->GetAnimRecord("walk_f_end");
+    if (startRec == nullptr || loopRec == nullptr || endRec == nullptr)
+    {
+      TK_LOG("Player: walk clips are missing on the animation controller; stepping instantly.");
+      PlaceOnNode(node);
+      return true;
+    }
+
+    if (startRec->m_animation == nullptr || endRec->m_animation == nullptr)
+    {
+      TK_LOG("Player: walk clip resources are not loaded; stepping instantly.");
+      PlaceOnNode(node);
+      return true;
+    }
+
+    // Aim the prefab's top root at the step before the walk begins. Root
+    // motion is applied on the actor node in its local space (the engine
+    // AnimationPlayer), so this rotation is what points the walk in the
+    // direction of the destination.
+    Vec3 stepDir = (m_node != nullptr) ? (node->center - m_node->center) : (node->center - m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD));
+    FaceTowards(stepDir);
+
+    // Enable root motion on the three walk clips; the idle loop stays put.
+    startRec->m_applyRootMotion = true;
+    loopRec->m_applyRootMotion  = true;
+    endRec->m_applyRootMotion   = true;
+
+    WalkContext* ctx  = new WalkContext();
+    m_walkCtx         = ctx;
+    ctx->actorNode    = m_actor->m_node;
+    ctx->anim         = m_walkAnim;
+    ctx->to           = node;
+    ctx->startPos     = m_actor->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+    ctx->targetPos    = node->center;
+    ctx->startDur     = startRec->m_animation->m_duration;
+    ctx->endDur       = endRec->m_animation->m_duration;
+    ctx->endReach     = ClipRootTravel(endRec);
+    ctx->totalDist    = HorizontalDistance(ctx->startPos, ctx->targetPos);
+    ctx->bestRemaining = ctx->totalDist;
+    ctx->sinceProgress = 0.0f;
+    ctx->arrived       = false;
+
+    m_walkSM = new StateMachine();
+    m_walkSM->PushState(new PlayerWalkStartState(ctx));
+    m_walkSM->PushState(new PlayerWalkLoopState(ctx));
+    m_walkSM->PushState(new PlayerWalkEndState(ctx));
+    m_walkSM->m_currentState = m_walkSM->QueryState("WalkStart");
+    m_walkSM->m_currentState->TransitionIn(nullptr);
+
+    TK_LOG("Player: walk started (%d, %d) -> (%d, %d), gap %.2f, end clip reach %.2f.",
+           m_node != nullptr ? m_node->ix : -1,
+           m_node != nullptr ? m_node->iz : -1,
+           node->ix,
+           node->iz,
+           ctx->totalDist,
+           ctx->endReach);
+    return true;
+  }
+
+  void Player::FinishWalk(bool forceSnap)
+  {
+    WalkContext* ctx = m_walkCtx;
+    GridNode* dest   = (ctx != nullptr) ? ctx->to : nullptr;
+    Vec3 targetPos   = (ctx != nullptr) ? ctx->targetPos : Vec3(0.0f);
+
+    delete m_walkSM;
+    m_walkSM  = nullptr;
+    m_walkCtx = nullptr;
+
+    if (ctx != nullptr)
+    {
+      if (m_root != nullptr)
+      {
+        if (forceSnap)
+        {
+          // Broken/teleport path: the regular snap also turns the actor
+          // toward the step like any instant tile move.
+          PlaceOnNode(dest);
+        }
+        else
+        {
+          // The walk reached the node: anchor the prefab top root on the exact
+          // destination center. The actor node still carries the root motion
+          // offset in its local translation; it is cleared right below.
+          m_root->m_node->SetTranslation(targetPos, TransformationSpace::TS_WORLD);
+          m_node = dest;
+        }
+      }
+      delete ctx;
+    }
+
+    // Fold the walked distance back into the top root: restoring the actor's
+    // authored local pose removes the accumulated root-motion offset, so the
+    // character stands exactly on the anchored node and future rotations of
+    // the prefab top root start from a clean frame.
+    if (m_actor != nullptr && m_root != nullptr && m_actor->m_node != m_root->m_node)
+    {
+      m_actor->m_node->SetTranslation(m_actorLocalBase, TransformationSpace::TS_LOCAL);
+    }
+
+    // Settle the character back into the idle loop.
+    if (m_walkAnim != nullptr)
+    {
+      if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+      {
+        idle->m_applyRootMotion = false;
+      }
+      m_walkAnim->Play("idle");
+    }
+
+    if (dest != nullptr)
+    {
+      TK_LOG("Player: walk finished on (%d, %d).", dest->ix, dest->iz);
+    }
+  }
+
+  void Player::StopAnimation()
+  {
+    if (m_walkAnim != nullptr)
+    {
+      m_walkAnim->Stop();
+    }
   }
 
   void Player::Reset()
   {
-    Unit::Reset();
+    // Playback and the walk state machine never outlive the actor. The
+    // animation controller removes its active record itself when its entity is
+    // destroyed, so no dereference of m_walkAnim happens here.
+    delete m_walkSM;
+    m_walkSM  = nullptr;
+    delete m_walkCtx;
+    m_walkCtx = nullptr;
+    m_walkAnim = nullptr;
+    m_actor    = nullptr;
+    m_actorLocalBase = Vec3(0.0f);
     m_hasMoved = false;
+
+    Unit::Reset();
   }
 
   GridNode* StationaryPatrol::ThreatTile() const

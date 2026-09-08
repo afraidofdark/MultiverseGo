@@ -44,6 +44,19 @@ namespace ToolKit
       return;
     }
 
+    // An accepted move walks to its tile over the coming frames. Input is
+    // locked and the rest of the turn is deferred until the character stands
+    // exactly on the destination node.
+    if (m_player.IsWalking())
+    {
+      m_player.Frame(deltaTime);
+      if (!m_player.IsWalking())
+      {
+        CompletePlayerMove();
+      }
+      return;
+    }
+
     // A left click on a connected neighbour tile moves the player one tile.
     for (Event* e : Main::GetInstance()->m_eventPool)
     {
@@ -171,6 +184,7 @@ namespace ToolKit
     m_grid.Clear();
     m_target = nullptr;
     m_prevPlayerNode = nullptr;
+    m_player.StopAnimation();
     m_player.Reset();
   }
 
@@ -272,27 +286,44 @@ namespace ToolKit
 
     if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }))
     {
-      // The patrol rule resolves before the win check: a patrol eats the player
-      // that steps onto its watched tile, even when that tile also holds the
-      // target.
-      if (ResolvePatrolContact())
+      // An animated walk finishes over the coming frames, on arrival running
+      // CompletePlayerMove from Game::Frame. Actors without animation support
+      // land instantly and resolve right here.
+      if (!m_player.IsWalking())
       {
-        return;
+        CompletePlayerMove();
       }
-
-      if (IsTargetNode(m_player.GetNode()))
-      {
-        m_won = true;
-        TK_LOG("Game: player reached the target. You win!");
-        return;
-      }
-
-      EndPlayerTurn();
+      return;
     }
     else
     {
       TK_LOG("Game: move to (%d, %d) rejected", node->ix, node->iz);
     }
+  }
+
+  void Game::CompletePlayerMove()
+  {
+    if (m_won || m_lost)
+    {
+      return;
+    }
+
+    // The patrol rule resolves before the win check: a patrol eats the player
+    // that steps onto its watched tile, even when that tile also holds the
+    // target.
+    if (ResolvePatrolContact())
+    {
+      return;
+    }
+
+    if (IsTargetNode(m_player.GetNode()))
+    {
+      m_won = true;
+      TK_LOG("Game: player reached the target. You win!");
+      return;
+    }
+
+    EndPlayerTurn();
   }
 
   bool Game::IsMoveBlocked(GridNode* node) const
