@@ -159,3 +159,12 @@ apply to all code in both repositories.
 - The ToolKit editor writes `Resources/Scenes/test.scene` and prefab files
   while it is open, so they often show as modified without a deliberate code
   change. Inspect and commit them deliberately, never blindly.
+
+## Commit policy (important)
+
+- NEVER commit, stage or push anything in any repository (this repo, the GDTK
+  engine repo, or the grider plugin) without asking the human first and getting
+  an explicit go-ahead. Committing is done by the human or only after their
+  approval.
+- If work is finished and commits are pending, summarize what is ready to be
+  committed and ask whether to commit (and push) -- do not do it unilaterally.
