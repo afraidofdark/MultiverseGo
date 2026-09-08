@@ -121,13 +121,33 @@ apply to all code in both repositories.
   per 1.3 s cycle, `walk_f_end` ~0.39 units over 0.8 s.
 - Clip transitions crossfade: every phase switch (idle -> walk_f_start ->
   walk_f -> walk_f_end -> idle) goes through the helper `BlendTo`, which calls
-  `AnimControllerComponent::SmoothTransition(signal, kWalkBlendDuration)` so
+  `AnimControllerComponent::SmoothTransition(signal, gWalkBlendDuration)` so
   the engine fills the record blending data and fades the skeleton pose over
-  `kWalkBlendDuration` (0.2 s) instead of popping. IMPORTANT: before blending,
+  `gWalkBlendDuration` instead of popping. IMPORTANT: before blending,
   `BlendTo` sets `m_applyRootMotion = false` on the outgoing record; while it
   still sits in the animation player during the fade it would otherwise keep
   driving the actor together with the incoming clip (double movement). Only the
   incoming clip moves the actor.
+- Fade timing: clip switches happen at the clip boundary (WalkStart leaves
+  when its clip has fully played). Starting the fade there is safe because the
+  engine holds a fading-out clip at its final frame (see next bullet) instead
+  of letting it wrap. `gWalkBlendDuration` is a GLOBAL float (declared in
+  Unit.h, defined in Unit.cpp, default 0.2 s) so the crossfade length can be
+  tuned at runtime instead of an inline constant.
+- No-wrap-on-fade (engine): every clip the controller plays keeps
+  `m_loop = true`. In `AnimationPlayer::Update`, a record that is currently
+  fading out (has `recordToBeBlended`) does NOT wrap when its time passes its
+  duration -- it holds its final pose until the blend countdown removes it.
+  Without this, a fading-out walk-stop clip would restart its first stride
+  mid-fade (visible "extra transition after arrival"). The walk end state also
+  arrives a hair before the end clip wraps (`kWalkEndStopMargin`) so the last
+  rendered pose is the clip's final stopped frame.
+- Debug logs: the walk machine logs every phase switch and `BlendTo` logs the
+  outgoing/incoming clips and the fade length. The ENGINE (Animation.cpp,
+  temporary) logs the fade-out progress every frame (`AnimBlend: fading out
+  ... remaining`) and its completion (`faded out after ...`), so transitions
+  can be verified to actually crossfade for the configured duration. Remove
+  those engine logs once the transitions look right.
 - `Player::FinishWalk` anchors the prefab top root on the exact destination
   center and restores the actor's authored local translation
   (`m_actorLocalBase`) so the root-motion offset accumulated on the actor node
