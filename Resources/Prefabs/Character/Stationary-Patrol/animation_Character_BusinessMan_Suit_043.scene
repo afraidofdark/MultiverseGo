@@ -1,8 +1,8 @@
-<S name="animation_Character_Male_Jacket_004" version="v0.4.9">
+<S name="animation_Character_BusinessMan_Suit_043" version="v0.4.9">
 	<PostProcessingSettings>
 		<Object Cl="PostProcessingSettings">
 			<PB>
-				<P t="11" name="Id" v="13813633200915140921"/>
+				<P t="11" name="Id" v="741677721957013016"/>
 				<P t="19" name="TonemapperMode">
 					<List size="2">
 						<CurrVal v="1"/>
