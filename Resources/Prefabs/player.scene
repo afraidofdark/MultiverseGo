@@ -2,7 +2,7 @@
 	<Object Cl="Entity">
 		<PB>
 			<P t="11" name="Id" v="17405471514018591867"/>
-			<P t="9" name="Name" v="Player_Male_Jacket"/>
+			<P t="9" name="Name" v="player"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
 			<P t="10" name="TransformLock" v="0"/>
