@@ -71,12 +71,6 @@ namespace ToolKit
     // player snaps over.
     constexpr float kWalkStallTimeout = 1.0f;
 
-    // Every clip the controller plays keeps m_loop = true, so a clip wraps to
-    // its first frame when its time passes its duration. End the walk a hair
-    // before that happens so the last rendered pose is the end clip's final
-    // (stopped) frame instead of a wrapped first stride.
-    constexpr float kWalkEndStopMargin = 0.02f;
-
     // Signals the walk states use to move the machine through its phases.
     enum WalkSignal : SignalId
     {
@@ -210,9 +204,10 @@ namespace ToolKit
           return State::NullSignal;
         }
 
-        // Wind-up played through. The fade to the stride loop may start right
-        // at the clip end: the engine now holds a fading-out clip at its final
-        // frame instead of wrapping it, so the outgoing pose stays continuous.
+        // Wind-up played through. walk_f_start is a one-shot clip: when it
+        // reaches its end the engine holds its final frame instead of wrapping
+        // or dropping it, so starting the crossfade to the stride loop right at
+        // the clip end is seamless.
         if (m_elapsed >= m_ctx->startDur)
         {
           if (remaining <= m_ctx->endReach)
@@ -346,11 +341,12 @@ namespace ToolKit
         m_elapsed += deltaTime;
         float remaining = WalkRemaining(*m_ctx);
 
-        // Arrive when the actor reaches the node, or a hair before the end
-        // clip wraps (records loop): the final rendered pose must be the
-        // clip's last frame, not a wrapped first stride.
+        // Arrive when the actor reaches the node or the end clip has fully
+        // played. walk_f_end is a one-shot clip: at its end the engine holds
+        // its final (stopped) pose, so the crossfade into idle starts from the
+        // correct stopping pose -- no wrap, no extra clip restart.
         bool reached  = remaining <= kWalkArriveEps;
-        bool clipDone = m_elapsed >= (m_ctx->endDur - kWalkEndStopMargin);
+        bool clipDone = m_elapsed >= m_ctx->endDur;
         if (reached || clipDone)
         {
           TK_LOG("WalkState: end -> arrived (elapsed %.2f/%.2f, remaining %.3f).",
@@ -546,6 +542,7 @@ namespace ToolKit
     {
       if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
       {
+        idle->m_loop            = true; // idle is a looping clip.
         idle->m_applyRootMotion = false;
       }
       BlendTo(m_walkAnim, "idle");
@@ -699,7 +696,12 @@ namespace ToolKit
     Vec3 stepDir = (m_node != nullptr) ? (node->center - m_node->center) : (node->center - m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD));
     FaceTowards(stepDir);
 
-    // Enable root motion on the three walk clips; the idle loop stays put.
+    // Clip semantics: the wind-up and stop clips play once and hold their
+    // final frame (m_loop = false); the stride clip and idle loop. Root motion
+    // is enabled on the three walk clips.
+    startRec->m_loop           = false;
+    loopRec->m_loop            = true;
+    endRec->m_loop             = false;
     startRec->m_applyRootMotion = true;
     loopRec->m_applyRootMotion  = true;
     endRec->m_applyRootMotion   = true;
@@ -795,6 +797,7 @@ namespace ToolKit
     {
       if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
       {
+        idle->m_loop            = true; // idle is a looping clip.
         idle->m_applyRootMotion = false;
       }
       BlendTo(m_walkAnim, "idle");
