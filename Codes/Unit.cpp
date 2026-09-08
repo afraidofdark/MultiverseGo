@@ -53,6 +53,12 @@ namespace ToolKit
     bool arrived = false;                   // True once the walk reached the tile.
   };
 
+  // Crossfade length (seconds) used whenever the walk state machine switches
+  // clips (idle -> walk_f_start -> walk_f -> walk_f_end -> idle). A global so
+  // it can be tuned at runtime (e.g. bound to a settings value) instead of
+  // being an inline constant; declared in Unit.h.
+  float gWalkBlendDuration = 0.2f;
+
   namespace
   {
     // Tolerance (engine units) for "reached the node". Below this the actor is
@@ -65,11 +71,11 @@ namespace ToolKit
     // player snaps over.
     constexpr float kWalkStallTimeout = 1.0f;
 
-    // Pose crossfade length used when the walk machine switches clips (idle ->
-    // walk_f_start -> walk_f -> walk_f_end -> idle). AnimControllerComponent::
-    // SmoothTransition fills the record blending data; the engine crossfades
-    // the skeleton poses over this many seconds so phase cuts do not pop.
-    constexpr float kWalkBlendDuration = 0.2f;
+    // Every clip the controller plays keeps m_loop = true, so a clip wraps to
+    // its first frame when its time passes its duration. End the walk a hair
+    // before that happens so the last rendered pose is the end clip's final
+    // (stopped) frame instead of a wrapped first stride.
+    constexpr float kWalkEndStopMargin = 0.02f;
 
     // Signals the walk states use to move the machine through its phases.
     enum WalkSignal : SignalId
@@ -134,12 +140,34 @@ namespace ToolKit
         return;
       }
 
-      if (AnimRecordPtr prev = anim->GetActiveRecord())
+      // File name only (no folder) for readable logs.
+      auto fileNameOf = [](AnimRecordPtr rec) -> String
+      {
+        const String& file = (rec != nullptr && rec->m_animation != nullptr) ? rec->m_animation->GetFile() : String();
+        size_t sep         = file.find_last_of('/');
+        return (sep != String::npos) ? file.substr(sep + 1) : file;
+      };
+
+      AnimRecordPtr prev = anim->GetActiveRecord();
+      const String from  = fileNameOf(prev);
+      bool prevRootMotion = (prev != nullptr) && prev->m_applyRootMotion;
+
+      // The outgoing record must stop contributing root motion for the blend:
+      // while it still sits in the animation player it would otherwise drive
+      // the actor together with the incoming clip and double the travelled
+      // distance.
+      if (prev != nullptr)
       {
         prev->m_applyRootMotion = false;
       }
 
-      anim->SmoothTransition(signal, kWalkBlendDuration);
+      anim->SmoothTransition(signal, gWalkBlendDuration);
+
+      TK_LOG("WalkBlend: '%s' -> '%s', fade %.2f s (outgoing root motion %s).",
+             from.c_str(),
+             signal.c_str(),
+             gWalkBlendDuration,
+             prevRootMotion ? "on, now off" : "off");
     }
 
     // First walk phase: plays the wind-up clip (walk_f_start) once with root
@@ -175,15 +203,33 @@ namespace ToolKit
         // reaches the node (the final snap closes the leftover distance).
         if (remaining <= kWalkArriveEps)
         {
+          TK_LOG("WalkState: start -> arrived inside wind-up (elapsed %.2f, remaining %.3f).",
+                 m_elapsed,
+                 remaining);
           m_ctx->arrived = true;
           return State::NullSignal;
         }
 
+        // Wind-up played through. The fade to the stride loop may start right
+        // at the clip end: the engine now holds a fading-out clip at its final
+        // frame instead of wrapping it, so the outgoing pose stays continuous.
         if (m_elapsed >= m_ctx->startDur)
         {
-          // Wind-up played through; stride in place until the gap is small
-          // enough for the end clip to finish the walk on the node.
-          return (remaining <= m_ctx->endReach) ? WalkEnd : WalkLoop;
+          if (remaining <= m_ctx->endReach)
+          {
+            TK_LOG("WalkState: start -> end (elapsed %.2f/%.2f, remaining %.2f <= end reach %.2f).",
+                   m_elapsed,
+                   m_ctx->startDur,
+                   remaining,
+                   m_ctx->endReach);
+            return WalkEnd;
+          }
+
+          TK_LOG("WalkState: start -> loop (elapsed %.2f/%.2f, remaining %.2f).",
+                 m_elapsed,
+                 m_ctx->startDur,
+                 remaining);
+          return WalkLoop;
         }
 
         return State::NullSignal;
@@ -238,12 +284,16 @@ namespace ToolKit
         {
           // No end-clip data or a gap closed by a loop boundary: stop here and
           // let the final snap take over.
+          TK_LOG("WalkState: loop -> arrived (remaining %.3f).", remaining);
           m_ctx->arrived = true;
           return State::NullSignal;
         }
 
         if (m_ctx->endReach > kWalkArriveEps && remaining <= m_ctx->endReach)
         {
+          TK_LOG("WalkState: loop -> end (remaining %.2f <= end reach %.2f).",
+                 remaining,
+                 m_ctx->endReach);
           return WalkEnd;
         }
 
@@ -295,8 +345,18 @@ namespace ToolKit
 
         m_elapsed += deltaTime;
         float remaining = WalkRemaining(*m_ctx);
-        if (remaining <= kWalkArriveEps || m_elapsed >= m_ctx->endDur)
+
+        // Arrive when the actor reaches the node, or a hair before the end
+        // clip wraps (records loop): the final rendered pose must be the
+        // clip's last frame, not a wrapped first stride.
+        bool reached  = remaining <= kWalkArriveEps;
+        bool clipDone = m_elapsed >= (m_ctx->endDur - kWalkEndStopMargin);
+        if (reached || clipDone)
         {
+          TK_LOG("WalkState: end -> arrived (elapsed %.2f/%.2f, remaining %.3f).",
+                 m_elapsed,
+                 m_ctx->endDur,
+                 remaining);
           m_ctx->arrived = true;
         }
 
@@ -688,6 +748,17 @@ namespace ToolKit
 
     if (ctx != nullptr)
     {
+      // How far the actor was from the node center when the walk ended; a
+      // normal arrival should be within a few centimeters, anything bigger
+      // means the end clip overshot or the walk was interrupted.
+      if (m_actor != nullptr && m_actor->m_node != nullptr)
+      {
+        Vec3 pos = m_actor->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+        TK_LOG("Player: arrival snap residual %.3f u (%s).",
+               HorizontalDistance(pos, targetPos),
+               forceSnap ? "teleport" : "walk");
+      }
+
       if (m_root != nullptr)
       {
         if (forceSnap)

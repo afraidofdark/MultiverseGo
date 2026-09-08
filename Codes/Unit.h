@@ -21,6 +21,12 @@ namespace ToolKit
   class AnimControllerComponent;
   class StateMachine;
 
+  // Crossfade length (seconds) used whenever the walk state machine switches
+  // clips (idle -> walk_f_start -> walk_f -> walk_f_end -> idle). Kept as a
+  // global so it can be tuned at runtime (e.g. bound to a settings value);
+  // defined in Unit.cpp, defaults to 0.2.
+  extern float gWalkBlendDuration;
+
   // Base class for every actor placed on the grid (player, enemies).
   //
   // Wraps the root entity of a placed prefab instance. The root node sits at
