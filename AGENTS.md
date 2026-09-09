@@ -283,9 +283,9 @@ apply to all code in both repositories.
   settle blend. The engine scales each record by its OWN `m_timeMultiplier`, so
   every animated unit of a turn scales independently to the same target.
 - Moves run per unit: the player's `TryMove` and every enemy's `StartMove`
-  target `gTurnDuration` for a normal step. Post-arrival bite lunges keep
-  `gPatrolGlideTime` (2 s): they are the eat action that follows the action
-  window.
+  (tile step, glide fallback and bite lunge alike) target `gTurnDuration`,
+  so every moving action of a turn lasts the same length -- there is no second
+  "temporary" move duration global.
 
 ## Logs and failure signatures
 
