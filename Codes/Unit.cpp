@@ -32,6 +32,30 @@ namespace ToolKit
         default: return "+Z";
       }
     }
+
+    // World-space direction vector a unit faces when heading toward dir.
+    Vec3 FacingVector(GridDir d)
+    {
+      switch (d)
+      {
+        case GridDir::Xm: return Vec3(-1.0f, 0.0f, 0.0f);
+        case GridDir::Xp: return Vec3(1.0f, 0.0f, 0.0f);
+        case GridDir::Zm: return Vec3(0.0f, 0.0f, -1.0f);
+        default: return Vec3(0.0f, 0.0f, 1.0f);
+      }
+    }
+
+    // The grid direction opposite to d (180-degree turn on the grid).
+    GridDir OppositeDir(GridDir d)
+    {
+      switch (d)
+      {
+        case GridDir::Xm: return GridDir::Xp;
+        case GridDir::Xp: return GridDir::Xm;
+        case GridDir::Zm: return GridDir::Zp;
+        default: return GridDir::Zm;
+      }
+    }
   } // namespace
 
   // Data the unit's walk state machine operates on. One instance lives per
@@ -697,6 +721,36 @@ namespace ToolKit
       AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
     };
+
+    // Terminal phase of an in-place turn: ends the unit's action as soon as
+    // the turn phase hands over. Registered under the type name the turn phase
+    // signals ("WalkStart"), so the existing WalkTurn -> WalkToStart transition
+    // lands here instead of on a walking state.
+    class InPlaceTurnDoneState : public State
+    {
+     public:
+      explicit InPlaceTurnDoneState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override {}
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx != nullptr)
+        {
+          m_ctx->arrived = true;
+        }
+        return State::NullSignal;
+      }
+
+      String Signaled(SignalId signal) override { return ""; }
+
+      String GetType() override { return "WalkStart"; }
+
+     private:
+      AnimatedUnit::WalkContext* m_ctx;
+    };
   } // namespace
 
   bool Unit::Init(EntityPtr root, GridGraph* grid)
@@ -849,6 +903,18 @@ namespace ToolKit
     // Plain glide fallback: used by units without an animation controller.
     float duration = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
     StartGlide(node, duration);
+  }
+
+  void Unit::StartTurn(GridDir dir)
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    // Instant in-place rotation fallback (no turn clips on this unit).
+    m_root->m_node->SetOrientation(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(dir)),
+                                   TransformationSpace::TS_WORLD);
   }
 
   void Unit::SetArrivalOrientation(const Quaternion& worldOrient)
@@ -1099,6 +1165,123 @@ namespace ToolKit
       return;
     }
     Unit::LandMove();
+  }
+
+  void AnimatedUnit::StartTurn(GridDir dir)
+  {
+    Quaternion target = RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(dir));
+    if (HasAnimatedTurn())
+    {
+      StartInPlaceTurn(YawOf(target));
+      return;
+    }
+    Unit::StartTurn(dir);
+  }
+
+  bool AnimatedUnit::HasAnimatedTurn() const
+  {
+    if (m_walkAnim == nullptr)
+    {
+      return false;
+    }
+
+    static const char* kTurnClips[] = {"turn_l_90", "turn_l_180", "turn_r_90", "turn_r_180"};
+    for (const char* name : kTurnClips)
+    {
+      if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
+      {
+        if (rec->m_animation != nullptr)
+        {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  void AnimatedUnit::TurnOnArrival(const Quaternion& worldOrient)
+  {
+    if (HasAnimatedTurn())
+    {
+      // Animate the turn once the current move lands.
+      m_deferredTurn      = worldOrient;
+      m_hasDeferredTurn   = true;
+    }
+    else
+    {
+      // No turn clips: apply the orientation instantly when the move lands.
+      SetArrivalOrientation(worldOrient);
+    }
+  }
+
+  void AnimatedUnit::StartInPlaceTurn(float targetYaw)
+  {
+    if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr || m_walkSM != nullptr)
+    {
+      return;
+    }
+
+    // The turn lands exactly where the unit stands: no destination, no travel.
+    WalkContext* ctx = new WalkContext();
+    m_walkCtx         = ctx;
+    ctx->actorNode    = m_actor->m_node;
+    ctx->anim         = m_walkAnim;
+    ctx->to           = m_node;
+    ctx->startPos     = m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+    ctx->targetPos    = ctx->startPos;
+    ctx->startDur     = 0.0f;
+    ctx->endDur       = 0.0f;
+    ctx->endReach     = 0.0f;
+    ctx->totalDist    = 0.0f;
+    ctx->bestRemaining = 0.0f;
+    ctx->sinceProgress = 0.0f;
+    ctx->arrived       = false;
+    ctx->rootNode      = m_root->m_node;
+    m_timeScale        = 1.0f;
+
+    // Shortest signed yaw from the current facing to the target.
+    Vec3 fwd = glm::normalize(glm::vec3(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD) * Vec3(0.0f, 0.0f, -1.0f)));
+    Vec3 tgt = glm::normalize(glm::vec3(YawRotation(targetYaw) * Vec3(0.0f, 0.0f, -1.0f)));
+    float dYaw = YawDeltaTo(fwd, tgt);
+
+    if (std::fabs(dYaw) <= 0.02f)
+    {
+      // Already facing the target: snap it exact and finish at once.
+      delete ctx;
+      m_walkCtx = nullptr;
+      m_root->m_node->SetOrientation(YawRotation(targetYaw), TransformationSpace::TS_WORLD);
+      return;
+    }
+
+    // Same turn decision as the walk machine's leading phase: the turn clip
+    // rotates the actor through root motion; the fold lands the top root on
+    // the exact target yaw. Node-only fallback when the clip is unusable.
+    ctx->turnYawFrom = YawOf(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD));
+    ctx->turnYawTo   = targetYaw;
+    ctx->actorBaseOrient = m_actor->m_node->GetOrientation(TransformationSpace::TS_LOCAL);
+    ctx->turning     = true;
+
+    AnimRecordPtr turnRec = m_walkAnim->GetAnimRecord(TurnClipFor(glm::degrees(dYaw)));
+    if (turnRec != nullptr && turnRec->m_animation != nullptr && turnRec->m_animation->m_duration > 0.0f)
+    {
+      turnRec->m_loop            = false;
+      turnRec->m_applyRootMotion = true;
+      ctx->turnSignal = TurnClipFor(glm::degrees(dYaw));
+      ctx->turnDur    = turnRec->m_animation->m_duration;
+      TK_LOG("Move: in-place turn %.0f deg (%s).", glm::degrees(dYaw), ctx->turnSignal.c_str());
+    }
+    else
+    {
+      ctx->turnSignal.clear();
+      ctx->turnDur = kWalkTurnDuration;
+      TK_LOG("Move: in-place turn %.0f deg (node-only).", glm::degrees(dYaw));
+    }
+
+    m_walkSM = new StateMachine();
+    m_walkSM->PushState(new WalkTurnState(ctx));
+    m_walkSM->PushState(new InPlaceTurnDoneState(ctx));
+    m_walkSM->m_currentState = m_walkSM->QueryState("WalkTurn");
+    m_walkSM->m_currentState->TransitionIn(nullptr);
   }
 
   bool Player::TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied)
@@ -1418,6 +1601,24 @@ namespace ToolKit
       BlendTo(m_walkAnim, "idle");
     }
 
+    // A patrol that must turn to a heading / idle stare the moment its move
+    // lands (a seeker arriving at the last seen tile) plays that turn
+    // ANIMATED now, the way the player would, instead of snapping. Falls back
+    // to an instant orientation without turn clips.
+    if (m_hasDeferredTurn)
+    {
+      Quaternion target = m_deferredTurn;
+      m_hasDeferredTurn = false;
+      if (HasAnimatedTurn())
+      {
+        StartInPlaceTurn(YawOf(target));
+      }
+      else if (m_root != nullptr)
+      {
+        m_root->m_node->SetOrientation(target, TransformationSpace::TS_WORLD);
+      }
+    }
+
     if (dest != nullptr)
     {
       TK_LOG("Move: walk finished on (%d, %d).", dest->ix, dest->iz);
@@ -1452,6 +1653,7 @@ namespace ToolKit
     m_timedStartRec = nullptr;
     m_timedLoopRec  = nullptr;
     m_timedEndRec   = nullptr;
+    m_hasDeferredTurn = false;
 
     Unit::Reset();
   }
@@ -1517,8 +1719,10 @@ namespace ToolKit
     // patrol moving; a missing or blocked one means the line ends, so the
     // patrol turns 180 degrees in place and walks back next turn. Enemies do
     // not block each other, so the tile ahead is only checked for a connection.
-    // The step itself is recorded (m_intendedMove) and glided by the game, so
-    // this patrol moves at the same time as everyone else this turn.
+    // The step itself is recorded (m_intendedMove) and started by the game, so
+    // this patrol moves at the same time as everyone else this turn. The line-
+    // end about-face runs the shared ANIMATED in-place turn (turn clips) when
+    // the patrol has them, exactly like the player turns.
     GridNode* next = m_grid->Neighbor(*m_node, GetFacingDir());
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
@@ -1527,23 +1731,9 @@ namespace ToolKit
     }
     else
     {
-      FlipFacing();
+      StartTurn(OppositeDir(GetFacingDir()));
+      TK_LOG("Linear: line ended; turning around in place.");
     }
-  }
-
-  void LinearPatrol::FlipFacing()
-  {
-    if (m_root == nullptr)
-    {
-      return;
-    }
-
-    // Face back along the line: the current world forward, negated. RotationTo
-    // handles the 180-degree (antiparallel) case.
-    Quaternion q   = m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD);
-    Vec3 fwd       = glm::normalize(glm::vec3(q * Vec3(0.0f, 0.0f, -1.0f)));
-    Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), -fwd);
-    m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
   }
 
   bool SeekerPatrol::Init(EntityPtr root, GridGraph* grid)
@@ -1849,16 +2039,17 @@ namespace ToolKit
     }
 
     // The turn above already points the stare, so the very same turn can see
-    // along it. When the arrival is a step, the rotation happens as the glide
-    // lands (arrive already turned); a patrol standing on the tile already
-    // turns in place right now.
+    // along it. When the arrival is a step, the turn to the held heading is
+    // played ANIMATED the moment the move lands (like the player would); a
+    // patrol standing on the tile already turns in place, animated when it has
+    // turn clips.
     if (step != nullptr)
     {
-      SetArrivalOrientation(HeadingRotation(m_lastHeading));
+      TurnOnArrival(HeadingRotation(m_lastHeading));
     }
     else
     {
-      TurnTo(m_lastHeading);
+      StartTurn(m_lastHeading);
     }
 
     // A fresh sighting keeps the chase going from here -- the walk resumes on
@@ -1904,11 +2095,11 @@ namespace ToolKit
 
       if (m_trail.size() == 1 && back == m_trail[0])
       {
-        // Back at the start: resume the idle stare. The step still glides; the
-        // stare orientation is applied when it lands.
+        // Back at the start: resume the idle stare. The step still runs; the
+        // stare orientation is applied (animated, when possible) as it lands.
         TK_LOG("Seeker: back at the start; resuming the idle stare.");
         m_state = State::Idle;
-        SetArrivalOrientation(m_idleOrientation);
+        TurnOnArrival(m_idleOrientation);
         m_lastSeen = nullptr;
       }
     }
@@ -1916,7 +2107,14 @@ namespace ToolKit
     {
       // No path to retrace: already back at the start.
       m_state = State::Idle;
-      TurnToIdle();
+      if (HasAnimatedTurn())
+      {
+        StartInPlaceTurn(YawOf(m_idleOrientation));
+      }
+      else
+      {
+        TurnToIdle();
+      }
       m_lastSeen = nullptr;
     }
   }

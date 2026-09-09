@@ -113,6 +113,12 @@ namespace ToolKit
     // of a turn move the same way.
     virtual void StartMove(GridNode* node, float targetDuration = -1.0f);
 
+    // Turns in place to face a grid direction. The base implementation snaps
+    // instantly (RotationTo on the top root); AnimatedUnit overrides it with
+    // the shared in-place turn animation (turn clip + fold) when the unit has
+    // turn clips, so every unit turns the same way the player does.
+    virtual void StartTurn(GridDir dir);
+
     // Lands a running move immediately (snaps the unit onto its destination
     // tile). Used when the run ends mid-move so no unit stays frozen between
     // two tiles. No-op when the unit is not moving.
@@ -225,6 +231,20 @@ namespace ToolKit
     // units of a turn use identical movement.
     void StartMove(GridNode* node, float targetDuration = -1.0f) override;
 
+    // Turns in place to face dir with the shared in-place turn animation
+    // (turn clip + fold), or snaps instantly when no turn clips exist.
+    void StartTurn(GridDir dir) override;
+
+    // True when turn clips are loaded on this unit's animation controller, so
+    // in-place turns (and the arrival turn of a landing patrol) can animate.
+    bool HasAnimatedTurn() const;
+
+    // Requests an ANIMATED in-place turn to face worldOrient the moment the
+    // current move lands (used by patrols that must arrive and turn to their
+    // held heading in one go). Falls back to the instant arrival orientation
+    // (Unit::SetArrivalOrientation) when the unit cannot animate a turn.
+    void TurnOnArrival(const Quaternion& worldOrient);
+
     // Lands whatever move is running (walk or glide) onto its destination tile.
     void LandMove() override;
 
@@ -257,6 +277,13 @@ namespace ToolKit
     // times).
     void EnsureWalkTimings();
 
+    // Plays an in-place turn to the given absolute world yaw (radians) with
+    // the shared turn phase: the turn clip rotates the actor through root
+    // motion and the fold lands the top root exactly on the target yaw. Runs
+    // the same StateMachine building blocks as a normal walk, only without the
+    // walking phases. Natural clip speed (no duration scaling).
+    void StartInPlaceTurn(float targetYaw);
+
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
     WalkContext* m_walkCtx = nullptr;        // Shared data for the FSM states.
     AnimControllerComponent* m_walkAnim = nullptr; // Actor's animation controller.
@@ -284,6 +311,11 @@ namespace ToolKit
     // m_timeScale. Set by StartWalk so the whole move (turn + walk) finishes in
     // exactly the requested target duration; reset to 1.0 when the walk ends.
     float m_timeScale = 1.0f;
+
+    // Animated in-place turn requested to run the moment the current move
+    // lands (see TurnOnArrival). Consumed by FinishWalk.
+    Quaternion m_deferredTurn;
+    bool m_hasDeferredTurn = false;
   };
 
   // The player. Moves one tile per turn along connected tiles, driven by mouse
@@ -335,17 +367,14 @@ namespace ToolKit
   };
 
   // A patrol that walks its line: one tile per turn along its facing direction,
-  // turning 180 degrees in place when the connected line ends, then walking
-  // back along it. Enemies never block each other, so it walks straight through
-  // occupied tiles and eats the player by landing on its tile.
+  // turning 180 degrees in place (animated, like the player) when the connected
+  // line ends, then walking back along it. Enemies never block each other, so
+  // it walks straight through occupied tiles and eats the player by landing on
+  // its tile.
   class LinearPatrol : public AnimatedUnit
   {
    public:
     void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
-
-   private:
-    // Rotates the unit 180 degrees around Y, to face back along its line.
-    void FlipFacing();
   };
 
   // A patrol that stares at a fixed point across the grid and investigates what
