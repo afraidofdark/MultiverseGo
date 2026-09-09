@@ -102,11 +102,16 @@ apply to all code in both repositories.
 - Flow (async): a click on a connected neighbor reaches `Player::TryMove` (it
   validates the direct connected neighbor and that the player has not moved
   this turn), which calls `Player::StartWalk`:
-  1. `FaceTowards(step)` on the prefab top root - an instant snap rotation for
-     now; the in-place turn clips are not wired to gameplay yet.
-  2. Enable root motion on `walk_f_start`, `walk_f`, `walk_f_end`.
+  1. Turn decision: if the current facing (`root` local -Z) is not already
+     aligned with the step axis (`|dYaw| > 0.02`), a turn-in-place phase runs
+     first (`WalkTurn`); otherwise `FaceTowards(step)` snaps the top root and
+     the machine starts directly in `WalkStart`.
+  2. Enable root motion on `walk_f_start`, `walk_f`, `walk_f_end` (and on the
+     turn clip when one is used).
   3. Build a fresh engine `StateMachine` (`ToolKit::State`/`StateMachine`, one
      per walk, deleted on arrival) with the states:
+     - `WalkTurn`: plays the in-place turn (see "Turn-in-place" below), then
+       hands over to `WalkStart`.
      - `WalkStart`: plays the one-shot `walk_f_start` (`m_loop = false`); it
        holds its final frame at its end and the state switches on its own
        elapsed time reaching the clip duration.
@@ -115,6 +120,29 @@ apply to all code in both repositories.
      - `WalkEnd`: plays the one-shot `walk_f_end`; the walk ends when the
        remaining distance drops below `kWalkArriveEps` (~0.03 units) or the
        clip has fully played.
+- Turn-in-place (in `Codes/Unit.cpp`): the turn clips were re-authored so the
+  rotation is ROOT MOTION (bone space only steps in place), so `WalkTurn`
+  plays the selected clip with `m_applyRootMotion = true`, `m_loop = false`
+  and the engine yaws the ACTOR node itself; translation stays zero. The clip
+  is picked by `TurnClipFor` from the signed yaw delta in degrees
+  (`turn_l_90/180`, `turn_r_90/180`). When the clip ends, `WalkTurn` FOLDS the
+  rotation into the persistent facing: the prefab top root is set to the
+  target yaw and the actor's local orientation is restored to its pre-turn
+  base, so the front-authored walk clip starts clean. If no usable clip
+  exists, a node-only fallback yaws the top root over `kWalkTurnDuration`
+  (0.4 s). The stall watchdog is exempt while `turning` is true (a turn
+  legitimately makes no distance progress).
+- Yaw units gotcha (in `Codes/Unit.cpp`): `YawOf`, `YawDeltaTo` and
+  `YawRotation` all work in RADIANS; `glm::rotate` expects radians too. A
+  stray `glm::degrees` inside `YawRotation` once scaled every fold yaw by
+  180/pi and left the character facing a near-random direction (log symptom:
+  `TurnFold: root yaw ... (wanted ...)` disagreeing). Do not "fix" that by
+  converting call sites to degrees.
+- Turn root motion and facing agree on Y only: the actor's authored base yaw
+  (180 degrees) and the turn clips' rotation are both pure +Y rotations, so
+  local-axis deltas equal world-axis deltas; the actor world orientation after
+  the fold is exactly what `FaceTowards(stepDir)` would have produced, which
+  keeps the walk direction identical to a straight move.
 - Clip loop flags (app): the walk machine marks the clips explicitly before
   playing them -- `walk_f_start` and `walk_f_end` are ONE-SHOT
   (`m_loop = false`), `walk_f` and `idle` loop (`m_loop = true`).
@@ -147,11 +175,11 @@ apply to all code in both repositories.
   holds its final frame at the boundary -- no wrap, no early-leave hacks
   needed.
 - Debug logs: the walk machine logs every phase switch and `BlendTo` logs the
-  outgoing/incoming clips and the fade length. The ENGINE (Animation.cpp,
-  temporary) logs the fade-out progress every frame (`AnimBlend: fading out
-  ... remaining`) and its completion (`faded out after ...`), so transitions
-  can be verified to actually crossfade for the configured duration. Remove
-  those engine logs once the transitions look right.
+  outgoing/incoming clips and the fade length. (The engine used to log every
+  frame of a clip's fade-out -- `AnimBlend: fading out ...` / `faded out
+  after ...` -- while transitions were being verified; those debug logs were
+  removed from `ToolKit/Resources/Animation.cpp`, so the per-frame spam is
+  gone.)
 - `Player::FinishWalk` anchors the prefab top root on the exact destination
   center and restores the actor's authored local translation
   (`m_actorLocalBase`) so the root-motion offset accumulated on the actor node
