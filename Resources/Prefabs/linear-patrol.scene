@@ -78,6 +78,57 @@
 						<AABBOverrideComponent/>
 					</Component>
 				</Object>
+				<Object Cl="AnimControllerComponent">
+					<PB>
+						<P t="11" name="Id" v="17131285357893850006"/>
+						<P t="16" name="Records">
+							<List size="13">
+								<0 SignalName="walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f.anim"/>
+								</0>
+								<1 SignalName="run_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f.anim"/>
+								</1>
+								<2 SignalName="idle" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/idle.anim"/>
+								</2>
+								<3 SignalName="rest" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/rest.anim"/>
+								</3>
+								<4 SignalName="run_f_start" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_start.anim"/>
+								</4>
+								<5 SignalName="run_f_stop" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_stop.anim"/>
+								</5>
+								<6 SignalName="walk_f_start" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_start.anim"/>
+								</6>
+								<7 SignalName="fight_walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/fight_walk_f.anim"/>
+								</7>
+								<8 SignalName="walk_f_end" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_end.anim"/>
+								</8>
+								<9 SignalName="turn_l_90" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_l_90.anim"/>
+								</9>
+								<10 SignalName="turn_l_180" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_l_180.anim"/>
+								</10>
+								<11 SignalName="turn_r_90" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_r_90.anim"/>
+								</11>
+								<12 SignalName="turn_r_180" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_r_180.anim"/>
+								</12>
+							</List>
+						</P>
+					</PB>
+					<Component>
+						<AnimControllerComponent/>
+					</Component>
+				</Object>
 			</Ca>
 		</Entity>
 	</Object>

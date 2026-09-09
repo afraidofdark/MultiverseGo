@@ -1,7 +1,7 @@
 <S name="seeker-patrol" version="v0.4.9">
 	<Object Cl="EntityNode">
 		<PB>
-			<P t="11" name="Id" v="17476324639693365758"/>
+			<P t="11" name="Id" v="16950413532786443435"/>
 			<P t="9" name="Name" v="root"/>
 			<P t="9" name="Tag" v="seeker-patrol"/>
 			<P t="10" name="Visible" v="1"/>
@@ -19,13 +19,13 @@
 	</Object>
 	<Object Cl="Entity">
 		<PB>
-			<P t="11" name="Id" v="16427480255129886595"/>
+			<P t="11" name="Id" v="7042725778542402331"/>
 			<P t="9" name="Name" v="patrol"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
 			<P t="10" name="TransformLock" v="0"/>
 		</PB>
-		<Entity pi="17476324639693365758">
+		<Entity pi="16950413532786443435">
 			<N is="0">
 				<T x="0.000000" y="0.000000" z="0.000000"/>
 				<R x="0.000000" y="1.000000" z="0.000000" w="-0.000000"/>
@@ -34,7 +34,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15179728397266314798"/>
+						<P t="11" name="Id" v="69279155795765505"/>
 						<P t="12" name="Mesh">
 							<ResourceRef Class="SkinMesh" File="Character/Linear-Patrol/animation_Character_Male_Police_004.skinMesh"/>
 						</P>
@@ -46,7 +46,7 @@
 				</Object>
 				<Object Cl="SkeletonComponent">
 					<PB>
-						<P t="11" name="Id" v="12373872171662881582"/>
+						<P t="11" name="Id" v="17342722962757049250"/>
 						<P t="17" name="SkeletonResource">
 							<ResourceRef Class="Skeleton" File="Character/Linear-Patrol/animation_Character_Male_Police_004.skeleton"/>
 						</P>
@@ -57,7 +57,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="16739046574146571243"/>
+						<P t="11" name="Id" v="12720842970232751732"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -69,13 +69,64 @@
 				</Object>
 				<Object Cl="AABBOverrideComponent">
 					<PB>
-						<P t="11" name="Id" v="9086941016161195650"/>
+						<P t="11" name="Id" v="4618652392278271957"/>
 						<P t="5" name="PositionOffset" x="-0.395471" y="0.029351" z="-0.177922"/>
 						<P t="5" name="Size" x="0.755284" y="1.856616" z="0.383151"/>
 						<P t="18" name="UpdateBoundaryFromMesh"/>
 					</PB>
 					<Component>
 						<AABBOverrideComponent/>
+					</Component>
+				</Object>
+				<Object Cl="AnimControllerComponent">
+					<PB>
+						<P t="11" name="Id" v="5203316209869909011"/>
+						<P t="16" name="Records">
+							<List size="13">
+								<0 SignalName="walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f.anim"/>
+								</0>
+								<1 SignalName="run_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f.anim"/>
+								</1>
+								<2 SignalName="idle" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/idle.anim"/>
+								</2>
+								<3 SignalName="rest" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/rest.anim"/>
+								</3>
+								<4 SignalName="run_f_start" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_start.anim"/>
+								</4>
+								<5 SignalName="run_f_stop" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_stop.anim"/>
+								</5>
+								<6 SignalName="walk_f_start" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_start.anim"/>
+								</6>
+								<7 SignalName="fight_walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/fight_walk_f.anim"/>
+								</7>
+								<8 SignalName="walk_f_end" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_end.anim"/>
+								</8>
+								<9 SignalName="turn_l_90" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_l_90.anim"/>
+								</9>
+								<10 SignalName="turn_l_180" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_l_180.anim"/>
+								</10>
+								<11 SignalName="turn_r_90" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_r_90.anim"/>
+								</11>
+								<12 SignalName="turn_r_180" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_r_180.anim"/>
+								</12>
+							</List>
+						</P>
+					</PB>
+					<Component>
+						<AnimControllerComponent/>
 					</Component>
 				</Object>
 			</Ca>
