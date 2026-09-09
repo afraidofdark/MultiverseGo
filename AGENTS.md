@@ -39,8 +39,11 @@ apply to all code in both repositories.
 ## Gameplay overview (as of the animation milestone)
 
 - Turn-based stealth-like prototype on a tile grid. The player moves exactly
-  one tile per turn by clicking a connected neighbor; patrol enemies act on a
-  fixed order after the player phase, then the turn returns to the player.
+  one tile per turn by clicking a connected neighbor. Each turn resolves as ONE
+  concurrent act: the moment the player commits to a tile, every enemy decides
+  its reaction to that move and they all animate at the same time (see
+  "Parallel turn orchestration" below). Only eating waits until the player
+  physically arrives on its destination tile.
 - Grid: a master entity named `GridNode` parents every tile. `GridGraph`
   (`Plugins/grider/Codes/GridGraph.h/cpp`) builds the data model at play start:
   `node.center` = tile top-surface center, `node.size` = tile AABB extent, so
@@ -186,10 +189,9 @@ apply to all code in both repositories.
   is folded back into the top root; it then returns the character to the idle
   loop. (Do not read the walk context after it is deleted - that was a
   use-after-free bug.)
-- `Game.cpp`: while `Player::IsWalking()` is true, `Game::Frame` calls
-  `Player::Frame(dt)` and defers `CompletePlayerMove()` (patrol contact, win
-  check, enemy turn) until the walk actually arrives. Input is locked while
-  walking.
+- `Game.cpp`: once a move is committed, `Game::Frame` switches to the acting
+  phase and drives the player's walk plus every enemy glide together; input is
+  locked until the whole turn settled (see "Parallel turn orchestration").
 - Stall watchdog: if the gap does not shrink for ~1 second the walk aborts and
   snaps the player to the tile (log: `walk stalled ... snapping`). This guards
   against a rig/orientation mismatch ever locking the turn.
@@ -197,13 +199,89 @@ apply to all code in both repositories.
   fall back to the old instant snap, so scenes without character prefabs keep
   working.
 
+## Parallel turn orchestration (in Game.cpp)
+
+- One concurrent act per turn: a click on a connected neighbor commits the
+  player's move (`Player::TryMove` -> `StartWalk`) and then
+  `Game::BeginPlayerMove(dest)` freezes the turn:
+  1. Every enemy decides its action AT ONCE, against the tile the player WILL
+     stand on (`dest`) and the heading it will face there
+     (`Game::FacingToward`), i.e. exactly the inputs the old sequential enemy
+     phase used.
+     - A patrol standing ON `dest` is "captured": it never acts this turn and
+       is removed when the player arrives (`m_capturedEnemies`).
+     - `OnTurn` only DECIDES: a moving patrol records the tile it will step to
+       (`Unit::GetIntendedMove`) instead of teleporting.
+     - A step onto the player's destination is a bite (`m_stepBites`): held
+       back until the player actually arrives.
+     - Any other step starts gliding immediately, so it runs at the same time
+       as the player's walk.
+  2. `m_phase = Acting`; `Game::UpdateActing` drives the player's walk and
+     every enemy glide together each frame (input stays locked).
+  3. When the player physically arrives (`Game::ResolvePlayerArrival`):
+     captured patrols leave the grid; guards whose threat tile is the player's
+     tile LUNGE (added to `m_activeBites`); the win is checked only when no
+     guard strike is inbound; then the held-back step bites start gliding. A
+     bite glide that lands eats the player (`Game::EatPlayer`).
+  4. When the player arrived and no bite is pending/in flight and no enemy is
+     gliding, `StartPlayerTurn` hands the input back.
+- Guards never move on their own (their `OnTurn` is empty): the lunge is
+  exclusively the arrival-time reaction when `ThreatTile() == player tile`,
+  preserving the old resolution order -- capture first, then guard bites, then
+  win, then moving-patrol bites.
+- `Unit::StartGlide(node, duration)` / `Unit::Frame` / `Unit::LandMove`: the
+  enemy tile step, a parametric root glide over `duration` seconds snapping
+  onto the exact node center when it lands (`m_node` updates only on arrival).
+  Temporary stand-in until enemies get their own walk state machines; OnTurn
+  keeps deciding, the game starts the glides.
+- `SeekerPatrol` decides at click time against the destination. Its arrival
+  look is taken from the tile it WILL land on along the held heading
+  (`SeesAlong(origin, dir, player)`), and the orientation to arrive with is
+  recorded via `SetArrivalOrientation`, which the glide applies as it lands --
+  the patrol arrives already turned, without a turn clip.
+
+## Uniform turn duration (time scaling)
+
+- Goal: every entity's action of a turn lasts exactly `gTurnDuration` seconds
+  (global float, default 3.0, tunable like gWalkBlendDuration) -- the whole
+  tableau starts and stops together.
+- Player: the move's NATURAL duration is measured from the animation data, not
+  hardcoded. `WalkClipTiming` (built by `BuildClipTiming` from each clip's root
+  key: key time = frame / fps; progress = running max of the signed projection
+  of the root position onto the net travel axis, clamped to the playable clip
+  duration) is cached per clip in `Player::EnsureWalkTimings` at init and
+  lazily when the clip resources (re)load. `EstimateWalkDuration` then sums
+  the machine phases exactly the way the FSM gates them (optional turn duration
+  + wind-up + as many stride cycles as needed + landing clip) into the natural
+  length (a 5-unit move with a turn measures ~4.7 s natural on the current
+  assets; without a turn ~3.7 s).
+- `Player::StartWalk` computes `scale = natural / gTurnDuration`, stores it in
+  `Player::m_timeScale` and writes it into the `m_timeMultiplier` of every clip
+  that can play during the walk (idle + the three walk clips + the four turn
+  clips), so the FSM timers AND the clip playback -- including blend countdowns
+  -- advance at the same rate. `Player::Frame` feeds `dt * m_timeScale` to the
+  machine; `FinishWalk` restores 1x before the idle settle blend. The engine
+  scales each record by its OWN `m_timeMultiplier`, so per-entity scaling keeps
+  working once enemies get their own state machines.
+- Enemies: non-bite tile steps glide for exactly `gTurnDuration` too
+  (`BeginPlayerMove` passes it as the glide duration). Post-arrival bite lunges
+  keep `gPatrolGlideTime` (2 s): they are the eat action that follows the
+  action window.
+
 ## Logs and failure signatures
 
+- `Player: move natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no`: per-move timing.
+  X is the natural FSM duration measured from the walk clips; the move is
+  scaled so it finishes in gTurnDuration (Y). A missing/wrong X means the clip
+  timing profiles failed to build.
 - `Player: walk started (...) -> (...), gap ..., end clip reach ...`: during a
   normal walk the gap must shrink every frame.
 - `Player: walk stalled (gap ... not shrinking); snapping to the tile.`: root
   motion direction/orientation mismatch; check the prefab yaw and the facing
   convention.
+- `Game: a guard strikes the player on (...).` / `Game: a patrol closes in on
+  the player on (...).`: an eat is inbound (bite glide started after the player
+  arrived); the loss lands when that glide completes.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor
