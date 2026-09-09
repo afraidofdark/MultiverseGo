@@ -35,13 +35,6 @@ namespace ToolKit
   // Defined in Unit.cpp.
   extern float gTurnDuration;
 
-  // How long an enemy tile step (or a guard's lunge) glides, in seconds.
-  // Temporary stand-in until patrols get their own walk state machines /
-  // animation; the player keeps its real root-motion walk clips. Defined in
-  // Unit.cpp. (Bite lunges happen AFTER the action window, so they keep this
-  // length instead of the turn duration.)
-  extern const float gPatrolGlideTime;
-
   // Measured timing model of one walk clip: how much horizontal root travel the
   // clip's root key makes over its key frames, and when. Built from the actual
   // animation data (never hardcoded) so the walk's natural duration can be

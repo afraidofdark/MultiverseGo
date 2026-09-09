@@ -365,7 +365,7 @@ namespace ToolKit
     {
       for (Unit* u : m_stepBites)
       {
-        u->StartMove(playerNode, gPatrolGlideTime);
+        u->StartMove(playerNode);
         TK_LOG("Game: a patrol closes in on the player on (%d, %d).", playerNode->ix, playerNode->iz);
         m_activeBites.push_back(u);
       }

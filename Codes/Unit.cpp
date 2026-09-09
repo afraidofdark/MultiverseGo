@@ -97,13 +97,10 @@ namespace ToolKit
   // being an inline constant; declared in Unit.h.
   float gWalkBlendDuration = 0.2f;
 
-  // Enemy glide duration (seconds). Temporary stand-in until patrols get their
-  // own walk state machines / animation.
-  const float gPatrolGlideTime = 2.0f;
-
   // Every turn's action window (seconds). The player's move is time-scaled to
-  // fit it and enemy tile steps glide for the same length, so all units of a
-  // turn start and stop together. Tunable at runtime like gWalkBlendDuration.
+  // fit it and every enemy move (walk, glide fallback or bite) runs for the
+  // same length, so all units of a turn start and stop together. Tunable at
+  // runtime like gWalkBlendDuration.
   float gTurnDuration = 3.0f;
 
   float WalkClipTiming::TimeToTravel(float distance) const
@@ -1700,7 +1697,7 @@ namespace ToolKit
     // wall. The guard already faces this way, so the step reads purely as a
     // strike. The shared animated move (or glide fallback) makes the bite
     // visible; the game eats the player when the move lands.
-    StartMove(watched, gPatrolGlideTime);
+    StartMove(watched);
     TK_LOG("Guard: lunges forward onto (%d, %d) and bites.",
            watched->ix,
            watched->iz);
