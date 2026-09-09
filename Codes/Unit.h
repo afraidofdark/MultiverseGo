@@ -85,8 +85,8 @@ namespace ToolKit
     virtual void OnTurn(GridNode* playerNode, GridDir playerFacing) {}
 
     // Called every frame while the unit is acting (walking or gliding a move).
-    // The base implementation advances a running glide; Player overrides it to
-    // drive its root-motion walk state machine instead.
+    // The base implementation advances a running glide; AnimatedUnit overrides
+    // it to drive the shared root-motion walk state machine instead.
     virtual void Frame(float deltaTime);
 
     // The node the unit decided to move to this turn (OnTurn output), or null
@@ -95,7 +95,7 @@ namespace ToolKit
 
     // True while the unit is animating/gliding a move between two nodes. The
     // turn flow keeps the acting phase open until every moving unit is done.
-    bool IsMoving() const { return m_gliding; }
+    virtual bool IsMoving() const { return m_gliding; }
 
     // Starts an animated step from the unit's current node to node over
     // duration seconds: the root glides along the gap and snaps onto the exact
@@ -106,10 +106,17 @@ namespace ToolKit
     // starts the glides so every unit of a turn moves at the same time.
     void StartGlide(GridNode* node, float duration);
 
-    // Lands a running glide immediately (snaps the unit onto its destination
+    // Starts a move to node. The base implementation glides for the target
+    // length (targetDuration < 0 means gTurnDuration); AnimatedUnit overrides
+    // it with the shared animated walk when the unit has an animation
+    // controller. The game drives every enemy step through this, so all units
+    // of a turn move the same way.
+    virtual void StartMove(GridNode* node, float targetDuration = -1.0f);
+
+    // Lands a running move immediately (snaps the unit onto its destination
     // tile). Used when the run ends mid-move so no unit stays frozen between
-    // two tiles. No-op when the unit is not gliding.
-    void LandMove();
+    // two tiles. No-op when the unit is not moving.
+    virtual void LandMove();
 
     // The tile whose occupation would make this unit eat the player: a static
     // guard zone. Null for units with no static threat (moving patrols
@@ -157,9 +164,9 @@ namespace ToolKit
     // moving unit faces where it is going.
     void FaceTowards(const Vec3& direction);
 
-    // Records an orientation to apply the moment a running glide lands (after
-    // the step-facing), e.g. a seeker that must arrive already turned toward
-    // its held heading. Ignored when the unit does not glide.
+    // Records an orientation to apply the moment a running move (glide or
+    // animated walk) lands, after the step-facing -- e.g. a seeker that must
+    // arrive already turned toward its held heading.
     void SetArrivalOrientation(const Quaternion& worldOrient);
 
     EntityPtr m_root;
@@ -171,56 +178,55 @@ namespace ToolKit
     // GetIntendedMove). Null while standing.
     GridNode* m_intendedMove = nullptr;
 
-    // Glide state (see StartGlide / Frame). Only moving patrols glide for now.
+    // Glide state (see StartGlide / Frame). Only non-animated units glide.
     bool m_gliding = false;
     float m_glideDur = 1.0f;  // Total glide duration (seconds).
     float m_glideT = 0.0f;    // Progress in [0, 1].
     Vec3 m_glideFrom;         // Departure world position.
     Vec3 m_glideTo;           // Destination node center.
     GridNode* m_glideNode = nullptr; // Destination node, snapped on arrival.
-    Quaternion m_arriveOrient;       // Orientation to apply on glide arrival.
+    Quaternion m_arriveOrient;       // Orientation to apply on arrival.
     bool m_hasArriveOrient = false;
   };
 
-  // The player. Moves one tile per turn along connected tiles, driven by mouse
-  // input. Movement is the player rule: exactly one tile, on a connected edge.
-  // A move on the animated player is not an instant snap: it starts a walk
-  // that plays the walk_f_start / walk_f / walk_f_end clips (root motion
-  // enabled) through a StateMachine until the actor stands exactly on the
-  // destination node, whatever the node spacing is.
-  class Player : public Unit
+  // A unit that moves its tile steps with the SHARED root-motion animation
+  // state machine (optional in-place turn + wind-up / stride / landing clips),
+  // falling back to a plain glide when its prefab has no animation controller.
+  // The player and every patrol derive from this class so the whole movement
+  // implementation -- FSM, timing measurement, per-turn duration scaling --
+  // lives in one place instead of being duplicated per actor.
+  class AnimatedUnit : public Unit
   {
    public:
-    ~Player() override;
+    ~AnimatedUnit() override;
 
-    // Binds the player to the prefab's top root (the tagged "root" node the
-    // game rotates to aim the character). The skinned actor that owns the
-    // animation controller usually hangs under it as a child; root motion
-    // plays on that child in its local space, so the top root's rotation
-    // points the walk direction. Falls back cleanly when the actor has no
-    // animation controller, so non-animated scenes keep working.
+    // Binds the unit to its prefab top root, then finds the skinned actor
+    // (the child entity that carries the animation controller) below it. When
+    // such an actor exists the unit walks its steps with root motion; without
+    // one it keeps gliding. Also settles the character into the idle loop and
+    // measures the walk clip timings once.
     bool Init(EntityPtr root, GridGraph* grid) override;
 
-    void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
-
-    // True once the player has moved this turn.
-    bool HasMoved() const { return m_hasMoved; }
-
-    // Drives the animation walk while it is running. Does nothing when the
-    // player is standing still.
-    void Frame(float deltaTime) override;
-
-    // True while the player is animating a walk between two nodes. The turn
-    // flow must wait for the arrival before it resolves the move.
+    // True while a root-motion walk (a live walk state machine) is running, as
+    // opposed to a glide.
     bool IsWalking() const { return m_walkSM != nullptr; }
 
-    // Attempts to move one tile toward node. Valid only when node is the
-    // current neighbour, both sides flag the facing connection, and isOccupied
-    // (when provided) reports the node as free. On the animated player this
-    // starts a root-motion walk instead of snapping; returns true when the
-    // move was accepted (walking or, without animation support, already
-    // landed). Only the first successful move of a turn counts.
-    bool TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied);
+    // True while any move (animated walk or glide) is running.
+    bool IsMoving() const override { return m_walkSM != nullptr || Unit::IsMoving(); }
+
+    // Drives a running walk state machine; advances the glide fallback when no
+    // walk is running.
+    void Frame(float deltaTime) override;
+
+    // Starts a move to node. With an animation controller the move plays the
+    // shared walk FSM, time-scaled so it finishes in exactly targetDuration
+    // (default gTurnDuration); without one the unit glides for the same time.
+    // Every non-bite tile step and every bite/lunge goes through here, so all
+    // units of a turn use identical movement.
+    void StartMove(GridNode* node, float targetDuration = -1.0f) override;
+
+    // Lands whatever move is running (walk or glide) onto its destination tile.
+    void LandMove() override;
 
     // Stops the animation controller (used when play ends in the editor while
     // the scene entities are still alive).
@@ -229,16 +235,16 @@ namespace ToolKit
     void Reset() override;
 
     // Shared data the walk state machine operates on. One instance lives per
-    // walk (created by StartWalk, owned by the player); the FSM states only
-    // read/write this context and never reach into the Player. Defined in
+    // walk (created by StartWalk, owned by the unit); the FSM states only
+    // read/write this context and never reach into the unit. Defined in
     // Unit.cpp.
     struct WalkContext;
 
-   private:
-    // Starts a root-motion walk toward node. Returns true when the move was
-    // accepted; on actors without animation support it snaps in place and
-    // still reports success. Callers check IsWalking() to tell the two apart.
-    bool StartWalk(GridNode* node);
+   protected:
+    // Starts a root-motion walk toward node. Returns false when the unit has no
+    // usable animation support (the caller picks the glide/instant fallback).
+    // targetDuration < 0 means gTurnDuration.
+    bool StartWalk(GridNode* node, float targetDuration);
 
     // Ends the current walk: tears down the state machine and settles the
     // actor onto the destination node. forceSnap teleports (stalled/failed
@@ -251,7 +257,6 @@ namespace ToolKit
     // times).
     void EnsureWalkTimings();
 
-    bool m_hasMoved = false;
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
     WalkContext* m_walkCtx = nullptr;        // Shared data for the FSM states.
     AnimControllerComponent* m_walkAnim = nullptr; // Actor's animation controller.
@@ -277,8 +282,34 @@ namespace ToolKit
 
     // Time scale of the running walk: real duration = natural FSM duration /
     // m_timeScale. Set by StartWalk so the whole move (turn + walk) finishes in
-    // exactly gTurnDuration seconds; reset to 1.0 when the walk ends.
+    // exactly the requested target duration; reset to 1.0 when the walk ends.
     float m_timeScale = 1.0f;
+  };
+
+  // The player. Moves one tile per turn along connected tiles, driven by mouse
+  // input. Movement is the player rule: exactly one tile, on a connected edge,
+  // animated by the shared AnimatedUnit walk (root motion) -- or an instant
+  // snap on actors without animation support.
+  class Player : public AnimatedUnit
+  {
+   public:
+    void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
+
+    // True once the player has moved this turn.
+    bool HasMoved() const { return m_hasMoved; }
+
+    // Attempts to move one tile toward node. Valid only when node is the
+    // current neighbour, both sides flag the facing connection, and isOccupied
+    // (when provided) reports the node as free. On the animated player this
+    // starts a root-motion walk instead of snapping; returns true when the
+    // move was accepted (walking or, without animation support, already
+    // landed). Only the first successful move of a turn counts.
+    bool TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied);
+
+    void Reset() override;
+
+   private:
+    bool m_hasMoved = false;
   };
 
   // A stationary enemy guard. It holds its post and watches the single tile its
@@ -288,7 +319,7 @@ namespace ToolKit
   // where it stands -- it lunges the one tile forward onto its prey as it
   // strikes. A unit that reaches the patrol itself from any other direction
   // captures it instead.
-  class StationaryPatrol : public Unit
+  class StationaryPatrol : public AnimatedUnit
   {
    public:
     void OnTurn(GridNode* playerNode, GridDir playerFacing) override {}
@@ -298,8 +329,8 @@ namespace ToolKit
     // Null when the passage is blocked or the patrol stands at the grid edge.
     GridNode* ThreatTile() const override;
 
-    // The bite: steps the single tile forward onto the watched tile and ends up
-    // standing on it. Does nothing when there is no watched tile to lunge into.
+    // The bite: starts the animated step (or glide fallback) onto the watched
+    // tile. Does nothing when there is no watched tile to lunge into.
     void Lunge() override;
   };
 
@@ -307,7 +338,7 @@ namespace ToolKit
   // turning 180 degrees in place when the connected line ends, then walking
   // back along it. Enemies never block each other, so it walks straight through
   // occupied tiles and eats the player by landing on its tile.
-  class LinearPatrol : public Unit
+  class LinearPatrol : public AnimatedUnit
   {
    public:
     void OnTurn(GridNode* playerNode, GridDir playerFacing) override;
@@ -338,7 +369,7 @@ namespace ToolKit
   // next step. If the player shows up it keeps chasing, even mid-wait or
   // mid-return. Back at the start it resumes the idle stare.
   // Enemies do not block each other.
-  class SeekerPatrol : public Unit
+  class SeekerPatrol : public AnimatedUnit
   {
    public:
     bool Init(EntityPtr root, GridGraph* grid) override;
@@ -367,7 +398,7 @@ namespace ToolKit
 
     // Line of sight from an explicit origin tile along an explicit grid
     // direction. Used for the look taken the turn the patrol lands on the last
-    // seen tile, which is decided before the glide physically lands.
+    // seen tile, which is decided before the move actually lands.
     bool SeesAlong(GridNode* origin, GridDir dir, GridNode* playerNode) const;
 
     // Records a fresh sighting: the tile the player is on and the direction it

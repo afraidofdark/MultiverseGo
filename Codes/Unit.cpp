@@ -34,10 +34,10 @@ namespace ToolKit
     }
   } // namespace
 
-  // Data the player's walk state machine operates on. One instance lives per
-  // walk (created by Player::StartWalk, owned by the player). The FSM states
-  // only read/write this context; they never reach into the Player.
-  struct Player::WalkContext
+  // Data the unit's walk state machine operates on. One instance lives per
+  // walk (created by AnimatedUnit::StartWalk, owned by the unit). The FSM
+  // states only read/write this context; they never reach into the unit.
+  struct AnimatedUnit::WalkContext
   {
     Node* actorNode = nullptr;              // Node root motion moves.
     AnimControllerComponent* anim = nullptr; // Controller playing the clips.
@@ -141,7 +141,7 @@ namespace ToolKit
     }
 
     // Remaining horizontal distance from the moving actor to the target.
-    float WalkRemaining(const Player::WalkContext& ctx)
+    float WalkRemaining(const AnimatedUnit::WalkContext& ctx)
     {
       if (ctx.actorNode == nullptr)
       {
@@ -406,10 +406,10 @@ namespace ToolKit
     //
     // Fallback path (no usable clip): the top root is yawed directly over
     // kWalkTurnDuration.
-    class PlayerWalkTurnState : public State
+    class WalkTurnState : public State
     {
      public:
-      explicit PlayerWalkTurnState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+      explicit WalkTurnState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
 
       void TransitionIn(State* prevState) override
       {
@@ -490,17 +490,17 @@ namespace ToolKit
       String GetType() override { return "WalkTurn"; }
 
      private:
-      Player::WalkContext* m_ctx;
+      AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
     };
 
     // First walk phase: plays the wind-up clip (walk_f_start) once with root
     // motion. Hands over to the stride loop (or straight to the end clip when
     // the remaining gap already fits it) once the clip has played through.
-    class PlayerWalkStartState : public State
+    class WalkStartState : public State
     {
      public:
-      explicit PlayerWalkStartState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+      explicit WalkStartState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
 
       void TransitionIn(State* prevState) override
       {
@@ -573,7 +573,7 @@ namespace ToolKit
       String GetType() override { return "WalkStart"; }
 
      private:
-      Player::WalkContext* m_ctx;
+      AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
     };
 
@@ -581,10 +581,10 @@ namespace ToolKit
     // covers the gap. Leaves for the end clip the moment the remaining distance
     // fits the end clip's own root travel, so the walk can stop exactly on the
     // destination node no matter how long the gap is.
-    class PlayerWalkLoopState : public State
+    class WalkLoopState : public State
     {
      public:
-      explicit PlayerWalkLoopState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+      explicit WalkLoopState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
 
       void TransitionIn(State* prevState) override
       {
@@ -637,18 +637,18 @@ namespace ToolKit
       String GetType() override { return "WalkLoop"; }
 
      private:
-      Player::WalkContext* m_ctx;
+      AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
     };
 
     // Final phase: plays the landing clip (walk_f_end) with root motion. The
     // state ends the walk (ctx->arrived) when the actor reaches the node or the
-    // clip plays through; Player::FinishWalk then snaps the actor onto the
-    // exact node center and returns it to the idle loop.
-    class PlayerWalkEndState : public State
+    // clip plays through; AnimatedUnit::FinishWalk then snaps the actor onto
+    // the exact node center and returns it to the idle loop.
+    class WalkEndState : public State
     {
      public:
-      explicit PlayerWalkEndState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+      explicit WalkEndState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
 
       void TransitionIn(State* prevState) override
       {
@@ -694,7 +694,7 @@ namespace ToolKit
       String GetType() override { return "WalkEnd"; }
 
      private:
-      Player::WalkContext* m_ctx;
+      AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
     };
   } // namespace
@@ -844,6 +844,13 @@ namespace ToolKit
     m_gliding   = true;
   }
 
+  void Unit::StartMove(GridNode* node, float targetDuration)
+  {
+    // Plain glide fallback: used by units without an animation controller.
+    float duration = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
+    StartGlide(node, duration);
+  }
+
   void Unit::SetArrivalOrientation(const Quaternion& worldOrient)
   {
     m_arriveOrient    = worldOrient;
@@ -896,14 +903,14 @@ namespace ToolKit
     }
   }
 
-  bool Player::Init(EntityPtr root, GridGraph* grid)
+  bool AnimatedUnit::Init(EntityPtr root, GridGraph* grid)
   {
     // The unit stays bound to the prefab's top root (the tagged "root" node):
     // the game rotates this node to aim the character and anchors it on the
     // grid tiles. The skinned character (mesh + skeleton + animation
     // controller) hangs under it as a child and is the actor root motion
     // plays on. Actors without an animation controller (legacy simple actors)
-    // simply have no walk animation.
+    // simply have no walk animation and fall back to gliding.
     if (!Unit::Init(root, grid))
     {
       return false;
@@ -950,7 +957,6 @@ namespace ToolKit
       m_actorLocalBase = Vec3(0.0f);
     }
 
-    m_hasMoved = false;
     m_timeScale = 1.0f;
 
     // Settle the character into the idle loop between turns.
@@ -964,14 +970,14 @@ namespace ToolKit
       BlendTo(m_walkAnim, "idle");
     }
 
-    // Measure the walk clips' timing once, so the natural move duration can be
+    // Measure the walk clip timings once, so the natural move duration can be
     // predicted for the per-turn time scaling.
     EnsureWalkTimings();
 
     return true;
   }
 
-  void Player::EnsureWalkTimings()
+  void AnimatedUnit::EnsureWalkTimings()
   {
     if (m_walkAnim == nullptr)
     {
@@ -999,17 +1005,25 @@ namespace ToolKit
     rebuild(m_timingEnd, m_walkAnim->GetAnimRecord("walk_f_end"), m_timedEndRec);
   }
 
-  Player::~Player() { Reset(); }
+  AnimatedUnit::~AnimatedUnit()
+  {
+    delete m_walkSM;
+    m_walkSM = nullptr;
+    delete m_walkCtx;
+    m_walkCtx = nullptr;
+  }
 
   void Player::OnTurn(GridNode* playerNode, GridDir playerFacing)
   {
     m_hasMoved = false;
   }
 
-  void Player::Frame(float deltaTime)
+  void AnimatedUnit::Frame(float deltaTime)
   {
     if (m_walkSM == nullptr || m_walkCtx == nullptr)
     {
+      // No animated walk running: advance a glide fallback, if any.
+      Unit::Frame(deltaTime);
       return;
     }
 
@@ -1017,7 +1031,7 @@ namespace ToolKit
     // machine timers work in seconds, and the AnimationPlayer advances records
     // with the same millisecond-to-second conversion. The whole walk (machine
     // timers AND clip playback) runs at m_timeScale so it finishes in exactly
-    // gTurnDuration seconds.
+    // the requested target length.
     float dt = deltaTime * 0.001f * m_timeScale;
 
     WalkContext* ctx = m_walkCtx;
@@ -1046,7 +1060,7 @@ namespace ToolKit
 
       if (ctx->sinceProgress >= kWalkStallTimeout)
       {
-        TK_LOG("Player: walk stalled (gap %.3f not shrinking); snapping to the tile.",
+        TK_LOG("Move: walk stalled (gap %.3f not shrinking); snapping to the tile.",
                remaining);
         FinishWalk(true);
         return;
@@ -1058,6 +1072,33 @@ namespace ToolKit
     {
       FinishWalk(false);
     }
+  }
+
+  void AnimatedUnit::StartMove(GridNode* node, float targetDuration)
+  {
+    if (node == nullptr || node == m_node)
+    {
+      return;
+    }
+
+    // Preferred: the shared animated walk. Without an animation controller (or
+    // usable clips) the unit glides for the same target length, so every unit
+    // of a turn still moves for the same time.
+    if (!StartWalk(node, targetDuration))
+    {
+      float duration = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
+      StartGlide(node, duration);
+    }
+  }
+
+  void AnimatedUnit::LandMove()
+  {
+    if (m_walkSM != nullptr)
+    {
+      FinishWalk(true);
+      return;
+    }
+    Unit::LandMove();
   }
 
   bool Player::TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied)
@@ -1104,23 +1145,24 @@ namespace ToolKit
       return false;
     }
 
-    if (!StartWalk(node))
+    // An animated player walks to the tile; without animation support it lands
+    // instantly. Either way the move is accepted and counts as this turn's
+    // single step.
+    if (!StartWalk(node, gTurnDuration))
     {
-      TK_LOG("Player: move to (%d, %d) rejected", node->ix, node->iz);
-      return false;
+      PlaceOnNode(node);
+      TK_LOG("Player: move to (%d, %d) stepped instantly (no walk animation).", node->ix, node->iz);
     }
 
     m_hasMoved = true;
     return true;
   }
 
-  bool Player::StartWalk(GridNode* node)
+  bool AnimatedUnit::StartWalk(GridNode* node, float targetDuration)
   {
     if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr)
     {
-      // Legacy actor without animation support: keep the instant step.
-      PlaceOnNode(node);
-      return true;
+      return false; // No animation support; the caller picks the fallback.
     }
 
     AnimRecordPtr startRec = m_walkAnim->GetAnimRecord("walk_f_start");
@@ -1128,16 +1170,14 @@ namespace ToolKit
     AnimRecordPtr endRec   = m_walkAnim->GetAnimRecord("walk_f_end");
     if (startRec == nullptr || loopRec == nullptr || endRec == nullptr)
     {
-      TK_LOG("Player: walk clips are missing on the animation controller; stepping instantly.");
-      PlaceOnNode(node);
-      return true;
+      TK_LOG("Move: walk clips are missing on the animation controller; falling back.");
+      return false;
     }
 
     if (startRec->m_animation == nullptr || endRec->m_animation == nullptr)
     {
-      TK_LOG("Player: walk clip resources are not loaded; stepping instantly.");
-      PlaceOnNode(node);
-      return true;
+      TK_LOG("Move: walk clip resources are not loaded; falling back.");
+      return false;
     }
 
     Vec3 stepDir = (m_node != nullptr) ? (node->center - m_node->center)
@@ -1169,7 +1209,7 @@ namespace ToolKit
     ctx->arrived       = false;
     ctx->rootNode     = m_root->m_node;
 
-    // Decide whether the player must turn in place before walking. Preferred
+    // Decide whether the unit must turn in place before walking. Preferred
     // path: the re-authored turn clips rotate the actor through ROOT MOTION
     // (bone space only steps in place). Fallback: node-only yaw when no usable
     // clip exists.
@@ -1190,7 +1230,7 @@ namespace ToolKit
         turnRec->m_applyRootMotion = true;
         ctx->turnSignal = TurnClipFor(glm::degrees(dYaw));
         ctx->turnDur    = turnRec->m_animation->m_duration;
-        TK_LOG("Player: turning %.0f deg (%s) before walking to (%d, %d).",
+        TK_LOG("Move: turning %.0f deg (%s) before walking to (%d, %d).",
                glm::degrees(dYaw),
                ctx->turnSignal.c_str(),
                node->ix,
@@ -1201,7 +1241,7 @@ namespace ToolKit
         // Fallback: no clip, rotate the top root directly.
         ctx->turnSignal.clear();
         ctx->turnDur = kWalkTurnDuration;
-        TK_LOG("Player: turning %.0f deg (node-only) before walking to (%d, %d).",
+        TK_LOG("Move: turning %.0f deg (node-only) before walking to (%d, %d).",
                glm::degrees(dYaw),
                node->ix,
                node->iz);
@@ -1213,11 +1253,12 @@ namespace ToolKit
       FaceTowards(stepDir);
     }
 
-    // Fit this move to the global turn length. The natural duration of the
-    // whole move (in-place turn + walk phases) is predicted from the measured
-    // clip timings; the FSM timers and the clip playback both run at
-    // scale = natural / gTurnDuration so the move finishes in exactly
-    // gTurnDuration seconds (see Player::Frame and the record multipliers).
+    // Fit this move to its target length (default gTurnDuration). The natural
+    // duration of the whole move (in-place turn + walk phases) is predicted
+    // from the measured clip timings; the FSM timers and the clip playback both
+    // run at scale = natural / target so the move finishes in exactly the
+    // target seconds (see AnimatedUnit::Frame and the record multipliers).
+    float target = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
     EnsureWalkTimings();
     float naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
                                             ctx->totalDist,
@@ -1225,9 +1266,9 @@ namespace ToolKit
                                             m_timingLoop,
                                             m_timingEnd);
     float scale = 1.0f;
-    if (gTurnDuration > 0.01f && naturalDur > 0.01f && m_timingStart.duration > 0.0f)
+    if (target > 0.01f && naturalDur > 0.01f && m_timingStart.duration > 0.0f)
     {
-      scale = glm::clamp(naturalDur / gTurnDuration, 0.05f, 20.0f);
+      scale = glm::clamp(naturalDur / target, 0.05f, 20.0f);
     }
     m_timeScale = scale;
 
@@ -1254,21 +1295,21 @@ namespace ToolKit
       }
     }
 
-    TK_LOG("Player: move natural %.2f s -> %.2f s (x%.2f), turn %s.",
+    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f), turn %s.",
            naturalDur,
-           gTurnDuration,
+           target,
            scale,
            ctx->turning ? "yes" : "no");
 
     m_walkSM = new StateMachine();
-    m_walkSM->PushState(new PlayerWalkTurnState(ctx));
-    m_walkSM->PushState(new PlayerWalkStartState(ctx));
-    m_walkSM->PushState(new PlayerWalkLoopState(ctx));
-    m_walkSM->PushState(new PlayerWalkEndState(ctx));
+    m_walkSM->PushState(new WalkTurnState(ctx));
+    m_walkSM->PushState(new WalkStartState(ctx));
+    m_walkSM->PushState(new WalkLoopState(ctx));
+    m_walkSM->PushState(new WalkEndState(ctx));
     m_walkSM->m_currentState = m_walkSM->QueryState(ctx->turning ? "WalkTurn" : "WalkStart");
     m_walkSM->m_currentState->TransitionIn(nullptr);
 
-    TK_LOG("Player: walk started (%d, %d) -> (%d, %d), gap %.2f, end clip reach %.2f.",
+    TK_LOG("Move: walk started (%d, %d) -> (%d, %d), gap %.2f, end clip reach %.2f.",
            m_node != nullptr ? m_node->ix : -1,
            m_node != nullptr ? m_node->iz : -1,
            node->ix,
@@ -1278,7 +1319,7 @@ namespace ToolKit
     return true;
   }
 
-  void Player::FinishWalk(bool forceSnap)
+  void AnimatedUnit::FinishWalk(bool forceSnap)
   {
     WalkContext* ctx = m_walkCtx;
     GridNode* dest   = (ctx != nullptr) ? ctx->to : nullptr;
@@ -1296,7 +1337,7 @@ namespace ToolKit
       if (m_actor != nullptr && m_actor->m_node != nullptr)
       {
         Vec3 pos = m_actor->m_node->GetTranslation(TransformationSpace::TS_WORLD);
-        TK_LOG("Player: arrival snap residual %.3f u (%s).",
+        TK_LOG("Move: arrival snap residual %.3f u (%s).",
                HorizontalDistance(pos, targetPos),
                forceSnap ? "teleport" : "walk");
       }
@@ -1328,6 +1369,18 @@ namespace ToolKit
     if (m_actor != nullptr && m_root != nullptr && m_actor->m_node != m_root->m_node)
     {
       m_actor->m_node->SetTranslation(m_actorLocalBase, TransformationSpace::TS_LOCAL);
+    }
+
+    // A unit that must arrive already facing somewhere else (a seeker turning
+    // toward its held heading on the arrival tile) overrides the step-facing
+    // now that the move has landed.
+    if (m_hasArriveOrient)
+    {
+      if (m_root != nullptr)
+      {
+        m_root->m_node->SetOrientation(m_arriveOrient, TransformationSpace::TS_WORLD);
+      }
+      m_hasArriveOrient = false;
     }
 
     // The walk is over: restore normal playback speed before the idle settle
@@ -1367,11 +1420,11 @@ namespace ToolKit
 
     if (dest != nullptr)
     {
-      TK_LOG("Player: walk finished on (%d, %d).", dest->ix, dest->iz);
+      TK_LOG("Move: walk finished on (%d, %d).", dest->ix, dest->iz);
     }
   }
 
-  void Player::StopAnimation()
+  void AnimatedUnit::StopAnimation()
   {
     if (m_walkAnim != nullptr)
     {
@@ -1379,7 +1432,7 @@ namespace ToolKit
     }
   }
 
-  void Player::Reset()
+  void AnimatedUnit::Reset()
   {
     // Playback and the walk state machine never outlive the actor. The
     // animation controller removes its active record itself when its entity is
@@ -1391,7 +1444,6 @@ namespace ToolKit
     m_walkAnim = nullptr;
     m_actor    = nullptr;
     m_actorLocalBase = Vec3(0.0f);
-    m_hasMoved = false;
 
     m_timeScale = 1.0f;
     m_timingStart = WalkClipTiming();
@@ -1402,6 +1454,12 @@ namespace ToolKit
     m_timedEndRec   = nullptr;
 
     Unit::Reset();
+  }
+
+  void Player::Reset()
+  {
+    m_hasMoved = false;
+    AnimatedUnit::Reset();
   }
 
   GridNode* StationaryPatrol::ThreatTile() const
@@ -1438,9 +1496,9 @@ namespace ToolKit
     // The one step forward onto the prey's tile. ThreatTile() only answers with
     // a connected neighbour, so this is a legal move and not a reach across a
     // wall. The guard already faces this way, so the step reads purely as a
-    // strike. The step glides so the bite is visible; the game eats the player
-    // when the lunge lands.
-    StartGlide(watched, gPatrolGlideTime);
+    // strike. The shared animated move (or glide fallback) makes the bite
+    // visible; the game eats the player when the move lands.
+    StartMove(watched, gPatrolGlideTime);
     TK_LOG("Guard: lunges forward onto (%d, %d) and bites.",
            watched->ix,
            watched->iz);
@@ -1490,7 +1548,7 @@ namespace ToolKit
 
   bool SeekerPatrol::Init(EntityPtr root, GridGraph* grid)
   {
-    if (!Unit::Init(root, grid))
+    if (!AnimatedUnit::Init(root, grid))
     {
       return false;
     }
@@ -1898,7 +1956,7 @@ namespace ToolKit
 
   void SeekerPatrol::Reset()
   {
-    Unit::Reset();
+    AnimatedUnit::Reset();
     m_startNode   = nullptr;
     m_lastSeen    = nullptr;
     m_lastHeading = GridDir::Zm;

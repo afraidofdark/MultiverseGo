@@ -253,9 +253,10 @@ namespace ToolKit
       else if (target != nullptr)
       {
         // Any other step starts now and runs at the same time as the player's
-        // walk: every entity's action of the turn lasts gTurnDuration, so the
-        // whole tableau starts and stops together.
-        u->StartGlide(target, gTurnDuration);
+        // walk: every entity's action of the turn lasts the same length (the
+        // animated move scales to gTurnDuration), so the whole tableau starts
+        // and stops together.
+        u->StartMove(target);
       }
     }
 
@@ -364,7 +365,7 @@ namespace ToolKit
     {
       for (Unit* u : m_stepBites)
       {
-        u->StartGlide(playerNode, gPatrolGlideTime);
+        u->StartMove(playerNode, gPatrolGlideTime);
         TK_LOG("Game: a patrol closes in on the player on (%d, %d).", playerNode->ix, playerNode->iz);
         m_activeBites.push_back(u);
       }
