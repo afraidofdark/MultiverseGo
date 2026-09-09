@@ -51,6 +51,20 @@ namespace ToolKit
     float bestRemaining = 0.0f;             // Smallest gap seen (stall watchdog).
     float sinceProgress = 0.0f;             // Seconds since the gap last shrank.
     bool arrived = false;                   // True once the walk reached the tile.
+
+    // Turn-in-place phase data. Primary: the re-authored turn clips carry their
+    // rotation as ROOT MOTION, so WalkTurnState plays the clip with root
+    // motion on and the engine yaws the actor node itself. When the clip ends,
+    // the persistent facing (prefab top root) is folded to the target yaw and
+    // the actor's local orientation is restored to its pre-turn base.
+    // Fallback (no usable clip): the top root is yawed directly.
+    Node* rootNode = nullptr;               // Prefab top root holding the facing.
+    String turnSignal;                      // Turn clip signal ("" = node-only fallback).
+    float turnDur = 0.0f;                   // Turn duration (seconds).
+    float turnYawFrom = 0.0f;               // Top root yaw at turn start (rad).
+    float turnYawTo = 0.0f;                 // Top root yaw after the turn (rad).
+    Quaternion actorBaseOrient;             // Actor local orientation before the turn.
+    bool turning = false;                   // True while the turn plays.
   };
 
   // Crossfade length (seconds) used whenever the walk state machine switches
@@ -71,11 +85,15 @@ namespace ToolKit
     // player snaps over.
     constexpr float kWalkStallTimeout = 1.0f;
 
+    // Turn duration used by the node-only fallback (seconds).
+    constexpr float kWalkTurnDuration = 0.4f;
+
     // Signals the walk states use to move the machine through its phases.
     enum WalkSignal : SignalId
     {
-      WalkLoop = 1, // Start clip finished; stride in the loop clip.
-      WalkEnd  = 2  // Close enough; play the end clip to the stop.
+      WalkLoop = 1,     // Start clip finished; stride in the loop clip.
+      WalkEnd  = 2,     // Close enough; play the end clip to the stop.
+      WalkToStart = 3   // Turn finished; start the wind-up.
     };
 
     // Horizontal distance between two world points.
@@ -127,6 +145,47 @@ namespace ToolKit
     // motion for the blend: while it still sits in the animation player it
     // would otherwise drive the actor together with the incoming clip and
     // double the travelled distance.
+    // Yaw (radians) about the world +Y axis carried by a (pure-yaw) rotation.
+    float YawOf(const Quaternion& q)
+    {
+      return glm::atan(2.0f * (q.w * q.y + q.x * q.z), 1.0f - 2.0f * (q.y * q.y + q.z * q.z));
+    }
+
+    // Rotation about the world +Y axis by the given yaw (radians). Note:
+    // glm::rotate expects radians; the callers already pass radians, so no
+    // degrees conversion here (a stray glm::degrees used to scale the yaw by
+    // 180/pi, leaving the fold facing a near-random direction).
+    Quaternion YawRotation(float yaw)
+    {
+      glm::mat4 m = glm::rotate(glm::mat4(1.0f), yaw, Vec3(0.0f, 1.0f, 0.0f));
+      return glm::quat_cast(m);
+    }
+
+    // Shortest signed yaw (radians) that rotates the horizontal direction fwd
+    // onto dir around +Y. Result is in [-pi, pi].
+    float YawDeltaTo(const Vec3& fwd, const Vec3& dir)
+    {
+      const Vec3 up(0.0f, 1.0f, 0.0f);
+      return glm::atan(glm::dot(glm::cross(fwd, dir), up), glm::dot(fwd, dir));
+    }
+
+    // Turn clip that matches a signed yaw delta in degrees, or "" when no turn
+    // is needed. Grid moves are axis aligned, so the delta is a multiple of
+    // 90 degrees.
+    String TurnClipFor(float yawDeg)
+    {
+      int steps = static_cast<int>(glm::round(yawDeg / 90.0f));
+      steps     = glm::clamp(steps, -2, 2);
+      switch (steps)
+      {
+        case 1: return "turn_l_90";
+        case 2: return "turn_l_180";
+        case -1: return "turn_r_90";
+        case -2: return "turn_r_180";
+        default: return "";
+      }
+    }
+
     void BlendTo(AnimControllerComponent* anim, const String& signal)
     {
       if (anim == nullptr)
@@ -163,6 +222,106 @@ namespace ToolKit
              gWalkBlendDuration,
              prevRootMotion ? "on, now off" : "off");
     }
+
+    // Leading phase: turns the player toward the destination.
+    //
+    // Primary path: the turn clips were re-authored so their rotation is ROOT
+    // MOTION (bone space only does in-place stepping). The clip is played with
+    // m_applyRootMotion = true and the engine yaws the actor node itself. When
+    // the clip ends, the turn is folded into the persistent facing: the prefab
+    // top root is set to the target yaw and the actor's local orientation is
+    // restored to its pre-turn base, so the following front-authored walk clip
+    // starts clean.
+    //
+    // Fallback path (no usable clip): the top root is yawed directly over
+    // kWalkTurnDuration.
+    class PlayerWalkTurnState : public State
+    {
+     public:
+      explicit PlayerWalkTurnState(Player::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx != nullptr && m_ctx->anim != nullptr && !m_ctx->turnSignal.empty())
+        {
+          BlendTo(m_ctx->anim, m_ctx->turnSignal);
+        }
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        m_elapsed += deltaTime;
+
+        // Node-only fallback: yaw the top root across the turn duration.
+        if (m_ctx->turnSignal.empty())
+        {
+          if (m_ctx->rootNode == nullptr)
+          {
+            return State::NullSignal;
+          }
+
+          float t = (m_ctx->turnDur > 0.0f) ? glm::min(m_elapsed / m_ctx->turnDur, 1.0f) : 1.0f;
+          float yaw = m_ctx->turnYawFrom + (m_ctx->turnYawTo - m_ctx->turnYawFrom) * t;
+          m_ctx->rootNode->SetOrientation(YawRotation(yaw), TransformationSpace::TS_WORLD);
+
+          if (m_elapsed < m_ctx->turnDur)
+          {
+            return State::NullSignal;
+          }
+        }
+        else if (m_elapsed < m_ctx->turnDur)
+        {
+          // Clip path: the engine is rotating the actor node via root motion;
+          // nothing to do here until the clip plays through.
+          return State::NullSignal;
+        }
+
+        // Turn finished: fold the rotation into the persistent facing. The
+        // actor node has been yawed by the root motion during the clip (or the
+        // top root directly in the fallback); orient the top root at the exact
+        // target yaw and put the actor back to its pre-turn local pose so the
+        // front-authored walk clips start clean.
+        if (m_ctx->rootNode != nullptr)
+        {
+          m_ctx->rootNode->SetOrientation(YawRotation(m_ctx->turnYawTo),
+                                          TransformationSpace::TS_WORLD);
+        }
+        if (m_ctx->actorNode != nullptr && !m_ctx->turnSignal.empty())
+        {
+          m_ctx->actorNode->SetOrientation(m_ctx->actorBaseOrient, TransformationSpace::TS_LOCAL);
+        }
+
+        m_ctx->turning = false;
+        TK_LOG("WalkState: turn done (elapsed %.2f/%.2f%s).",
+               m_elapsed,
+               m_ctx->turnDur,
+               m_ctx->turnSignal.empty() ? " node" : " clip");
+        return WalkToStart;
+      }
+
+      String Signaled(SignalId signal) override
+      {
+        switch (signal)
+        {
+          case WalkToStart: return "WalkStart";
+          default: return "";
+        }
+      }
+
+      String GetType() override { return "WalkTurn"; }
+
+     private:
+      Player::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+    };
 
     // First walk phase: plays the wind-up clip (walk_f_start) once with root
     // motion. Hands over to the stride loop (or straight to the end clip when
@@ -579,8 +738,9 @@ namespace ToolKit
 
     // Stall watchdog: root motion that never converges (misaligned direction,
     // missing walk data) must not lock the turn forever. The gap shrinking at
-    // least a little every frame keeps the timer at zero.
-    if (dt < 0.5f)
+    // least a little every frame keeps the timer at zero. A turn-in-place
+    // phase legitimately makes no distance progress, so it is exempt.
+    if (!ctx->turning && dt < 0.5f)
     {
       float remaining = WalkRemaining(*ctx);
       if (remaining < ctx->bestRemaining - 0.001f)
@@ -689,12 +849,8 @@ namespace ToolKit
       return true;
     }
 
-    // Aim the prefab's top root at the step before the walk begins. Root
-    // motion is applied on the actor node in its local space (the engine
-    // AnimationPlayer), so this rotation is what points the walk in the
-    // direction of the destination.
-    Vec3 stepDir = (m_node != nullptr) ? (node->center - m_node->center) : (node->center - m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD));
-    FaceTowards(stepDir);
+    Vec3 stepDir = (m_node != nullptr) ? (node->center - m_node->center)
+                                        : (node->center - m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD));
 
     // Clip semantics: the wind-up and stop clips play once and hold their
     // final frame (m_loop = false); the stride clip and idle loop. Root motion
@@ -720,12 +876,58 @@ namespace ToolKit
     ctx->bestRemaining = ctx->totalDist;
     ctx->sinceProgress = 0.0f;
     ctx->arrived       = false;
+    ctx->rootNode     = m_root->m_node;
+
+    // Decide whether the player must turn in place before walking. Preferred
+    // path: the re-authored turn clips rotate the actor through ROOT MOTION
+    // (bone space only steps in place). Fallback: node-only yaw when no usable
+    // clip exists.
+    Vec3 fwd = glm::normalize(glm::vec3(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD) * Vec3(0.0f, 0.0f, -1.0f)));
+    float dYaw = YawDeltaTo(fwd, stepDir);
+    if (std::fabs(dYaw) > 0.02f)
+    {
+      ctx->turnYawFrom = YawOf(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD));
+      ctx->turnYawTo   = ctx->turnYawFrom + dYaw;
+      ctx->actorBaseOrient = m_actor->m_node->GetOrientation(TransformationSpace::TS_LOCAL);
+      ctx->turning     = true;
+
+      AnimRecordPtr turnRec = m_walkAnim->GetAnimRecord(TurnClipFor(glm::degrees(dYaw)));
+      if (turnRec != nullptr && turnRec->m_animation != nullptr && turnRec->m_animation->m_duration > 0.0f)
+      {
+        // Clip path: one-shot clip, its rotation is root motion.
+        turnRec->m_loop           = false;
+        turnRec->m_applyRootMotion = true;
+        ctx->turnSignal = TurnClipFor(glm::degrees(dYaw));
+        ctx->turnDur    = turnRec->m_animation->m_duration;
+        TK_LOG("Player: turning %.0f deg (%s) before walking to (%d, %d).",
+               glm::degrees(dYaw),
+               ctx->turnSignal.c_str(),
+               node->ix,
+               node->iz);
+      }
+      else
+      {
+        // Fallback: no clip, rotate the top root directly.
+        ctx->turnSignal.clear();
+        ctx->turnDur = kWalkTurnDuration;
+        TK_LOG("Player: turning %.0f deg (node-only) before walking to (%d, %d).",
+               glm::degrees(dYaw),
+               node->ix,
+               node->iz);
+      }
+    }
+    else
+    {
+      // Already facing the step; snap it exact and walk straight.
+      FaceTowards(stepDir);
+    }
 
     m_walkSM = new StateMachine();
+    m_walkSM->PushState(new PlayerWalkTurnState(ctx));
     m_walkSM->PushState(new PlayerWalkStartState(ctx));
     m_walkSM->PushState(new PlayerWalkLoopState(ctx));
     m_walkSM->PushState(new PlayerWalkEndState(ctx));
-    m_walkSM->m_currentState = m_walkSM->QueryState("WalkStart");
+    m_walkSM->m_currentState = m_walkSM->QueryState(ctx->turning ? "WalkTurn" : "WalkStart");
     m_walkSM->m_currentState->TransitionIn(nullptr);
 
     TK_LOG("Player: walk started (%d, %d) -> (%d, %d), gap %.2f, end clip reach %.2f.",
