@@ -197,9 +197,9 @@ apply to all code in both repositories.
 - `AnimatedUnit::FinishWalk` anchors the prefab top root on the exact
   destination center, restores the actor's authored local translation
   (`m_actorLocalBase`) so the root-motion offset accumulated on the actor node
-  is folded back into the top root, applies a pending `SetArrivalOrientation`
-  and returns the character to the idle loop. (Do not read the walk context
-  after it is deleted - that was a use-after-free bug.)
+  is folded back into the top root, plays any queued arrival turn
+  (`TurnOnArrival`) and returns the character to the idle loop. (Do not read
+  the walk context after it is deleted - that was a use-after-free bug.)
 - `Game.cpp`: once a move is committed, `Game::Frame` switches to the acting
   phase and drives the player's walk plus every enemy move together; input is
   locked until the whole turn settled (see "Parallel turn orchestration").
@@ -247,11 +247,17 @@ apply to all code in both repositories.
   a plain glide of the same length. `StartMove` snaps onto the exact node
   center when the move lands (`m_node` updates only on arrival), so patrols
   keep working with or without an animated actor.
+- In-place turns are animated too, through the SAME turn phase:
+  `AnimatedUnit::StartTurn(dir)` / `StartInPlaceTurn(yaw)` play the turn clip +
+  fold mini state machine (no walking states) and `TurnOnArrival(orient)`
+  queues the turn to play the moment the current move lands. Used for the
+  LinearPatrol line-end about-face and the SeekerPatrol arrival turn / idle
+  stare; units without turn clips snap instantly (Unit::StartTurn fallback).
 - `SeekerPatrol` decides at click time against the destination. Its arrival
   look is taken from the tile it WILL land on along the held heading
-  (`SeesAlong(origin, dir, player)`), and the orientation to arrive with is
-  recorded via `SetArrivalOrientation`, which the landing move applies -- the
-  patrol arrives already turned.
+  (`SeesAlong(origin, dir, player)`); the actual turn to that heading runs
+  ANIMATED the moment the move lands (`TurnOnArrival`), so the patrol arrives
+  and then turns like the player would.
 
 ## Uniform turn duration (time scaling)
 
