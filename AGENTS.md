@@ -9,8 +9,9 @@ apply to all code in both repositories.
 
 - MultiverseGo (this repository): the game plugin and its content.
   - `Codes/`: the game. `Game.h/cpp` is the GamePlugin (turn flow, play/stop
-    lifecycle). `Unit.h/cpp` holds the grid actors (player and patrols) and the
-    player's walk state machine. `Main.cpp` is the standalone launcher.
+    lifecycle). `Unit.h/cpp` holds the grid actors (player and patrols), the
+    shared animated walk, and the turn decisions. `Main.cpp` is the standalone
+    launcher.
   - `Resources/`: `Scenes/test.scene` (main scene), `Prefabs/` (player and
     patrol prefab scenes), `Meshes/Character/` (skeleton, skinMesh, and the
     `.anim` clips under `Movement/` and `Execution/`), materials, audio...
@@ -53,27 +54,31 @@ apply to all code in both repositories.
 - Entities are found by tag at `Game::OnPlay`: `scene->GetByTag("player")`,
   `"stationary-patrol"`, `"linear-patrol"`, `"seeker-patrol"`; optional target
   marker tagged `"target"`; the grid master by name via `GetFirstByName`.
-- `Unit` (Codes/Unit.h/cpp) wraps the prefab top root entity. Subclasses:
-  `Player`, `StationaryPatrol`, `LinearPatrol`, `SeekerPatrol`. Turn behavior
-  lives in `OnTurn`; `Player` also implements per-frame driving of its walk.
+- `Unit` (Codes/Unit.h/cpp) wraps the prefab top root entity. Units that move
+  between tiles derive from `AnimatedUnit` (the shared root-motion walk), with
+  `Player`, `StationaryPatrol`, `LinearPatrol`, `SeekerPatrol` on top; each
+  concrete type only decides its next tile in `OnTurn`, and `AnimatedUnit`
+  drives the move every frame.
 - Model forward convention: local -Z. `Unit::FaceTowards` rotates the root so
   -Z faces the given direction (`RotationTo(-Z, dir)`). Grid directions:
   `GridDir::Xm/Xp/Zm/Zp`.
 
 ## Prefab and animation setup
 
-- Character prefabs (e.g. `player.scene`): the tagged top node (named `root`,
-  an empty anchor `EntityNode`) is the unit/game root. The actual character is
-  its CHILD entity, which carries `MeshComponent` (SkinMesh), `SkeletonComponent`,
-  `AnimControllerComponent`, `MaterialComponent` and an `AABBOverrideComponent`.
-- The player's `AnimControllerComponent` records ("signals"): `rest`, `idle`,
+- Character prefabs (e.g. `player.scene`, the three patrol prefabs): the tagged
+  top node (named `root`, an empty anchor `EntityNode`) is the unit/game root.
+  The actual character is its CHILD entity, which carries `MeshComponent`
+  (SkinMesh), `SkeletonComponent`, `AnimControllerComponent`,
+  `MaterialComponent` and an `AABBOverrideComponent`. Every character's actor
+  carries the same anim controller records ("signals"): `rest`, `idle`,
   `walk_f_start`, `walk_f`, `walk_f_end`, `run_f_start`, `run_f`, `run_f_stop`,
   `fight_walk_f`, `turn_l_90`, `turn_l_180`, `turn_r_90`, `turn_r_180`. Scene
   files persist `ApplyRootMotion="0"`; the walk code enables root motion on the
   three walk clips at runtime.
-- Animation clips: `Resources/Meshes/Character/Player/Movement/*.anim`. The root
+- Animation clips: `Resources/Meshes/Character/Player/Movement/*.anim` are
+  shared by every animated actor. The root
   key (skeleton root bone) of the player character is `Character_Male_Jacket`.
-- The player's actor child carries an authored 180-degree Y yaw. Together with
+- The character actors carry an authored 180-degree Y yaw. Together with
   the engine's local-space root motion this maps the baked +Z root curve to
   forward walking. Do not "fix" apparent direction problems by reverting the
   engine to world-space root motion application; adjust prefab yaw / the
@@ -98,13 +103,19 @@ apply to all code in both repositories.
   `AnimationPlayer` converts to seconds internally. Game/Player code must
   convert ms to seconds before driving the walk state machine.
 
-## Player walk state machine (in Codes/Unit.cpp)
+## Shared walk state machine (AnimatedUnit, in Codes/Unit.cpp)
 
+- Lives on `AnimatedUnit` so the player and every patrol move with the SAME
+  code: `Unit` (grid/glide base) -> `AnimatedUnit` (walk FSM + timing + scale)
+  -> `Player`/patrols (only decide the next tile). Movement is driven by
+  `AnimatedUnit::StartMove(node, targetDuration)`, which plays the walk FSM
+  when the unit has an `AnimControllerComponent` and otherwise falls back to a
+  glide of the same target length.
 - Purpose: a root-motion-driven walk between two grid nodes that covers ANY
   (parametric) gap and stops exactly on the destination node center.
 - Flow (async): a click on a connected neighbor reaches `Player::TryMove` (it
   validates the direct connected neighbor and that the player has not moved
-  this turn), which calls `Player::StartWalk`:
+  this turn), which starts the shared walk:
   1. Turn decision: if the current facing (`root` local -Z) is not already
      aligned with the step axis (`|dYaw| > 0.02`), a turn-in-place phase runs
      first (`WalkTurn`); otherwise `FaceTowards(step)` snaps the top root and
@@ -183,26 +194,27 @@ apply to all code in both repositories.
   after ...` -- while transitions were being verified; those debug logs were
   removed from `ToolKit/Resources/Animation.cpp`, so the per-frame spam is
   gone.)
-- `Player::FinishWalk` anchors the prefab top root on the exact destination
-  center and restores the actor's authored local translation
+- `AnimatedUnit::FinishWalk` anchors the prefab top root on the exact
+  destination center, restores the actor's authored local translation
   (`m_actorLocalBase`) so the root-motion offset accumulated on the actor node
-  is folded back into the top root; it then returns the character to the idle
-  loop. (Do not read the walk context after it is deleted - that was a
-  use-after-free bug.)
+  is folded back into the top root, applies a pending `SetArrivalOrientation`
+  and returns the character to the idle loop. (Do not read the walk context
+  after it is deleted - that was a use-after-free bug.)
 - `Game.cpp`: once a move is committed, `Game::Frame` switches to the acting
-  phase and drives the player's walk plus every enemy glide together; input is
+  phase and drives the player's walk plus every enemy move together; input is
   locked until the whole turn settled (see "Parallel turn orchestration").
 - Stall watchdog: if the gap does not shrink for ~1 second the walk aborts and
-  snaps the player to the tile (log: `walk stalled ... snapping`). This guards
-  against a rig/orientation mismatch ever locking the turn.
-- Legacy actors without an `AnimControllerComponent`: `TryMove`/`StartWalk`
-  fall back to the old instant snap, so scenes without character prefabs keep
-  working.
+  snaps the unit to the tile (log: `Move: walk stalled ... snapping`). This
+  guards against a rig/orientation mismatch ever locking the turn.
+- Units without an `AnimControllerComponent`: the player lands instantly on
+  `TryMove`; enemies fall back to a glide of the same target length
+  (`Unit::StartMove` / `AnimatedUnit::StartMove`), so scenes without animated
+  character prefabs keep working.
 
 ## Parallel turn orchestration (in Game.cpp)
 
 - One concurrent act per turn: a click on a connected neighbor commits the
-  player's move (`Player::TryMove` -> `StartWalk`) and then
+  player's move (`Player::TryMove` -> the shared walk) and then
   `Game::BeginPlayerMove(dest)` freezes the turn:
   1. Every enemy decides its action AT ONCE, against the tile the player WILL
      stand on (`dest`) and the heading it will face there
@@ -214,74 +226,75 @@ apply to all code in both repositories.
        (`Unit::GetIntendedMove`) instead of teleporting.
      - A step onto the player's destination is a bite (`m_stepBites`): held
        back until the player actually arrives.
-     - Any other step starts gliding immediately, so it runs at the same time
-       as the player's walk.
+     - Any other step starts moving immediately (`StartMove`), so it runs at
+       the same time as the player's walk.
   2. `m_phase = Acting`; `Game::UpdateActing` drives the player's walk and
-     every enemy glide together each frame (input stays locked).
+     every enemy move together each frame (input stays locked).
   3. When the player physically arrives (`Game::ResolvePlayerArrival`):
      captured patrols leave the grid; guards whose threat tile is the player's
      tile LUNGE (added to `m_activeBites`); the win is checked only when no
-     guard strike is inbound; then the held-back step bites start gliding. A
-     bite glide that lands eats the player (`Game::EatPlayer`).
+     guard strike is inbound; then the held-back step bites start moving. A
+     bite move that lands eats the player (`Game::EatPlayer`).
   4. When the player arrived and no bite is pending/in flight and no enemy is
-     gliding, `StartPlayerTurn` hands the input back.
+     moving, `StartPlayerTurn` hands the input back.
 - Guards never move on their own (their `OnTurn` is empty): the lunge is
   exclusively the arrival-time reaction when `ThreatTile() == player tile`,
   preserving the old resolution order -- capture first, then guard bites, then
   win, then moving-patrol bites.
-- `Unit::StartGlide(node, duration)` / `Unit::Frame` / `Unit::LandMove`: the
-  enemy tile step, a parametric root glide over `duration` seconds snapping
-  onto the exact node center when it lands (`m_node` updates only on arrival).
-  Temporary stand-in until enemies get their own walk state machines; OnTurn
-  keeps deciding, the game starts the glides.
+- Every enemy move runs through the polymorphic `Unit::StartMove(node,
+  duration)` / `AnimatedUnit::StartMove(node, duration)`: the shared animated
+  walk when the patrol's prefab carries an `AnimControllerComponent`, otherwise
+  a plain glide of the same length. `StartMove` snaps onto the exact node
+  center when the move lands (`m_node` updates only on arrival), so patrols
+  keep working with or without an animated actor.
 - `SeekerPatrol` decides at click time against the destination. Its arrival
   look is taken from the tile it WILL land on along the held heading
   (`SeesAlong(origin, dir, player)`), and the orientation to arrive with is
-  recorded via `SetArrivalOrientation`, which the glide applies as it lands --
-  the patrol arrives already turned, without a turn clip.
+  recorded via `SetArrivalOrientation`, which the landing move applies -- the
+  patrol arrives already turned.
 
 ## Uniform turn duration (time scaling)
 
 - Goal: every entity's action of a turn lasts exactly `gTurnDuration` seconds
   (global float, default 3.0, tunable like gWalkBlendDuration) -- the whole
   tableau starts and stops together.
-- Player: the move's NATURAL duration is measured from the animation data, not
+- The move's NATURAL duration is measured from the animation data, not
   hardcoded. `WalkClipTiming` (built by `BuildClipTiming` from each clip's root
   key: key time = frame / fps; progress = running max of the signed projection
   of the root position onto the net travel axis, clamped to the playable clip
-  duration) is cached per clip in `Player::EnsureWalkTimings` at init and
+  duration) is cached per unit in `AnimatedUnit::EnsureWalkTimings` at init and
   lazily when the clip resources (re)load. `EstimateWalkDuration` then sums
   the machine phases exactly the way the FSM gates them (optional turn duration
   + wind-up + as many stride cycles as needed + landing clip) into the natural
   length (a 5-unit move with a turn measures ~4.7 s natural on the current
   assets; without a turn ~3.7 s).
-- `Player::StartWalk` computes `scale = natural / gTurnDuration`, stores it in
-  `Player::m_timeScale` and writes it into the `m_timeMultiplier` of every clip
-  that can play during the walk (idle + the three walk clips + the four turn
-  clips), so the FSM timers AND the clip playback -- including blend countdowns
-  -- advance at the same rate. `Player::Frame` feeds `dt * m_timeScale` to the
-  machine; `FinishWalk` restores 1x before the idle settle blend. The engine
-  scales each record by its OWN `m_timeMultiplier`, so per-entity scaling keeps
-  working once enemies get their own state machines.
-- Enemies: non-bite tile steps glide for exactly `gTurnDuration` too
-  (`BeginPlayerMove` passes it as the glide duration). Post-arrival bite lunges
-  keep `gPatrolGlideTime` (2 s): they are the eat action that follows the
-  action window.
+- `AnimatedUnit::StartWalk` computes `scale = natural / target`, stores it in
+  `AnimatedUnit::m_timeScale` and writes it into the `m_timeMultiplier` of
+  every clip that can play during the walk (idle + the three walk clips + the
+  four turn clips), so the FSM timers AND the clip playback -- including blend
+  countdowns -- advance at the same rate. `AnimatedUnit::Frame` feeds
+  `dt * m_timeScale` to the machine; `FinishWalk` restores 1x before the idle
+  settle blend. The engine scales each record by its OWN `m_timeMultiplier`, so
+  every animated unit of a turn scales independently to the same target.
+- Moves run per unit: the player's `TryMove` and every enemy's `StartMove`
+  target `gTurnDuration` for a normal step. Post-arrival bite lunges keep
+  `gPatrolGlideTime` (2 s): they are the eat action that follows the action
+  window.
 
 ## Logs and failure signatures
 
-- `Player: move natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no`: per-move timing.
-  X is the natural FSM duration measured from the walk clips; the move is
-  scaled so it finishes in gTurnDuration (Y). A missing/wrong X means the clip
-  timing profiles failed to build.
-- `Player: walk started (...) -> (...), gap ..., end clip reach ...`: during a
+- `Move: natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no`: per-move timing (one
+  per animated unit per turn). X is the natural FSM duration measured from the
+  walk clips; the move is scaled so it finishes in the requested target length
+  (Y). A missing/wrong X means the clip timing profiles failed to build.
+- `Move: walk started (...) -> (...), gap ..., end clip reach ...`: during a
   normal walk the gap must shrink every frame.
-- `Player: walk stalled (gap ... not shrinking); snapping to the tile.`: root
+- `Move: walk stalled (gap ... not shrinking); snapping to the tile.`: root
   motion direction/orientation mismatch; check the prefab yaw and the facing
   convention.
 - `Game: a guard strikes the player on (...).` / `Game: a patrol closes in on
-  the player on (...).`: an eat is inbound (bite glide started after the player
-  arrived); the loss lands when that glide completes.
+  the player on (...).`: an eat is inbound (a bite move started after the
+  player arrived); the loss lands when that move completes.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor
