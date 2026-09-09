@@ -73,6 +73,42 @@ namespace ToolKit
   // being an inline constant; declared in Unit.h.
   float gWalkBlendDuration = 0.2f;
 
+  // Enemy glide duration (seconds). Temporary stand-in until patrols get their
+  // own walk state machines / animation.
+  const float gPatrolGlideTime = 2.0f;
+
+  // Every turn's action window (seconds). The player's move is time-scaled to
+  // fit it and enemy tile steps glide for the same length, so all units of a
+  // turn start and stop together. Tunable at runtime like gWalkBlendDuration.
+  float gTurnDuration = 3.0f;
+
+  float WalkClipTiming::TimeToTravel(float distance) const
+  {
+    if (distance <= 0.0f || keyTimes.empty() || keyTravel.empty())
+    {
+      return 0.0f;
+    }
+    if (distance >= totalTravel || totalTravel <= 0.0001f)
+    {
+      return duration;
+    }
+
+    for (size_t i = 1; i < keyTravel.size(); i++)
+    {
+      if (keyTravel[i] >= distance)
+      {
+        float segTrav = keyTravel[i] - keyTravel[i - 1];
+        if (segTrav <= 0.0001f)
+        {
+          return keyTimes[i];
+        }
+        float ratio = (distance - keyTravel[i - 1]) / segTrav;
+        return keyTimes[i - 1] + (keyTimes[i] - keyTimes[i - 1]) * ratio;
+      }
+    }
+    return duration;
+  }
+
   namespace
   {
     // Tolerance (engine units) for "reached the node". Below this the actor is
@@ -136,6 +172,141 @@ namespace ToolKit
 
       Vec3 delta = keys->back().m_position - keys->front().m_position;
       return glm::sqrt(delta.x * delta.x + delta.z * delta.z);
+    }
+
+    // Builds the measured timing model of one clip from its root key track:
+    // the time of every reachable root key (frame / fps, clipped to the playable
+    // duration) and how far the actor has travelled towards its destination at
+    // that key. Maps any required remaining-distance drop to the clip time that
+    // covers it, exactly the way the engine interpolates the root curve. All
+    // timing is derived from the animation data -- no hardcoded durations.
+    WalkClipTiming BuildClipTiming(AnimationPtr anim)
+    {
+      WalkClipTiming t;
+      if (anim == nullptr)
+      {
+        return t;
+      }
+
+      t.duration = anim->m_duration;
+      const KeyArray* keys = anim->m_keys.Find(anim->m_rootKey);
+      if (keys == nullptr || keys->size() < 2)
+      {
+        return t;
+      }
+
+      const float fps = (anim->m_fps > 0.0f) ? anim->m_fps : 30.0f;
+      const Vec3 first = keys->front().m_position;
+      const Vec3 last  = keys->back().m_position;
+
+      // Travel axis: the net horizontal displacement of the root curve. The
+      // actor's progress toward a straight-ahead destination is the running max
+      // of the signed projection of its position onto this axis -- a curve that
+      // settles back slightly at its very end never reduces how far it has been.
+      Vec3 axis(last.x - first.x, 0.0f, last.z - first.z);
+      float axisLen = glm::length(axis);
+      if (axisLen < 0.0001f)
+      {
+        return t; // No net horizontal travel (turn / idle style clip).
+      }
+      axis /= axisLen;
+
+      float runMax = 0.0f;
+      size_t n = keys->size();
+      size_t i = 0;
+      for (; i < n; i++)
+      {
+        const Key& k = (*keys)[i];
+        float time = k.m_frame / fps;
+        if (time > t.duration + 0.0001f)
+        {
+          break; // Past the playable end; the engine clamps at m_duration.
+        }
+        Vec3 d = k.m_position - first;
+        runMax = glm::max(runMax, d.x * axis.x + d.z * axis.z);
+        t.keyTimes.push_back(time);
+        t.keyTravel.push_back(runMax);
+      }
+
+      // A key that crosses the playable end: interpolate the travel reached at
+      // exactly m_duration and append it as the final sample.
+      if (i < n && !t.keyTimes.empty() && i > 0)
+      {
+        const Key& kNext = (*keys)[i];
+        const Key& kPrev = (*keys)[i - 1];
+        float tNext = kNext.m_frame / fps;
+        float tPrev = kPrev.m_frame / fps;
+        if (tNext > tPrev)
+        {
+          float r = (t.duration - tPrev) / (tNext - tPrev);
+          Vec3 pos = kPrev.m_position + (kNext.m_position - kPrev.m_position) * r;
+          Vec3 d   = pos - first;
+          runMax = glm::max(runMax, d.x * axis.x + d.z * axis.z);
+          t.keyTimes.push_back(t.duration);
+          t.keyTravel.push_back(runMax);
+        }
+      }
+
+      if (!t.keyTravel.empty())
+      {
+        t.totalTravel = t.keyTravel.back();
+      }
+      return t;
+    }
+
+    // Machine seconds the stride clip needs to cover distance. Its curve
+    // repeats every cycle: each full cycle adds totalTravel over duration
+    // seconds (the engine re-measures from the cycle start at the wrap), and
+    // the leftover is covered by a partial cycle.
+    float LoopTravelTime(const WalkClipTiming& loop, float distance)
+    {
+      if (distance <= 0.0f || loop.totalTravel <= 0.0001f || loop.duration <= 0.0f)
+      {
+        return 0.0f;
+      }
+
+      float full = glm::floor(distance / loop.totalTravel);
+      float rem  = distance - full * loop.totalTravel;
+      return full * loop.duration + loop.TimeToTravel(rem);
+    }
+
+    // The walk's NATURAL duration (machine seconds at playback speed 1): how
+    // long the FSM phases (optional turn + wind-up + stride + landing) run
+    // until the actor reaches the destination node. Predicts the arrival
+    // thresholds exactly the way the states gate on them, from the measured
+    // clip timings.
+    float EstimateWalkDuration(float turnDur,
+                               float gap,
+                               const WalkClipTiming& start,
+                               const WalkClipTiming& loop,
+                               const WalkClipTiming& end)
+    {
+      float d = turnDur; // 0 unless an in-place turn precedes the walk.
+
+      float S = start.totalTravel;
+      if (gap <= S)
+      {
+        // The wind-up alone covers the gap: arrive inside the wind-up as soon
+        // as the remaining distance drops to the arrival epsilon.
+        d += start.TimeToTravel(glm::max(0.0f, gap - kWalkArriveEps));
+        return d;
+      }
+
+      // The wind-up plays through, then the landing clip covers the last
+      // endReach; whatever remains above that needs stride cycles.
+      d += start.duration;
+      float remainingAfterStart = gap - S;
+      float E = end.totalTravel;
+
+      if (remainingAfterStart <= E)
+      {
+        d += end.TimeToTravel(glm::max(0.0f, remainingAfterStart - kWalkArriveEps));
+        return d;
+      }
+
+      d += LoopTravelTime(loop, remainingAfterStart - E);
+      d += end.TimeToTravel(glm::max(0.0f, E - kWalkArriveEps));
+      return d;
     }
 
     // Switches the clip the animation controller plays using a short pose
@@ -600,6 +771,13 @@ namespace ToolKit
     m_grid   = nullptr;
     m_node   = nullptr;
     m_active = false;
+
+    m_intendedMove     = nullptr;
+    m_gliding          = false;
+    m_glideDur         = 1.0f;
+    m_glideT           = 0.0f;
+    m_glideNode        = nullptr;
+    m_hasArriveOrient  = false;
   }
 
   void Unit::PlaceOnNode(GridNode* node)
@@ -638,6 +816,84 @@ namespace ToolKit
     // axis-aligned in world space.
     Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), glm::normalize(dir));
     m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
+  }
+
+  void Unit::StartGlide(GridNode* node, float duration)
+  {
+    if (m_root == nullptr || node == nullptr || node == m_node)
+    {
+      return;
+    }
+
+    // Face the step right away so the root does not spin mid-glide; the exact
+    // node/step bookkeeping happens when the glide lands (PlaceOnNode).
+    Vec3 fromPos = m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+    Vec3 dir     = node->center - fromPos;
+    if (glm::length(dir) < 0.0001f)
+    {
+      PlaceOnNode(node);
+      return;
+    }
+    FaceTowards(dir);
+
+    m_glideFrom = fromPos;
+    m_glideTo   = node->center;
+    m_glideNode = node;
+    m_glideDur  = glm::max(duration, 0.001f);
+    m_glideT    = 0.0f;
+    m_gliding   = true;
+  }
+
+  void Unit::SetArrivalOrientation(const Quaternion& worldOrient)
+  {
+    m_arriveOrient    = worldOrient;
+    m_hasArriveOrient = true;
+  }
+
+  void Unit::Frame(float deltaTime)
+  {
+    if (!m_gliding || m_root == nullptr || m_root->m_node == nullptr)
+    {
+      return;
+    }
+
+    // Engine frame deltas arrive in milliseconds; glide timers work in
+    // seconds, matching every other animation/timer in this codebase.
+    float dt = deltaTime * 0.001f;
+    m_glideT = glm::min(1.0f, m_glideT + dt / m_glideDur);
+    m_root->m_node->SetTranslation(glm::mix(m_glideFrom, m_glideTo, m_glideT),
+                                   TransformationSpace::TS_WORLD);
+
+    if (m_glideT >= 1.0f)
+    {
+      LandMove();
+    }
+  }
+
+  void Unit::LandMove()
+  {
+    if (!m_gliding || m_glideNode == nullptr || m_root == nullptr)
+    {
+      m_hasArriveOrient = false;
+      return;
+    }
+
+    GridNode* target = m_glideNode;
+    m_gliding        = false;
+    m_glideNode      = nullptr;
+
+    // Snap onto the exact node center (this also updates m_node and faces the
+    // step direction).
+    PlaceOnNode(target);
+
+    // A unit that must arrive already facing somewhere else (a seeker turning
+    // toward its held heading on the arrival tile) overrides the step-facing
+    // now.
+    if (m_hasArriveOrient)
+    {
+      m_root->m_node->SetOrientation(m_arriveOrient, TransformationSpace::TS_WORLD);
+      m_hasArriveOrient = false;
+    }
   }
 
   bool Player::Init(EntityPtr root, GridGraph* grid)
@@ -695,6 +951,7 @@ namespace ToolKit
     }
 
     m_hasMoved = false;
+    m_timeScale = 1.0f;
 
     // Settle the character into the idle loop between turns.
     if (m_walkAnim != nullptr)
@@ -707,7 +964,39 @@ namespace ToolKit
       BlendTo(m_walkAnim, "idle");
     }
 
+    // Measure the walk clips' timing once, so the natural move duration can be
+    // predicted for the per-turn time scaling.
+    EnsureWalkTimings();
+
     return true;
+  }
+
+  void Player::EnsureWalkTimings()
+  {
+    if (m_walkAnim == nullptr)
+    {
+      return;
+    }
+
+    auto rebuild = [](WalkClipTiming& timing,
+                      AnimRecordPtr rec,
+                      const AnimRecord*& cached) -> void
+    {
+      if (rec == nullptr || rec->m_animation == nullptr)
+      {
+        return; // Not loaded yet; keep the last good profile.
+      }
+      if (cached == rec.get())
+      {
+        return; // Same clip as measured before.
+      }
+      cached = rec.get();
+      timing = BuildClipTiming(rec->m_animation);
+    };
+
+    rebuild(m_timingStart, m_walkAnim->GetAnimRecord("walk_f_start"), m_timedStartRec);
+    rebuild(m_timingLoop, m_walkAnim->GetAnimRecord("walk_f"), m_timedLoopRec);
+    rebuild(m_timingEnd, m_walkAnim->GetAnimRecord("walk_f_end"), m_timedEndRec);
   }
 
   Player::~Player() { Reset(); }
@@ -726,8 +1015,10 @@ namespace ToolKit
 
     // Engine frame deltas arrive in milliseconds; clip durations and the state
     // machine timers work in seconds, and the AnimationPlayer advances records
-    // with the same millisecond-to-second conversion.
-    float dt = deltaTime * 0.001f;
+    // with the same millisecond-to-second conversion. The whole walk (machine
+    // timers AND clip playback) runs at m_timeScale so it finishes in exactly
+    // gTurnDuration seconds.
+    float dt = deltaTime * 0.001f * m_timeScale;
 
     WalkContext* ctx = m_walkCtx;
     if (ctx->actorNode == nullptr)
@@ -922,6 +1213,53 @@ namespace ToolKit
       FaceTowards(stepDir);
     }
 
+    // Fit this move to the global turn length. The natural duration of the
+    // whole move (in-place turn + walk phases) is predicted from the measured
+    // clip timings; the FSM timers and the clip playback both run at
+    // scale = natural / gTurnDuration so the move finishes in exactly
+    // gTurnDuration seconds (see Player::Frame and the record multipliers).
+    EnsureWalkTimings();
+    float naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
+                                            ctx->totalDist,
+                                            m_timingStart,
+                                            m_timingLoop,
+                                            m_timingEnd);
+    float scale = 1.0f;
+    if (gTurnDuration > 0.01f && naturalDur > 0.01f && m_timingStart.duration > 0.0f)
+    {
+      scale = glm::clamp(naturalDur / gTurnDuration, 0.05f, 20.0f);
+    }
+    m_timeScale = scale;
+
+    // Apply the scale to every clip that can play during the walk (idle may
+    // still be fading out at the click; the turn/walk clips follow). The engine
+    // multiplies each record's playback -- and its blend countdown -- by the
+    // record's own m_timeMultiplier, so transitions stay in sync with the FSM.
+    if (m_walkAnim != nullptr)
+    {
+      static const char* kScaledClips[] = {"idle",
+                                           "walk_f_start",
+                                           "walk_f",
+                                           "walk_f_end",
+                                           "turn_l_90",
+                                           "turn_l_180",
+                                           "turn_r_90",
+                                           "turn_r_180"};
+      for (const char* name : kScaledClips)
+      {
+        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
+        {
+          rec->m_timeMultiplier = scale;
+        }
+      }
+    }
+
+    TK_LOG("Player: move natural %.2f s -> %.2f s (x%.2f), turn %s.",
+           naturalDur,
+           gTurnDuration,
+           scale,
+           ctx->turning ? "yes" : "no");
+
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new PlayerWalkTurnState(ctx));
     m_walkSM->PushState(new PlayerWalkStartState(ctx));
@@ -992,6 +1330,28 @@ namespace ToolKit
       m_actor->m_node->SetTranslation(m_actorLocalBase, TransformationSpace::TS_LOCAL);
     }
 
+    // The walk is over: restore normal playback speed before the idle settle
+    // blend, so the loop and its future fades run at 1x again.
+    if (m_walkAnim != nullptr)
+    {
+      static const char* kScaledClips[] = {"idle",
+                                           "walk_f_start",
+                                           "walk_f",
+                                           "walk_f_end",
+                                           "turn_l_90",
+                                           "turn_l_180",
+                                           "turn_r_90",
+                                           "turn_r_180"};
+      for (const char* name : kScaledClips)
+      {
+        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
+        {
+          rec->m_timeMultiplier = 1.0f;
+        }
+      }
+    }
+    m_timeScale = 1.0f;
+
     // Settle the character back into the idle loop with a crossfade. BlendTo
     // also turns off the root motion of the outgoing walk clip, so the
     // snapped-to-node actor does not drift while the end clip fades out.
@@ -1033,6 +1393,14 @@ namespace ToolKit
     m_actorLocalBase = Vec3(0.0f);
     m_hasMoved = false;
 
+    m_timeScale = 1.0f;
+    m_timingStart = WalkClipTiming();
+    m_timingLoop  = WalkClipTiming();
+    m_timingEnd   = WalkClipTiming();
+    m_timedStartRec = nullptr;
+    m_timedLoopRec  = nullptr;
+    m_timedEndRec   = nullptr;
+
     Unit::Reset();
   }
 
@@ -1069,9 +1437,10 @@ namespace ToolKit
 
     // The one step forward onto the prey's tile. ThreatTile() only answers with
     // a connected neighbour, so this is a legal move and not a reach across a
-    // wall. The guard already faces this way and PlaceOnNode keeps that heading,
-    // so the step reads purely as a strike.
-    PlaceOnNode(watched);
+    // wall. The guard already faces this way, so the step reads purely as a
+    // strike. The step glides so the bite is visible; the game eats the player
+    // when the lunge lands.
+    StartGlide(watched, gPatrolGlideTime);
     TK_LOG("Guard: lunges forward onto (%d, %d) and bites.",
            watched->ix,
            watched->iz);
@@ -1084,14 +1453,19 @@ namespace ToolKit
       return;
     }
 
+    m_intendedMove = nullptr;
+
     // One tile per turn along the facing line. A connected neighbour keeps the
     // patrol moving; a missing or blocked one means the line ends, so the
     // patrol turns 180 degrees in place and walks back next turn. Enemies do
     // not block each other, so the tile ahead is only checked for a connection.
+    // The step itself is recorded (m_intendedMove) and glided by the game, so
+    // this patrol moves at the same time as everyone else this turn.
     GridNode* next = m_grid->Neighbor(*m_node, GetFacingDir());
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
-      PlaceOnNode(next);
+      m_intendedMove = next;
+      TK_LOG("Linear: line step to (%d, %d).", next->ix, next->iz);
     }
     else
     {
@@ -1260,15 +1634,24 @@ namespace ToolKit
 
   bool SeekerPatrol::CanSee(GridNode* playerNode) const
   {
-    if (m_node == nullptr || m_grid == nullptr || playerNode == nullptr)
+    // A standing look: from the patrol's current tile along its current facing.
+    return SeesAlong(m_node, GetFacingDir(), playerNode);
+  }
+
+  bool SeekerPatrol::SeesAlong(GridNode* origin, GridDir dir, GridNode* playerNode) const
+  {
+    if (origin == nullptr || m_grid == nullptr || playerNode == nullptr)
     {
       return false;
     }
 
     // Line of sight runs along the facing direction through connected tiles,
-    // until a blocked passage, the grid edge, or the player.
-    GridDir dir        = GetFacingDir();
-    GridNode* cursor   = m_node;
+    // until a blocked passage, the grid edge, or the player. The origin and
+    // direction are explicit: the arrival look on the turn a seeker lands on
+    // the last seen tile is taken from THAT tile along the held heading, which
+    // is decided before the glide actually lands (and before the root has been
+    // rotated to that heading).
+    GridNode* cursor = origin;
     while (cursor != nullptr)
     {
       GridNode* next = m_grid->Neighbor(*cursor, dir);
@@ -1351,24 +1734,32 @@ namespace ToolKit
 
   void SeekerPatrol::StepChase(GridNode* playerNode, GridDir playerFacing)
   {
+    m_intendedMove = nullptr;
+
     std::vector<GridNode*> path = FindPath(m_lastSeen);
+    GridNode* step = nullptr; // Tile stepped to this turn, when the chase walks.
     if (path.size() > 1)
     {
-      GridNode* next = path[1];
-      PlaceOnNode(next);
-      m_trail.push_back(next);
-      TK_LOG("Seeker: chase step to (%d, %d), %d tile(s) to go.", next->ix, next->iz, (int) path.size() - 2);
+      step = path[1];
+      m_intendedMove = step;
+      m_trail.push_back(step);
+      TK_LOG("Seeker: chase step to (%d, %d), %d tile(s) to go.", step->ix, step->iz, (int) path.size() - 2);
     }
+
+    // Logical position after this turn's step. The physical glide lands over
+    // the coming frames (StartGlide by the game), so all the arrival logic
+    // below reads the tile the patrol WILL stand on, not its departure tile.
+    GridNode* here = (step != nullptr) ? step : m_node;
 
     // Landing on the player's tile IS the bite, so the chase ends right here:
     // there is nobody left to look for. The patrol holds exactly where it
     // stopped, still facing the way it walked in -- it does not turn to the
     // memorized heading, does not take an arrival look down a line it is
     // standing in, and never enters the wait. It stays in Chasing; the game
-    // resolves the loss on this same turn.
-    if (m_node == playerNode)
+    // resolves the loss when the step lands.
+    if (here == playerNode)
     {
-      TK_LOG("Seeker: caught the player at (%d, %d); holding position.", m_node->ix, m_node->iz);
+      TK_LOG("Seeker: caught the player at (%d, %d); holding position.", here->ix, here->iz);
       return;
     }
 
@@ -1379,33 +1770,45 @@ namespace ToolKit
     // ahead of that heading is caught the moment the patrol arrives. Handing the
     // look to a later turn let it stand having already turned, watch the player
     // walk out of the very line it was staring down, and give up.
-    if (m_node != m_lastSeen && path.size() > 1)
+    if (step != nullptr && here != m_lastSeen)
     {
       return; // Still walking; the arrival turn has not come yet.
     }
 
-    if (m_node == m_lastSeen)
+    if (here == m_lastSeen)
     {
       TK_LOG("Seeker: arrived at the last seen tile (%d, %d); turning to memorized heading %s and looking.",
-             m_node->ix,
-             m_node->iz,
+             here->ix,
+             here->iz,
              GridDirName(m_lastHeading));
     }
     else
     {
       TK_LOG("Seeker: last seen tile (%d, %d) unreachable; turning to memorized heading %s and looking.",
-             m_lastSeen->ix,
-             m_lastSeen->iz,
+             m_lastSeen != nullptr ? m_lastSeen->ix : -1,
+             m_lastSeen != nullptr ? m_lastSeen->iz : -1,
              GridDirName(m_lastHeading));
     }
 
-    TurnTo(m_lastHeading);
-
     // The turn above already points the stare, so the very same turn can see
-    // along it. A fresh sighting keeps the chase going from here -- the walk
-    // resumes on the next turn, one step per turn as always -- while an empty
-    // line gives the patrol up and sends it back along its trail.
-    if (CanSee(playerNode))
+    // along it. When the arrival is a step, the rotation happens as the glide
+    // lands (arrive already turned); a patrol standing on the tile already
+    // turns in place right now.
+    if (step != nullptr)
+    {
+      SetArrivalOrientation(HeadingRotation(m_lastHeading));
+    }
+    else
+    {
+      TurnTo(m_lastHeading);
+    }
+
+    // A fresh sighting keeps the chase going from here -- the walk resumes on
+    // the next turn, one step per turn as always -- while an empty line gives
+    // the patrol up and sends it back along its trail. The look is taken from
+    // the tile the patrol lands on (here) along the held heading, even though
+    // the glide has not physically landed yet.
+    if (SeesAlong(here, m_lastHeading, playerNode))
     {
       TK_LOG("Seeker: player caught along %s at (%d, %d) on arrival; chase continues.",
              GridDirName(m_lastHeading),
@@ -1432,19 +1835,22 @@ namespace ToolKit
 
   void SeekerPatrol::StepReturn()
   {
+    m_intendedMove = nullptr;
+
     if (m_trail.size() > 1)
     {
       GridNode* back = m_trail[m_trail.size() - 2];
       m_trail.pop_back();
-      PlaceOnNode(back); // Arrival and turning toward the step happen together.
+      m_intendedMove = back;
       TK_LOG("Seeker: return step to (%d, %d).", back->ix, back->iz);
 
-      if (m_trail.size() == 1 && m_node == m_trail[0])
+      if (m_trail.size() == 1 && back == m_trail[0])
       {
-        // Back at the start: resume the idle stare.
+        // Back at the start: resume the idle stare. The step still glides; the
+        // stare orientation is applied when it lands.
         TK_LOG("Seeker: back at the start; resuming the idle stare.");
         m_state = State::Idle;
-        TurnToIdle();
+        SetArrivalOrientation(m_idleOrientation);
         m_lastSeen = nullptr;
       }
     }
@@ -1457,13 +1863,8 @@ namespace ToolKit
     }
   }
 
-  void SeekerPatrol::TurnTo(GridDir dir)
+  Quaternion SeekerPatrol::HeadingRotation(GridDir dir) const
   {
-    if (m_root == nullptr)
-    {
-      return;
-    }
-
     Vec3 forward;
     switch (dir)
     {
@@ -1473,8 +1874,17 @@ namespace ToolKit
       default: forward = Vec3(0.0f, 0.0f, 1.0f); break;
     }
 
-    Quaternion rot = RotationTo(Vec3(0.0f, 0.0f, -1.0f), forward);
-    m_root->m_node->SetOrientation(rot, TransformationSpace::TS_WORLD);
+    return RotationTo(Vec3(0.0f, 0.0f, -1.0f), forward);
+  }
+
+  void SeekerPatrol::TurnTo(GridDir dir)
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    m_root->m_node->SetOrientation(HeadingRotation(dir), TransformationSpace::TS_WORLD);
   }
 
   void SeekerPatrol::TurnToIdle()

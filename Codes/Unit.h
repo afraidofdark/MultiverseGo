@@ -19,6 +19,7 @@ namespace ToolKit
   // provides the State/StateMachine building blocks and the
   // AnimControllerComponent that owns the animation records.
   class AnimControllerComponent;
+  class AnimRecord;
   class StateMachine;
 
   // Crossfade length (seconds) used whenever the walk state machine switches
@@ -26,6 +27,36 @@ namespace ToolKit
   // global so it can be tuned at runtime (e.g. bound to a settings value);
   // defined in Unit.cpp, defaults to 0.2.
   extern float gWalkBlendDuration;
+
+  // Target length (seconds) of every turn's action window. The player's walk
+  // (including an in-place turn) is time-scaled to finish in exactly this long,
+  // and every enemy tile step glides for the same duration, so all units of a
+  // turn start and stop together. Tunable at runtime like gWalkBlendDuration.
+  // Defined in Unit.cpp.
+  extern float gTurnDuration;
+
+  // How long an enemy tile step (or a guard's lunge) glides, in seconds.
+  // Temporary stand-in until patrols get their own walk state machines /
+  // animation; the player keeps its real root-motion walk clips. Defined in
+  // Unit.cpp. (Bite lunges happen AFTER the action window, so they keep this
+  // length instead of the turn duration.)
+  extern const float gPatrolGlideTime;
+
+  // Measured timing model of one walk clip: how much horizontal root travel the
+  // clip's root key makes over its key frames, and when. Built from the actual
+  // animation data (never hardcoded) so the walk's natural duration can be
+  // predicted for time scaling.
+  struct WalkClipTiming
+  {
+    float duration = 0.0f;        // Clip duration (seconds).
+    float totalTravel = 0.0f;     // Net horizontal root travel over the clip.
+    std::vector<float> keyTimes;  // Time of each root key (seconds).
+    std::vector<float> keyTravel; // Cumulative horizontal travel at each key.
+
+    // Clip time (seconds) the clip needs to travel the given horizontal
+    // distance from its first frame. 0 when the clip has no usable root track.
+    float TimeToTravel(float distance) const;
+  };
 
   // Base class for every actor placed on the grid (player, enemies).
   //
@@ -47,10 +78,38 @@ namespace ToolKit
     // Called when it becomes this unit's turn to act. playerNode is the
     // player's current tile and playerFacing the direction it is heading;
     // chasing units (SeekerPatrol) use them to see and pursue the player.
+    // A unit that moves this turn does NOT move here: it records the tile it
+    // intends to step to (GetIntendedMove) and the game starts the actual
+    // (animated or gliding) move afterwards, so every unit of a turn can move
+    // at the same time.
     virtual void OnTurn(GridNode* playerNode, GridDir playerFacing) {}
 
-    // Called every frame while this unit is the active one (player input).
-    virtual void Frame(float deltaTime) {}
+    // Called every frame while the unit is acting (walking or gliding a move).
+    // The base implementation advances a running glide; Player overrides it to
+    // drive its root-motion walk state machine instead.
+    virtual void Frame(float deltaTime);
+
+    // The node the unit decided to move to this turn (OnTurn output), or null
+    // when it decided to stay. Cleared again by StartPlayerTurn.
+    GridNode* GetIntendedMove() const { return m_intendedMove; }
+
+    // True while the unit is animating/gliding a move between two nodes. The
+    // turn flow keeps the acting phase open until every moving unit is done.
+    bool IsMoving() const { return m_gliding; }
+
+    // Starts an animated step from the unit's current node to node over
+    // duration seconds: the root glides along the gap and snaps onto the exact
+    // node center on arrival. During the glide the unit's logical node (m_node)
+    // stays the departure tile; PlaceOnNode updates it when the glide lands.
+    // Enemies glide their tile steps until they get real walk state machines;
+    // the player never glides (it walks with root motion instead). The game
+    // starts the glides so every unit of a turn moves at the same time.
+    void StartGlide(GridNode* node, float duration);
+
+    // Lands a running glide immediately (snaps the unit onto its destination
+    // tile). Used when the run ends mid-move so no unit stays frozen between
+    // two tiles. No-op when the unit is not gliding.
+    void LandMove();
 
     // The tile whose occupation would make this unit eat the player: a static
     // guard zone. Null for units with no static threat (moving patrols
@@ -98,10 +157,29 @@ namespace ToolKit
     // moving unit faces where it is going.
     void FaceTowards(const Vec3& direction);
 
+    // Records an orientation to apply the moment a running glide lands (after
+    // the step-facing), e.g. a seeker that must arrive already turned toward
+    // its held heading. Ignored when the unit does not glide.
+    void SetArrivalOrientation(const Quaternion& worldOrient);
+
     EntityPtr m_root;
     GridGraph* m_grid = nullptr;
     GridNode* m_node = nullptr;
     bool m_active = false;
+
+    // The tile the unit decided to step to this turn (see OnTurn /
+    // GetIntendedMove). Null while standing.
+    GridNode* m_intendedMove = nullptr;
+
+    // Glide state (see StartGlide / Frame). Only moving patrols glide for now.
+    bool m_gliding = false;
+    float m_glideDur = 1.0f;  // Total glide duration (seconds).
+    float m_glideT = 0.0f;    // Progress in [0, 1].
+    Vec3 m_glideFrom;         // Departure world position.
+    Vec3 m_glideTo;           // Destination node center.
+    GridNode* m_glideNode = nullptr; // Destination node, snapped on arrival.
+    Quaternion m_arriveOrient;       // Orientation to apply on glide arrival.
+    bool m_hasArriveOrient = false;
   };
 
   // The player. Moves one tile per turn along connected tiles, driven by mouse
@@ -167,6 +245,12 @@ namespace ToolKit
     // walk); otherwise the actor is already within snap range of the center.
     void FinishWalk(bool forceSnap);
 
+    // Builds/refreshes the walk clip timing profiles (m_timingStart/Loop/End)
+    // from the animation controller's loaded clips. Rebuilt whenever the clip
+    // resources change (they load once per session, so this runs at most a few
+    // times).
+    void EnsureWalkTimings();
+
     bool m_hasMoved = false;
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
     WalkContext* m_walkCtx = nullptr;        // Shared data for the FSM states.
@@ -180,6 +264,21 @@ namespace ToolKit
     // a walk ends so the accumulated root-motion offset folds back into the
     // top root and future turns start from a clean frame.
     Vec3 m_actorLocalBase;
+
+    // Measured timing of the three walk clips (see WalkClipTiming). Cached per
+    // AnimRecord instance; EnsureWalkTimings rebuilds a profile when its clip
+    // record changes.
+    WalkClipTiming m_timingStart;
+    WalkClipTiming m_timingLoop;
+    WalkClipTiming m_timingEnd;
+    const AnimRecord* m_timedStartRec = nullptr;
+    const AnimRecord* m_timedLoopRec = nullptr;
+    const AnimRecord* m_timedEndRec = nullptr;
+
+    // Time scale of the running walk: real duration = natural FSM duration /
+    // m_timeScale. Set by StartWalk so the whole move (turn + walk) finishes in
+    // exactly gTurnDuration seconds; reset to 1.0 when the walk ends.
+    float m_timeScale = 1.0f;
   };
 
   // A stationary enemy guard. It holds its post and watches the single tile its
@@ -263,8 +362,13 @@ namespace ToolKit
     static constexpr int kWatchTurns = 1;
 
     // True when the player's tile lies along a straight, connected line in the
-    // current facing direction.
+    // current facing direction (a standing look from the patrol's own tile).
     bool CanSee(GridNode* playerNode) const;
+
+    // Line of sight from an explicit origin tile along an explicit grid
+    // direction. Used for the look taken the turn the patrol lands on the last
+    // seen tile, which is decided before the glide physically lands.
+    bool SeesAlong(GridNode* origin, GridDir dir, GridNode* playerNode) const;
 
     // Records a fresh sighting: the tile the player is on and the direction it
     // is heading this turn. The player typically crosses the line of sight in
@@ -290,6 +394,9 @@ namespace ToolKit
 
     // Rotates in place to face a grid direction.
     void TurnTo(GridDir dir);
+
+    // World orientation that makes the unit's forward (-Z) point along dir.
+    Quaternion HeadingRotation(GridDir dir) const;
 
     // Restores the authored orientation used when staring in Idle.
     void TurnToIdle();

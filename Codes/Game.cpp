@@ -12,6 +12,8 @@
 #include <Scene.h>
 #include <Viewport.h>
 
+#include <algorithm>
+
 ToolKit::Game Self;
 
 extern "C" TK_PLUGIN_API ToolKit::Game* TK_STDCAL GetInstance() { return &Self; }
@@ -39,21 +41,22 @@ namespace ToolKit
 
   void Game::Frame(float deltaTime)
   {
-    if (m_phase != TurnPhase::Player)
+    if (m_won || m_lost)
     {
       return;
     }
 
-    // An accepted move walks to its tile over the coming frames. Input is
-    // locked and the rest of the turn is deferred until the character stands
-    // exactly on the destination node.
-    if (m_player.IsWalking())
+    // A committed turn plays out over the coming frames: the player's walk and
+    // every enemy glide advance together, and the turn settles (or resolves a
+    // bite) once everything has moved. Input stays locked while acting.
+    if (m_phase == TurnPhase::Acting)
     {
-      m_player.Frame(deltaTime);
-      if (!m_player.IsWalking())
-      {
-        CompletePlayerMove();
-      }
+      UpdateActing(deltaTime);
+      return;
+    }
+
+    if (m_phase != TurnPhase::Player)
+    {
       return;
     }
 
@@ -181,6 +184,10 @@ namespace ToolKit
     m_won      = false;
     m_lost     = false;
     m_enemies.clear();
+    m_capturedEnemies.clear();
+    m_stepBites.clear();
+    m_activeBites.clear();
+    m_arrivalProcessed = false;
     m_grid.Clear();
     m_target = nullptr;
     m_prevPlayerNode = nullptr;
@@ -194,61 +201,251 @@ namespace ToolKit
     m_player.SetActive(true);
     m_player.OnTurn(nullptr, GridDir::Zm); // Clears the move flag.
 
-    // Remember where the player stood before its move, so the next enemy phase
-    // can log the actual move ("from -> to heading") for the seeker logs.
+    // Remember where the player stood before its move, so the arrival log can
+    // print the actual move ("from -> to heading") for the seeker logs.
     m_prevPlayerNode = m_player.GetNode();
     TK_LOG("Game: player turn.");
   }
 
-  void Game::EndPlayerTurn()
+  void Game::BeginPlayerMove(GridNode* dest)
   {
-    m_player.SetActive(false);
-    m_phase = TurnPhase::Enemies;
+    if (m_won || m_lost || dest == nullptr)
+    {
+      return;
+    }
 
-    // All enemies act on this phase, from the state at its start. Enemies do
-    // not block each other, so each unit's move depends only on the grid and
-    // the player's fixed position -- order does not matter. Seeker patrols also
-    // need the direction the player is heading, memorized at each sighting.
+    m_phase            = TurnPhase::Acting;
+    m_arrivalProcessed = false;
+    m_capturedEnemies.clear();
+    m_stepBites.clear();
+    m_activeBites.clear();
+
+    // The player acts first: every enemy reacts to the tile the player WILL
+    // stand on (its committed destination) and to the heading it will face
+    // there. Each enemy decides NOW; the game starts the actual (gliding) moves
+    // afterwards, so every unit of the turn moves at the same time.
+    GridNode* from = m_player.GetNode();
+    GridDir facing = FacingToward(from, dest);
+
+    for (auto& enemy : m_enemies)
+    {
+      Unit* u = enemy.get();
+
+      // A patrol standing on the destination is captured the moment the player
+      // steps there. Freeze it for this turn (it never acts) and remove it when
+      // the player arrives.
+      if (u->GetNode() == dest)
+      {
+        m_capturedEnemies.push_back(u);
+        continue;
+      }
+
+      u->OnTurn(dest, facing);
+      GridNode* target = u->GetIntendedMove();
+
+      // A step onto the player's destination is a bite: like a guard's lunge it
+      // waits for the player to actually arrive before it starts, so an enemy
+      // never strikes a tile the player has not reached yet.
+      if (target == dest)
+      {
+        m_stepBites.push_back(u);
+      }
+      else if (target != nullptr)
+      {
+        // Any other step starts now and runs at the same time as the player's
+        // walk: every entity's action of the turn lasts gTurnDuration, so the
+        // whole tableau starts and stops together.
+        u->StartGlide(target, gTurnDuration);
+      }
+    }
+
+    // The player's own walk was already started by Player::TryMove. Actors
+    // without animation support stand on the tile at once, so the arrival
+    // resolution runs right here.
+    if (!m_player.IsWalking())
+    {
+      ResolvePlayerArrival();
+    }
+  }
+
+  void Game::ResolvePlayerArrival()
+  {
+    if (m_won || m_lost || m_arrivalProcessed)
+    {
+      return;
+    }
+    m_arrivalProcessed = true;
+
     GridNode* playerNode = m_player.GetNode();
-    GridDir playerFacing = m_player.GetFacingDir();
-    bool caught          = false;
+    if (playerNode == nullptr)
+    {
+      return;
+    }
 
     // Log the move the player actually made this turn. The seeker logs below
     // carry the "heading" (player's current facing), so printing the real
     // from->to step next to it makes every heading checkable by eye.
     if (m_prevPlayerNode != playerNode)
     {
+      GridDir facing = m_player.GetFacingDir();
       TK_LOG("Game: player moved (%d, %d) -> (%d, %d) heading %s.",
              m_prevPlayerNode != nullptr ? m_prevPlayerNode->ix : -1,
              m_prevPlayerNode != nullptr ? m_prevPlayerNode->iz : -1,
              playerNode->ix,
              playerNode->iz,
-             GridDirName(playerFacing));
+             GridDirName(facing));
     }
 
-    for (auto& enemy : m_enemies)
+    // 1) The player captures every patrol that stood on the tile it moved to.
+    //    (Capture before the guards react, so a tile that is both an enemy's
+    //    own and another's threat tile resolves as a trade.)
+    if (!m_capturedEnemies.empty())
     {
-      enemy->SetActive(true);
-      enemy->OnTurn(playerNode, playerFacing);
-      enemy->SetActive(false);
-
-      // A patrol that walks onto the player's tile eats them.
-      if (enemy->GetNode() == playerNode)
+      ScenePtr scene = GetSceneManager()->GetCurrentScene();
+      for (auto it = m_enemies.begin(); it != m_enemies.end();)
       {
-        caught = true;
+        bool captured = std::find(m_capturedEnemies.begin(),
+                                  m_capturedEnemies.end(),
+                                  it->get()) != m_capturedEnemies.end();
+        if (!captured)
+        {
+          ++it;
+          continue;
+        }
+
+        if (EntityPtr root = (*it)->GetRoot())
+        {
+          if (scene != nullptr)
+          {
+            scene->RemoveEntity(root);
+          }
+        }
+        TK_LOG("Game: player captured a patrol.");
+        it = m_enemies.erase(it);
+      }
+      m_capturedEnemies.clear();
+    }
+
+    // 2) Guards whose threat tile is the player's tile lunge NOW: the strike
+    //    waits until the player stands there. The player is eaten when the
+    //    lunge lands (UpdateActing); while a lunge is inbound the outcome is a
+    //    loss, so the win check below is skipped.
+    for (const auto& enemy : m_enemies)
+    {
+      if (enemy->ThreatTile() == playerNode)
+      {
+        enemy->Lunge();
+        TK_LOG("Game: a guard strikes the player on (%d, %d). You lose!", playerNode->ix, playerNode->iz);
+        m_activeBites.push_back(enemy.get());
       }
     }
-
-    if (caught)
+    if (!m_activeBites.empty())
     {
-      // The patrol is already standing on the player's tile -- that step was its
-      // bite -- so the player is simply gone.
-      TK_LOG("Game: a patrol caught the player. You lose!");
-      EatPlayer();
       return;
     }
 
-    StartPlayerTurn();
+    // 3) Win check -- only when no guard strike is coming.
+    if (IsTargetNode(playerNode))
+    {
+      m_won = true;
+      TK_LOG("Game: player reached the target. You win!");
+
+      // Nothing may stay frozen mid-glide when the run ends.
+      for (auto& enemy : m_enemies)
+      {
+        enemy->LandMove();
+      }
+      return;
+    }
+
+    // 4) Patrols that decided to STEP onto the player's tile start their bite
+    //    now, with the player already standing there.
+    if (!m_stepBites.empty())
+    {
+      for (Unit* u : m_stepBites)
+      {
+        u->StartGlide(playerNode, gPatrolGlideTime);
+        TK_LOG("Game: a patrol closes in on the player on (%d, %d).", playerNode->ix, playerNode->iz);
+        m_activeBites.push_back(u);
+      }
+      m_stepBites.clear();
+    }
+  }
+
+  void Game::UpdateActing(float deltaTime)
+  {
+    // Drive the player's walk and every enemy glide in parallel.
+    if (m_player.IsWalking())
+    {
+      m_player.Frame(deltaTime);
+    }
+    for (auto& enemy : m_enemies)
+    {
+      enemy->Frame(deltaTime);
+    }
+
+    if (m_won || m_lost)
+    {
+      return;
+    }
+
+    // The player physically arrived: run the arrival resolution (captures,
+    // guard lunges, win check, delayed bites).
+    if (!m_arrivalProcessed && !m_player.IsWalking())
+    {
+      ResolvePlayerArrival();
+      if (m_won || m_lost)
+      {
+        return;
+      }
+    }
+
+    // A bite glide that just landed eats the player. The first bite wins; the
+    // remaining enemies are left where they are (EatPlayer lands any unit that
+    // is still mid-glide).
+    for (Unit* bite : m_activeBites)
+    {
+      if (bite != nullptr && !bite->IsMoving())
+      {
+        TK_LOG("Game: a patrol caught the player. You lose!");
+        EatPlayer();
+        return;
+      }
+    }
+
+    // Everything settled: the player arrived, no bite is pending or in flight,
+    // and every unit finished its move. The turn comes back to the player.
+    if (m_arrivalProcessed && m_activeBites.empty() && m_stepBites.empty() && !AnyEnemyMoving())
+    {
+      StartPlayerTurn();
+    }
+  }
+
+  GridDir Game::FacingToward(GridNode* from, GridNode* to) const
+  {
+    if (from == nullptr || to == nullptr)
+    {
+      return GridDir::Zm;
+    }
+
+    Vec3 d = to->center - from->center;
+    if (std::fabs(d.x) >= std::fabs(d.z))
+    {
+      return (d.x < 0.0f) ? GridDir::Xm : GridDir::Xp;
+    }
+    return (d.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
+  }
+
+  bool Game::AnyEnemyMoving() const
+  {
+    for (const auto& enemy : m_enemies)
+    {
+      if (enemy->IsMoving())
+      {
+        return true;
+      }
+    }
+    return false;
   }
 
   void Game::HandlePlayerClick()
@@ -286,44 +483,16 @@ namespace ToolKit
 
     if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }))
     {
-      // An animated walk finishes over the coming frames, on arrival running
-      // CompletePlayerMove from Game::Frame. Actors without animation support
-      // land instantly and resolve right here.
-      if (!m_player.IsWalking())
-      {
-        CompletePlayerMove();
-      }
+      // The player's move is committed: enemies react to it right now and every
+      // move of the turn plays out in parallel. Arrival-based resolution runs
+      // when the walk finishes (or immediately for actors without animation).
+      BeginPlayerMove(node);
       return;
     }
     else
     {
       TK_LOG("Game: move to (%d, %d) rejected", node->ix, node->iz);
     }
-  }
-
-  void Game::CompletePlayerMove()
-  {
-    if (m_won || m_lost)
-    {
-      return;
-    }
-
-    // The patrol rule resolves before the win check: a patrol eats the player
-    // that steps onto its watched tile, even when that tile also holds the
-    // target.
-    if (ResolvePatrolContact())
-    {
-      return;
-    }
-
-    if (IsTargetNode(m_player.GetNode()))
-    {
-      m_won = true;
-      TK_LOG("Game: player reached the target. You win!");
-      return;
-    }
-
-    EndPlayerTurn();
   }
 
   bool Game::IsMoveBlocked(GridNode* node) const
@@ -334,61 +503,22 @@ namespace ToolKit
     }
 
     // Only the player's own tile blocks the move. Free tiles are moves, and a
-    // patrol's tile is a capture attempt resolved by ResolvePatrolContact.
+    // patrol's tile is a capture attempt resolved when the player arrives
+    // (ResolvePlayerArrival).
     return m_player.GetNode() == node;
-  }
-
-  bool Game::ResolvePatrolContact()
-  {
-    GridNode* playerNode = m_player.GetNode();
-    if (playerNode == nullptr)
-    {
-      return false;
-    }
-
-    // Stacked order, capture first. Stepping onto an enemy's own tile removes
-    // it from the grid.
-    for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
-    {
-      if ((*it)->GetNode() == playerNode)
-      {
-        EntityPtr root = (*it)->GetRoot();
-        if (root != nullptr)
-        {
-          GetSceneManager()->GetCurrentScene()->RemoveEntity(root);
-        }
-        TK_LOG("Game: player captured a patrol.");
-        m_enemies.erase(it);
-        break;
-      }
-    }
-
-    // Then the remaining enemies react: any static guard whose threat tile is
-    // the player's tile eats the player. Moving patrols threaten by walking
-    // onto the player during the enemy phase, so they report no static threat.
-    // Because this runs after the capture, a tile that is both an enemy's own
-    // and another's threat tile resolves as a trade -- the player captures it
-    // and still gets eaten by the other patrol.
-    for (const auto& enemy : m_enemies)
-    {
-      if (enemy->ThreatTile() == playerNode)
-      {
-        // The guard does not eat from its post: it lunges onto the player's tile
-        // first, so the strike is visible, and only then is the player gone.
-        enemy->Lunge();
-        TK_LOG("Game: patrol ate the player. You lose!");
-        EatPlayer();
-        return true;
-      }
-    }
-
-    return false;
   }
 
   void Game::EatPlayer()
   {
     m_lost  = true;
     m_phase = TurnPhase::Idle;
+
+    // The bite landed while other enemies may still be mid-glide: land them on
+    // their tiles so nothing stays frozen between two tiles when the run ends.
+    for (auto& enemy : m_enemies)
+    {
+      enemy->LandMove();
+    }
 
     // The devoured player leaves the scene exactly like a patrol the player
     // captures: the root entity is removed and the unit forgets its tile, so
