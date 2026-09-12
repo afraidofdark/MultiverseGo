@@ -226,7 +226,9 @@ apply to all code in both repositories.
      - `OnTurn` only DECIDES: a moving patrol records the tile it will step to
        (`Unit::GetIntendedMove`) instead of teleporting.
      - A step onto the player's destination is a bite (`m_stepBites`): held
-       back until the player actually arrives.
+       back until the player actually arrives, and any landing turn the enemy
+       queued is dropped (`CancelArrivalTurn`) -- a bite ends the turn, so the
+       enemy bites and stops instead of about-facing afterwards.
      - Any other step starts moving immediately (`StartMove`), so it runs at
        the same time as the player's walk.
   2. `m_phase = Acting`; `Game::UpdateActing` drives the player's walk and
@@ -235,7 +237,10 @@ apply to all code in both repositories.
      captured patrols leave the grid; guards whose threat tile is the player's
      tile LUNGE (added to `m_activeBites`); the win is checked only when no
      guard strike is inbound; then the held-back step bites start moving. A
-     bite move that lands eats the player (`Game::EatPlayer`).
+     bite resolves the moment the biting enemy STANDS on the player's tile
+     (`bite->GetNode() == player tile`), not when its animation finishes: the
+     eat does not wait for a queued turn or a fade, it bites and stops there
+     (`Game::EatPlayer`).
   4. When the player arrived and no bite is pending/in flight and no enemy is
      moving, `StartPlayerTurn` hands the input back.
 - Guards never move on their own (their `OnTurn` is empty): the lunge is
@@ -266,9 +271,14 @@ apply to all code in both repositories.
 
 ## Uniform turn duration (time scaling)
 
-- Goal: every entity's action of a turn lasts exactly `gTurnDuration` seconds
-  (global float, default 3.0, tunable like gWalkBlendDuration) -- the whole
-  tableau starts and stops together.
+- Rule: EVERY action of a turn closes in exactly `gTurnDuration` seconds
+  (global float, default 3.0, tunable like gWalkBlendDuration), whatever it is
+  made of -- an in-place turn, a walk, or a walk plus the turn it lands into.
+  ONE time scale per action is applied to all of its phases, so the clips keep
+  their proportions relative to each other: a phase that is naturally longer
+  simply loses more seconds, a short one loses fewer. Nothing is exempt and
+  nothing finishes early: if the natural action is shorter than T its clips are
+  slowed down to fill the window.
 - The move's NATURAL duration is measured from the animation data, not
   hardcoded. `WalkClipTiming` (built by `BuildClipTiming` from each clip's root
   key: key time = frame / fps; progress = running max of the signed projection
@@ -279,41 +289,51 @@ apply to all code in both repositories.
   + wind-up + as many stride cycles as needed + landing clip) into the natural
   length (a 5-unit move with a turn measures ~4.7 s natural on the current
   assets; without a turn ~3.7 s).
-- `AnimatedUnit::StartWalk` computes `scale = natural / target`, stores it in
-  `AnimatedUnit::m_timeScale` and writes it into the `m_timeMultiplier` of
-  every clip that can play during the walk (idle + the three walk clips + the
-  four turn clips), so the FSM timers AND the clip playback -- including blend
-  countdowns -- advance at the same rate. `AnimatedUnit::Frame` feeds
-  `dt * m_timeScale` to the machine; `FinishWalk` restores 1x before the idle
-  settle blend. The engine scales each record by its OWN `m_timeMultiplier`, so
-  every animated unit of a turn scales independently to the same target.
+- `AnimatedUnit::StartWalk` sums the move's natural duration AND the natural
+  length of any queued arrival turn, then computes `scale = actionNatural /
+  target`; `ApplyMoveTimeScale` stores it in `AnimatedUnit::m_timeScale` and
+  writes it into the `m_timeMultiplier` of every clip that can play during the
+  action (idle + the three walk clips + the four turn clips). The FSM timers
+  AND the clip playback -- including blend countdowns -- advance at that same
+  rate, so the phases stay in sync while the action is compressed or stretched
+  to T. `AnimatedUnit::Frame` feeds `dt * m_timeScale` to the machine;
+  `FinishWalk` restores 1x before the idle settle blend. Scale is per unit
+  (record multiplier), so units never fight over one global speed.
 - Moves run per unit: the player's `TryMove` and every enemy's `StartMove`
-  (tile step, glide fallback and bite lunge alike) target `gTurnDuration`,
-  so every moving action of a turn lasts the same length -- there is no second
-  "temporary" move duration global.
+  (tile step, glide fallback and bite lunge alike) close in `gTurnDuration`;
+  there is no second "temporary" move duration global.
 - A move that ends with a queued in-place turn (line patrol about-face, seeker
-  arrival turn) has that turn BUDGETED inside the same window: `StartWalk`
-  derives the turn clip length from the yaw between the walk's end facing and
-  the queued orientation, shortens the walk by it, and the turn then plays at
-  natural speed after the landing -- walk + turn together last
-  `gTurnDuration`.
+  arrival turn) counts that turn's natural length INTO the same budget:
+  `StartWalk` derives the turn clip length from the yaw between the walk's end
+  facing and the queued orientation, and when the turn plays after the landing
+  it reuses the walk's scale (`StartInPlaceTurn(yaw, explicitScale)`) -- so the
+  walk and the turn share one tempo and together close in `gTurnDuration`.
+- A stand-alone in-place turn (no step at all: about-face at a dead line end,
+  seeker idle stare) fills the window on its own:
+  `StartInPlaceTurn(yaw)` scales its clip to `gTurnDuration` through the same
+  `ApplyMoveTimeScale`.
 
 ## Logs and failure signatures
 
-- `Move: natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no` (plus
-  `, arrival turn reserved` when a queued about-face/arrival turn was budgeted
-  into the window): per-move timing, one per animated unit per turn. X is the
-  natural FSM duration measured from the walk clips; the move is scaled so the
-  whole action finishes in the requested target length (Y). A missing/wrong X
-  means the clip timing profiles failed to build.
+- `Move: natural X.XX s -> Y.YY s (xS.SS, T T.TT), turn yes/no` (plus
+  `, arrival turn included` when a queued about-face/arrival turn was counted
+  into the window): per-action timing, one per animated unit per turn. X is the
+  natural duration measured from the clips (walk phases + any queued arrival
+  turn), Y the duration it actually plays (equal to T) and S the applied time
+  scale (below 1.00 = slowed down, above = sped up). A missing/wrong X means
+  the clip timing profiles failed to build.
+- `Move: in-place turn NN deg (clip), plays Y.YY s (xS.SS)`: a stand-alone
+  about-face filling its own T window.
 - `Move: walk started (...) -> (...), gap ..., end clip reach ...`: during a
   normal walk the gap must shrink every frame.
 - `Move: walk stalled (gap ... not shrinking); snapping to the tile.`: root
   motion direction/orientation mismatch; check the prefab yaw and the facing
   convention.
 - `Game: a guard strikes the player on (...).` / `Game: a patrol closes in on
-  the player on (...).`: an eat is inbound (a bite move started after the
-  player arrived); the loss lands when that move completes.
+  the player on (...).`: an eat is inbound (a bite move started after the player
+  arrived); the loss lands the moment that enemy STANDS on the player's tile
+  (`Game: a patrol caught the player. You lose!`), even if the enemy still had
+  a landing turn queued -- it bites and stops.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor
@@ -328,5 +348,9 @@ apply to all code in both repositories.
   engine repo, or the grider plugin) without asking the human first and getting
   an explicit go-ahead. Committing is done by the human or only after their
   approval.
+- NEVER stage or commit agent/skill bookkeeping files: `.dsh-skill-memory.json`,
+  `.dsh-skill-memory.config.json` and anything similar stay untracked -- the
+  human commits those manually. Do not add them to `.gitignore` either, so they
+  remain visible for that manual commit.
 - If work is finished and commits are pending, summarize what is ready to be
   committed and ask whether to commit (and push) -- do not do it unilaterally.
