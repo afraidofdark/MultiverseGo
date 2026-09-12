@@ -1164,6 +1164,8 @@ namespace ToolKit
     Unit::LandMove();
   }
 
+  void AnimatedUnit::CancelArrivalTurn() { m_hasDeferredTurn = false; }
+
   void AnimatedUnit::StartTurn(GridDir dir)
   {
     Quaternion target = RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(dir));
@@ -1211,7 +1213,7 @@ namespace ToolKit
     }
   }
 
-  void AnimatedUnit::StartInPlaceTurn(float targetYaw)
+  void AnimatedUnit::StartInPlaceTurn(float targetYaw, float explicitScale)
   {
     if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr || m_walkSM != nullptr)
     {
@@ -1234,7 +1236,6 @@ namespace ToolKit
     ctx->sinceProgress = 0.0f;
     ctx->arrived       = false;
     ctx->rootNode      = m_root->m_node;
-    m_timeScale        = 1.0f;
 
     // Shortest signed yaw from the current facing to the target.
     Vec3 fwd = glm::normalize(glm::vec3(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD) * Vec3(0.0f, 0.0f, -1.0f)));
@@ -1265,20 +1266,67 @@ namespace ToolKit
       turnRec->m_applyRootMotion = true;
       ctx->turnSignal = TurnClipFor(glm::degrees(dYaw));
       ctx->turnDur    = turnRec->m_animation->m_duration;
-      TK_LOG("Move: in-place turn %.0f deg (%s).", glm::degrees(dYaw), ctx->turnSignal.c_str());
     }
     else
     {
       ctx->turnSignal.clear();
       ctx->turnDur = kWalkTurnDuration;
-      TK_LOG("Move: in-place turn %.0f deg (node-only).", glm::degrees(dYaw));
     }
+
+    // Same rule as a walk: the turn closes in exactly gTurnDuration, so its
+    // clip is slowed down or sped up to fill the window by a single scale. A
+    // turn that belongs to an action already running (explicitScale > 0, i.e.
+    // an arrival turn that shares the walk's budget) reuses that same scale so
+    // the whole action keeps one tempo and closes in its own T.
+    float scale = 1.0f;
+    if (explicitScale > 0.0f)
+    {
+      scale = glm::clamp(explicitScale, 0.05f, 20.0f);
+    }
+    else if (gTurnDuration > 0.01f && ctx->turnDur > 0.01f)
+    {
+      scale = glm::clamp(ctx->turnDur / gTurnDuration, 0.05f, 20.0f);
+    }
+    ApplyMoveTimeScale(scale);
+
+    TK_LOG("Move: in-place turn %.0f deg (%s), plays %.2f s (x%.2f).",
+           glm::degrees(dYaw),
+           ctx->turnSignal.empty() ? "node-only" : ctx->turnSignal.c_str(),
+           ctx->turnDur / scale,
+           scale);
 
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
     m_walkSM->PushState(new InPlaceTurnDoneState(ctx));
     m_walkSM->m_currentState = m_walkSM->QueryState("WalkTurn");
     m_walkSM->m_currentState->TransitionIn(nullptr);
+  }
+
+  void AnimatedUnit::ApplyMoveTimeScale(float scale)
+  {
+    m_timeScale = scale;
+
+    // Every clip that can play during a move: idle may still be fading out when
+    // the move starts, the walk clips follow, and the turn clips cover the
+    // leading turn phase / in-place turns.
+    if (m_walkAnim != nullptr)
+    {
+      static const char* kScaledClips[] = {"idle",
+                                           "walk_f_start",
+                                           "walk_f",
+                                           "walk_f_end",
+                                           "turn_l_90",
+                                           "turn_l_180",
+                                           "turn_r_90",
+                                           "turn_r_180"};
+      for (const char* name : kScaledClips)
+      {
+        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
+        {
+          rec->m_timeMultiplier = scale;
+        }
+      }
+    }
   }
 
   bool Player::TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied)
@@ -1433,20 +1481,19 @@ namespace ToolKit
       FaceTowards(stepDir);
     }
 
-    // Fit this move to its target length (default gTurnDuration). The natural
-    // duration of the whole move (in-place turn + walk phases) is predicted
-    // from the measured clip timings; the FSM timers and the clip playback both
-    // run at scale = natural / target so the move finishes in exactly the
-    // target seconds (see AnimatedUnit::Frame and the record multipliers).
+    // Rule: EVERY action of a turn closes in exactly the target length
+    // (default gTurnDuration), whatever phases it is made of. The natural
+    // duration of the whole action is predicted from the measured clip timings
+    // and a SINGLE time scale drives it, so the clips keep their proportions
+    // relative to each other (the longer phase simply loses more seconds).
     float target = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
 
     // A move that ends with a queued in-place turn (a line patrol's about-face
-    // on reaching its line end, a seeker's arrival look) shares its window with
-    // that turn: the walk is shortened by the turn's natural length, so the
-    // whole action -- walk plus turn -- lasts exactly the target time instead
-    // of target + turn.
+    // on reaching its line end, a seeker's arrival look) has that turn's
+    // natural length counted INTO the same budget, so the walk and the turn
+    // share one scale and the action still closes in `target` seconds.
     float arrivalTurnDur = 0.0f;
-    if (m_hasDeferredTurn && target > 0.01f && glm::length(stepDir) > 0.0001f)
+    if (m_hasDeferredTurn && glm::length(stepDir) > 0.0001f)
     {
       Vec3 endFwd = glm::normalize(stepDir); // facing the walk ends on
       Vec3 tgtDir = glm::normalize(glm::vec3(m_deferredTurn * Vec3(0.0f, 0.0f, -1.0f)));
@@ -1461,7 +1508,6 @@ namespace ToolKit
             arrivalTurnDur = turnRec->m_animation->m_duration;
           }
         }
-        target = glm::max(target - arrivalTurnDur, 0.2f);
       }
     }
 
@@ -1471,42 +1517,25 @@ namespace ToolKit
                                             m_timingStart,
                                             m_timingLoop,
                                             m_timingEnd);
+    float actionNatural = naturalDur + arrivalTurnDur;
     float scale = 1.0f;
-    if (target > 0.01f && naturalDur > 0.01f && m_timingStart.duration > 0.0f)
+    if (target > 0.01f && actionNatural > 0.01f && m_timingStart.duration > 0.0f)
     {
-      scale = glm::clamp(naturalDur / target, 0.05f, 20.0f);
-    }
-    m_timeScale = scale;
-
-    // Apply the scale to every clip that can play during the walk (idle may
-    // still be fading out at the click; the turn/walk clips follow). The engine
-    // multiplies each record's playback -- and its blend countdown -- by the
-    // record's own m_timeMultiplier, so transitions stay in sync with the FSM.
-    if (m_walkAnim != nullptr)
-    {
-      static const char* kScaledClips[] = {"idle",
-                                           "walk_f_start",
-                                           "walk_f",
-                                           "walk_f_end",
-                                           "turn_l_90",
-                                           "turn_l_180",
-                                           "turn_r_90",
-                                           "turn_r_180"};
-      for (const char* name : kScaledClips)
-      {
-        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
-        {
-          rec->m_timeMultiplier = scale;
-        }
-      }
+      scale = glm::clamp(actionNatural / target, 0.05f, 20.0f);
     }
 
-    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f), turn %s%s.",
-           naturalDur,
-           target,
+    // The scale drives the FSM timers and the clip playback (including blend
+    // countdowns) together, and the queued turn reuses the same value when it
+    // plays after the landing, so the whole action closes in `target` seconds.
+    ApplyMoveTimeScale(scale);
+
+    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f, T %.2f), turn %s%s.",
+           actionNatural,
+           actionNatural / scale,
            scale,
+           target,
            ctx->turning ? "yes" : "no",
-           arrivalTurnDur > 0.0f ? ", arrival turn reserved" : "");
+           arrivalTurnDur > 0.0f ? ", arrival turn included" : "");
 
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
@@ -1531,6 +1560,10 @@ namespace ToolKit
     WalkContext* ctx = m_walkCtx;
     GridNode* dest   = (ctx != nullptr) ? ctx->to : nullptr;
     Vec3 targetPos   = (ctx != nullptr) ? ctx->targetPos : Vec3(0.0f);
+
+    // The scale the finished action ran at: a queued arrival turn must reuse it
+    // so it stays part of the same, already-budgeted action.
+    const float actionScale = m_timeScale;
 
     delete m_walkSM;
     m_walkSM  = nullptr;
@@ -1592,25 +1625,7 @@ namespace ToolKit
 
     // The walk is over: restore normal playback speed before the idle settle
     // blend, so the loop and its future fades run at 1x again.
-    if (m_walkAnim != nullptr)
-    {
-      static const char* kScaledClips[] = {"idle",
-                                           "walk_f_start",
-                                           "walk_f",
-                                           "walk_f_end",
-                                           "turn_l_90",
-                                           "turn_l_180",
-                                           "turn_r_90",
-                                           "turn_r_180"};
-      for (const char* name : kScaledClips)
-      {
-        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
-        {
-          rec->m_timeMultiplier = 1.0f;
-        }
-      }
-    }
-    m_timeScale = 1.0f;
+    ApplyMoveTimeScale(1.0f);
 
     // Settle the character back into the idle loop with a crossfade. BlendTo
     // also turns off the root motion of the outgoing walk clip, so the
@@ -1637,7 +1652,9 @@ namespace ToolKit
       m_hasDeferredTurn = false;
       if (!forceSnap && HasAnimatedTurn())
       {
-        StartInPlaceTurn(YawOf(target));
+        // Reuse the finished walk's scale: this turn was budgeted inside the
+        // same action, so it must keep the same tempo and close the action.
+        StartInPlaceTurn(YawOf(target), actionScale);
       }
       else if (m_root != nullptr)
       {

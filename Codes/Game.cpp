@@ -245,9 +245,12 @@ namespace ToolKit
 
       // A step onto the player's destination is a bite: like a guard's lunge it
       // waits for the player to actually arrive before it starts, so an enemy
-      // never strikes a tile the player has not reached yet.
+      // never strikes a tile the player has not reached yet. The eat ends the
+      // turn, so any follow-up the enemy had planned for its landing (a line
+      // patrol's about-face) is dropped: it bites and stops.
       if (target == dest)
       {
+        u->CancelArrivalTurn();
         m_stepBites.push_back(u);
       }
       else if (target != nullptr)
@@ -401,16 +404,27 @@ namespace ToolKit
       }
     }
 
-    // A bite glide that just landed eats the player. The first bite wins; the
+    // A bite is the moment the biting enemy STANDS on the player's tile: the
+    // eat does not wait for anything else the enemy had queued (a landing turn,
+    // a fade) to play out -- it bites and stops there. The first bite wins; the
     // remaining enemies are left where they are (EatPlayer lands any unit that
-    // is still mid-glide).
-    for (Unit* bite : m_activeBites)
+    // is still mid-move).
     {
-      if (bite != nullptr && !bite->IsMoving())
+      GridNode* playerNode = m_player.GetNode();
+      for (Unit* bite : m_activeBites)
       {
-        TK_LOG("Game: a patrol caught the player. You lose!");
-        EatPlayer();
-        return;
+        if (bite == nullptr)
+        {
+          continue;
+        }
+
+        bool landedOnPlayer = (playerNode != nullptr) && (bite->GetNode() == playerNode);
+        if (landedOnPlayer || !bite->IsMoving())
+        {
+          TK_LOG("Game: a patrol caught the player. You lose!");
+          EatPlayer();
+          return;
+        }
       }
     }
 

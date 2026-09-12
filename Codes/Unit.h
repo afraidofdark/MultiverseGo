@@ -117,6 +117,13 @@ namespace ToolKit
     // two tiles. No-op when the unit is not moving.
     virtual void LandMove();
 
+    // Drops any turn the unit queued to play when its move lands (a line
+    // patrol's about-face, a seeker's arrival look). The game calls this when
+    // the move turns out to be a bite: the eat ends the turn, so the unit
+    // should bite and stop instead of turning afterwards. No-op on units with
+    // nothing queued.
+    virtual void CancelArrivalTurn() {}
+
     // The tile whose occupation would make this unit eat the player: a static
     // guard zone. Null for units with no static threat (moving patrols
     // threaten by walking onto the player, not by a fixed zone).
@@ -241,6 +248,10 @@ namespace ToolKit
     // Lands whatever move is running (walk or glide) onto its destination tile.
     void LandMove() override;
 
+    // Drops a queued arrival turn (m_deferredTurn) so the landed move does not
+    // turn afterwards -- used when that move turned out to be a bite.
+    void CancelArrivalTurn() override;
+
     // Stops the animation controller (used when play ends in the editor while
     // the scene entities are still alive).
     void StopAnimation();
@@ -274,8 +285,19 @@ namespace ToolKit
     // the shared turn phase: the turn clip rotates the actor through root
     // motion and the fold lands the top root exactly on the target yaw. Runs
     // the same StateMachine building blocks as a normal walk, only without the
-    // walking phases. Natural clip speed (no duration scaling).
-    void StartInPlaceTurn(float targetYaw);
+    // walking phases.
+    //
+    // Rule: every action closes in gTurnDuration. A stand-alone turn therefore
+    // scales its clip to fill that window (explicitScale < 0, the default); a
+    // turn that belongs to an action already running -- an arrival turn whose
+    // natural length was budgeted into the walk -- passes that action's scale
+    // (explicitScale > 0) so the whole action keeps ONE tempo.
+    void StartInPlaceTurn(float targetYaw, float explicitScale = -1.0f);
+
+    // Applies a move time scale: stores it for the FSM timers and writes it into
+    // the m_timeMultiplier of every clip that can play during a move (idle +
+    // the three walk clips + the four turn clips). 1.0 restores normal speed.
+    void ApplyMoveTimeScale(float scale);
 
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
     WalkContext* m_walkCtx = nullptr;        // Shared data for the FSM states.
