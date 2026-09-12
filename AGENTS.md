@@ -25,10 +25,11 @@ apply to all code in both repositories.
 
 ## Building
 
-- Game plugin: `ninja -C build` from this repo root (Debug config, ninja
-  generator). Output: `Codes/Bin/MultiverseGod.so` (Debug postfix adds the
-  `d`). The engine path is resolved from
-  `~/.config/ToolKit/Config/Path.txt` at configure time.
+- Game plugin: `cmake --build Intermediate/Plugin -j 4` from this repo root
+  (Debug config; the CMake binary dir is `Intermediate/Plugin`, generated with
+  Unix Makefiles -- the older `build/` ninja directory no longer exists).
+  Output: `Codes/Bin/MultiverseGod.so` (Debug postfix adds the `d`). The engine
+  path is resolved from `~/.config/ToolKit/Config/Path.txt` at configure time.
 - Engine: `cmake --build <GDTK>/build --target ToolKit -j 4` (Debug config).
   Debug engine library: `<GDTK>/BinDebug/libToolKitd.so`.
 - The editor and plugins load shared libraries from their bin directories at
@@ -253,6 +254,10 @@ apply to all code in both repositories.
   queues the turn to play the moment the current move lands. Used for the
   LinearPatrol line-end about-face and the SeekerPatrol arrival turn / idle
   stare; units without turn clips snap instantly (Unit::StartTurn fallback).
+  The line patrol checks, while taking its step, whether the step lands on the
+  LAST tile of its line (the tile beyond is missing or blocked) and about-faces
+  on arrival, so the turn shares the turn with the final step instead of
+  costing a turn of its own.
 - `SeekerPatrol` decides at click time against the destination. Its arrival
   look is taken from the tile it WILL land on along the held heading
   (`SeesAlong(origin, dir, player)`); the actual turn to that heading runs
@@ -286,13 +291,21 @@ apply to all code in both repositories.
   (tile step, glide fallback and bite lunge alike) target `gTurnDuration`,
   so every moving action of a turn lasts the same length -- there is no second
   "temporary" move duration global.
+- A move that ends with a queued in-place turn (line patrol about-face, seeker
+  arrival turn) has that turn BUDGETED inside the same window: `StartWalk`
+  derives the turn clip length from the yaw between the walk's end facing and
+  the queued orientation, shortens the walk by it, and the turn then plays at
+  natural speed after the landing -- walk + turn together last
+  `gTurnDuration`.
 
 ## Logs and failure signatures
 
-- `Move: natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no`: per-move timing (one
-  per animated unit per turn). X is the natural FSM duration measured from the
-  walk clips; the move is scaled so it finishes in the requested target length
-  (Y). A missing/wrong X means the clip timing profiles failed to build.
+- `Move: natural X.XX s -> Y.YY s (xZ.ZZ), turn yes/no` (plus
+  `, arrival turn reserved` when a queued about-face/arrival turn was budgeted
+  into the window): per-move timing, one per animated unit per turn. X is the
+  natural FSM duration measured from the walk clips; the move is scaled so the
+  whole action finishes in the requested target length (Y). A missing/wrong X
+  means the clip timing profiles failed to build.
 - `Move: walk started (...) -> (...), gap ..., end clip reach ...`: during a
   normal walk the gap must shrink every frame.
 - `Move: walk stalled (gap ... not shrinking); snapping to the tile.`: root
