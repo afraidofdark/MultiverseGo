@@ -1439,6 +1439,32 @@ namespace ToolKit
     // run at scale = natural / target so the move finishes in exactly the
     // target seconds (see AnimatedUnit::Frame and the record multipliers).
     float target = (targetDuration > 0.0f) ? targetDuration : gTurnDuration;
+
+    // A move that ends with a queued in-place turn (a line patrol's about-face
+    // on reaching its line end, a seeker's arrival look) shares its window with
+    // that turn: the walk is shortened by the turn's natural length, so the
+    // whole action -- walk plus turn -- lasts exactly the target time instead
+    // of target + turn.
+    float arrivalTurnDur = 0.0f;
+    if (m_hasDeferredTurn && target > 0.01f && glm::length(stepDir) > 0.0001f)
+    {
+      Vec3 endFwd = glm::normalize(stepDir); // facing the walk ends on
+      Vec3 tgtDir = glm::normalize(glm::vec3(m_deferredTurn * Vec3(0.0f, 0.0f, -1.0f)));
+      float dTurn = std::fabs(YawDeltaTo(endFwd, tgtDir));
+      if (dTurn > 0.02f)
+      {
+        arrivalTurnDur = kWalkTurnDuration; // node-only fallback length
+        if (AnimRecordPtr turnRec = m_walkAnim->GetAnimRecord(TurnClipFor(glm::degrees(dTurn))))
+        {
+          if (turnRec->m_animation != nullptr && turnRec->m_animation->m_duration > 0.0f)
+          {
+            arrivalTurnDur = turnRec->m_animation->m_duration;
+          }
+        }
+        target = glm::max(target - arrivalTurnDur, 0.2f);
+      }
+    }
+
     EnsureWalkTimings();
     float naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
                                             ctx->totalDist,
@@ -1475,11 +1501,12 @@ namespace ToolKit
       }
     }
 
-    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f), turn %s.",
+    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f), turn %s%s.",
            naturalDur,
            target,
            scale,
-           ctx->turning ? "yes" : "no");
+           ctx->turning ? "yes" : "no",
+           arrivalTurnDur > 0.0f ? ", arrival turn reserved" : "");
 
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
@@ -1599,14 +1626,16 @@ namespace ToolKit
     }
 
     // A patrol that must turn to a heading / idle stare the moment its move
-    // lands (a seeker arriving at the last seen tile) plays that turn
-    // ANIMATED now, the way the player would, instead of snapping. Falls back
-    // to an instant orientation without turn clips.
+    // lands (a seeker arriving at the last seen tile, a line patrol reaching
+    // the end of its line) plays that turn ANIMATED now, the way the player
+    // would, instead of snapping. Falls back to an instant orientation without
+    // turn clips; a forced landing (stalled walk, end of the run) just takes
+    // the orientation without starting a new action.
     if (m_hasDeferredTurn)
     {
       Quaternion target = m_deferredTurn;
       m_hasDeferredTurn = false;
-      if (HasAnimatedTurn())
+      if (!forceSnap && HasAnimatedTurn())
       {
         StartInPlaceTurn(YawOf(target));
       }
@@ -1713,22 +1742,35 @@ namespace ToolKit
     m_intendedMove = nullptr;
 
     // One tile per turn along the facing line. A connected neighbour keeps the
-    // patrol moving; a missing or blocked one means the line ends, so the
+    // patrol moving; a missing or blocked one means the line ends here, so the
     // patrol turns 180 degrees in place and walks back next turn. Enemies do
     // not block each other, so the tile ahead is only checked for a connection.
     // The step itself is recorded (m_intendedMove) and started by the game, so
-    // this patrol moves at the same time as everyone else this turn. The line-
-    // end about-face runs the shared ANIMATED in-place turn (turn clips) when
-    // the patrol has them, exactly like the player turns.
-    GridNode* next = m_grid->Neighbor(*m_node, GetFacingDir());
+    // this patrol moves at the same time as everyone else this turn.
+    //
+    // The about-face does NOT cost a turn of its own: when the step being taken
+    // already reaches the end of the line (the tile beyond the step target is
+    // missing or blocked), the patrol turns as it lands -- the turn plays right
+    // after that move, inside the same turn.
+    GridDir facing = GetFacingDir();
+    GridNode* next  = m_grid->Neighbor(*m_node, facing);
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
       m_intendedMove = next;
       TK_LOG("Linear: line step to (%d, %d).", next->ix, next->iz);
+
+      GridNode* beyond = m_grid->Neighbor(*next, facing);
+      if (beyond == nullptr || !m_grid->Connected(*next, *beyond))
+      {
+        // This step lands on the last tile of the line: about-face on arrival.
+        TurnOnArrival(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(OppositeDir(facing))));
+        TK_LOG("Linear: step reaches the line end; turning around on arrival.");
+      }
     }
     else
     {
-      StartTurn(OppositeDir(GetFacingDir()));
+      // Already at the line end (blocked straight away): turn in place now.
+      StartTurn(OppositeDir(facing));
       TK_LOG("Linear: line ended; turning around in place.");
     }
   }
