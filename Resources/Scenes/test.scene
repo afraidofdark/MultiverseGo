@@ -923,7 +923,7 @@
 			<P t="10" name="TransformLock" v="0"/>
 			<P t="5" name="CubeScale" x="5.000000" y="0.200000" z="5.000000"/>
 			<P t="10" name="TileTexture" v="0"/>
-			<P t="10" name="X-" v="0"/>
+			<P t="10" name="X-" v="1"/>
 			<P t="10" name="X+" v="1"/>
 			<P t="10" name="Z-" v="0"/>
 			<P t="10" name="Z+" v="1"/>
@@ -2680,2568 +2680,6 @@
 			<Cube/>
 		</Entity>
 	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10445198287934218861"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="-2.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8103406852450998046"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="17758193970400311365"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="5671138114019660034"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="2.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="17012847130301842699"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16080377662301145331"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="14481019591031752686"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="0.000000" y="0.210000" z="-2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="12697268330495275784"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="7173321096035890703"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="9504745159216392647"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="0.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="4215168595549204331"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="10121015099050470917"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="18208410367684218220"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="7.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1731506331771590212"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="13573541608879430297"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="5553931677559571870"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="12.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9844635442161964174"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="13853592326109733638"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="13084069731732671764"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="15.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="7381822961821443166"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="5273193821769729049"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="14582775689951286008"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="2.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9351328065757316173"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="4155053025937201853"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="2445654404565959571"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="0.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="2584570729154685535"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="2265513814696392528"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="12740397161135881002"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="5.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="11683895667306899309"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16154154576359222293"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="11906297503277154914"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="15.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="14156119849186081263"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="17468936954035738508"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="8467269177743071312"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="2.500000" y="0.210000" z="10.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="125513648518218565"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="10419249195779894885"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="13889914166762949142"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="7.500000" y="0.210000" z="10.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="11639197014062920910"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="253508709678947908"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="11138612183907889646"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="5.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="6151285947672252516"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="12034509729901406562"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="15665683847570625291"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="12.500000" y="0.210000" z="10.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="13522705701443412972"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16894552816232650646"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="1347107943466955438"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="10.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="3256043221182602942"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="890668992419173036"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="513105306072145351"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="17.500000" y="0.210000" z="10.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1358566543865374354"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="14365045744436253544"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="15780187345352274013"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="15.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="12801786498147386790"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="615321674677043033"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="9111645192969737195"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="7.500000" y="0.210000" z="15.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8092916369012248792"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="11980473287250170219"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10471446490979640320"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="12.500000" y="0.210000" z="15.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="10855948667290278612"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="11090158864766735922"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="1487624371432473027"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="10.000000" y="0.210000" z="17.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="15417042558772367440"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16779198231242455795"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="14099029490827094517"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="22.500000" y="0.210000" z="10.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="14217255948579846927"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="13933293012843856997"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="1669801150045091341"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="12548943049101791117"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="2608336880167321878"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="11227864830504708560"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="5870666397493011742"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="8502566519633814176"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="12020234327539663280"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="25.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="11408642477962731369"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="11324493921649023779"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10507286115144387079"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="22.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="3039222449701330736"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="5013545900166120462"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="1120628342737871083"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="578717380767372635"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="14998056927628522267"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="13142171278896388393"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="22.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1075217805563683203"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="3602429112962028613"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="3792690820835255419"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="27.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="5227481799601995349"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="17705915292775627060"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="11082713975246810351"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="25.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="10544611482121484474"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="15380162415320884605"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="16932558325014588187"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="27.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="2081566629529301629"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16034712801277648920"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="3393312786784357004"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="32.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8402151186123382105"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="2611707359671857595"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="6186928522774217671"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="30.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9162807402244553532"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="4542236214433185676"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="7943760835975568676"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="37.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1714418732698801589"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="3353939469623279688"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="2813801483368551146"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="2.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="6347675439752881457"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="17540181597683300115"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="14542128716755052911"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="15877391721127151077"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="12040142643322178090"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="5251485447920865406"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="42.500000" y="0.210000" z="5.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="2843141873588412420"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16002114452816023057"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="7210719781635353836"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="32.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="14632527337343188486"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="8680168292104205025"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="12952321147182300337"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="13217342155552710867"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="538828471594223631"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="2017745550818550754"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="17.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8404593177518648747"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="11601182969572176855"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="2450382991175218130"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="22.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9206087216050721426"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="14133598000609241084"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10416751773165174133"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="37.500000" y="0.210000" z="25.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="4783995282355684050"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="6477039164847202478"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="3957106537214730748"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="35.000000" y="0.210000" z="27.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="7898687704259790534"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="11751894238156946663"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="15424264184533261947"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="32.500000" y="0.210000" z="30.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1968475655713170519"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="17198652084260119978"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="7769579672014305459"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="27.500000" y="0.210000" z="30.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="3425765398855550774"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="9448687568067092775"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="12275991700895620777"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="22.500000" y="0.210000" z="30.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="19549617853565637"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="16735411372306192323"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="17315179220861110515"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="17.500000" y="0.210000" z="30.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8469155843520433743"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="14368694168198683889"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="3506529224475117340"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="27.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="5816900234055778401"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="5958392227711879239"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10342425776332696209"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="12.500000" y="0.210000" z="30.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="632715581182722191"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="13414244381053530652"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="8421424591218588380"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="10.000000" y="0.210000" z="27.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="16420550413387778345"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="8927782129143246955"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="716077534857587212"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="45.000000" y="0.210000" z="7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8611407085747063675"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="5331405862660317763"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="9715633643883357634"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="45.000000" y="0.210000" z="12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="463711068879123048"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="10790075864183385555"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="12088497670880888727"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="45.000000" y="0.210000" z="17.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="13469800391930206836"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="9811157283695711014"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="3054050667499481837"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="45.000000" y="0.210000" z="22.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="18257456346065137596"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="13102028949773590326"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10915767410672318838"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="42.500000" y="0.210000" z="25.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="1438231642324144702"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="527349716919098178"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="1811657447542443515"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="10.000000" y="0.210000" z="22.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="8644476395625007237"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="10256137895975670748"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="11928083420249314823"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="22.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="3878420455109441210"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="10523254755932357672"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="8501136119386824483"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="20.000000" y="0.210000" z="17.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="15633200256972013435"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="7014108146505862798"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="4627670092211191243"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="-7.500000" y="0.210000" z="0.000000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="5.000000" y="0.250000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9281555442532836014"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="14379738636947375990"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="4874974879814762307"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="0.000000" y="0.210000" z="-7.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="2387255825271189100"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="15603566218064958966"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
-	<Object Cl="Quad">
-		<PB>
-			<P t="11" name="Id" v="10960330632745285415"/>
-			<P t="9" name="Name" v="Bridge"/>
-			<P t="9" name="Tag" v=""/>
-			<P t="10" name="Visible" v="1"/>
-			<P t="10" name="TransformLock" v="0"/>
-			<P t="10" name="TileTexture" v="0"/>
-		</PB>
-		<Entity pi="1595151954608558117">
-			<N is="0">
-				<T x="0.000000" y="0.210000" z="-12.500000"/>
-				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
-				<S x="0.250000" y="5.000000" z="1.000000"/>
-			</N>
-			<Ca>
-				<Object Cl="MeshComponent">
-					<PB>
-						<P t="11" name="Id" v="9425216216724381805"/>
-						<P t="12" name="Mesh"/>
-						<P t="10" name="CastShadow" v="1"/>
-					</PB>
-					<Component>
-						<MeshComponent/>
-					</Component>
-				</Object>
-				<Object Cl="MaterialComponent">
-					<PB>
-						<P t="11" name="Id" v="9079082188905263270"/>
-					</PB>
-					<Component>
-						<MaterialComponent MaterialCount="1">
-							<0>
-								<ResourceRef Class="Material" File="BricksBridge.material"/>
-							</0>
-						</MaterialComponent>
-					</Component>
-				</Object>
-			</Ca>
-			<Quad/>
-		</Entity>
-	</Object>
 	<Object Cl="Prefab">
 		<PB>
 			<P t="11" name="Id" v="2615866545612878223"/>
@@ -5264,6 +2702,2706 @@
 					<patrol/>
 				</PrefabRoots>
 			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="18168702370552281291"/>
+			<P t="9" name="Name" v="linear-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="linear-patrol.scene"/>
+		</PB>
+		<Entity pi="1782344285995176951">
+			<N is="0">
+				<T x="0.013653" y="0.100000" z="0.017829"/>
+				<R x="0.000000" y="0.707107" z="0.000000" w="0.707107"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="10897452365276588787"/>
+			<P t="9" name="Name" v="linear-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="linear-patrol.scene"/>
+		</PB>
+		<Entity pi="2218940751004365788">
+			<N is="0">
+				<T x="0.013654" y="0.100000" z="0.017829"/>
+				<R x="0.000000" y="0.707107" z="0.000000" w="0.707107"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="4734202088911944183"/>
+			<P t="9" name="Name" v="linear-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="linear-patrol.scene"/>
+		</PB>
+		<Entity pi="12136533399354816312">
+			<N is="0">
+				<T x="0.013653" y="0.100000" z="0.017829"/>
+				<R x="0.000000" y="0.707107" z="0.000000" w="0.707107"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="7837699988722554516"/>
+			<P t="9" name="Name" v="linear-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="linear-patrol.scene"/>
+		</PB>
+		<Entity pi="3952085551060053703">
+			<N is="0">
+				<T x="0.013653" y="0.100000" z="0.017829"/>
+				<R x="0.000000" y="0.707107" z="0.000000" w="0.707107"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="10959200384249640398"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="-2.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="8427463428428809579"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="7600193832442347352"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="5611177059968563902"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="2.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="9977674524464951495"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="10537040637762218055"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="15378258331073297411"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="-2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="8696890784448051202"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14084596098936268204"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="361554933336397207"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17461213270467768721"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11716684082933443999"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="11127934505675006378"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="7.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4544833034240899038"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6418897366070491020"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="7240307257254856111"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="12.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3034794787863231067"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="8446611317336556757"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="2695744705480669820"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="17.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="15621183724410287130"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17473223754491867515"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="2365921325496427563"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="15.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4467739007625358223"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17455637171974890077"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1597595852974011558"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="2.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="7627373014860289348"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17754863626098345046"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="10206522198687428974"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3673437991423460690"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="5039000339931235861"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="6051055089948053942"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="5.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3957840708450465883"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14671991165544371743"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="5838610093297547013"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="15.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="5449782343600699920"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="9656885098689812824"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="811136028063299467"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="2.500000" y="0.210000" z="10.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="16575480386603939418"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="5876450727593538276"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="9502148275804997350"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="7.500000" y="0.210000" z="10.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="18401530761286863381"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11422032148668505870"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="12649894339541745719"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="5.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="614251702089789299"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="2079519954134873742"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="7012977880028528410"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="12.500000" y="0.210000" z="10.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="16022501913564406646"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14171691557388573587"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="2681069552239766830"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="10.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="5590521961042072603"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11080150042258932879"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="17726044649075779088"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="17.500000" y="0.210000" z="10.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17434733243191693868"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11931813239418034404"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="6042691580151822109"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="15.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13367193180858218117"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17015205251382548639"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="6749519277994390750"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="7.500000" y="0.210000" z="15.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13300640020381659593"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14295012161400350023"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="847674579921413299"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="12.500000" y="0.210000" z="15.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="5402768212546832773"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14485001695864626515"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="321090834448579845"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="10.000000" y="0.210000" z="17.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4413534875065440683"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="7138678095965231219"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="4917429669473424518"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="22.500000" y="0.210000" z="10.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="18050642103980596577"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6708077177466566078"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1014044620719620786"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="6239820604196924987"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="4636746020271893547"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="13806668308539638327"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3271268537958060275"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14980569182266170094"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="584180418649172173"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="25.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17866860189712526890"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="3993464367234930411"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1838767189946935285"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="22.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="2762955273741527358"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="5970503359436677706"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="4023190978289733536"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="14662220189097205283"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="12728467562534772691"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="8593115440715067214"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="22.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="8919614860703277484"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="4599191017082489044"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="886341915869623906"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="27.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="16000570319481312329"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="10829899094611266488"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="9400081620023521604"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="25.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="7960442510265582283"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="9623350803284819191"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="16998357597437434044"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="27.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="2968306073106937456"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17256174215184816645"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1602810388041722286"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="32.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="5906554925729236138"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="7894111010170878431"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="8289550058932964578"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="30.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3699072243467492823"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6137275716246222904"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="14735409799412169266"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="37.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="1221612469352791087"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="5467570184780730854"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="8247411801168953642"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="2.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4368628874127366104"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="9235384163931422569"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1366479927519973932"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="9247841448547909180"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="10008823979178556130"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1042627292301765815"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="42.500000" y="0.210000" z="5.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="14217257374398750801"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="1308185615167042268"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="17975275969408311669"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="32.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13377280928441809929"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="642577231186300746"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="18409064558427097556"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="14259530957699578132"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11450288859342877649"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="6959189909930854345"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="17.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13614622372648616631"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="66019784068571792"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="14113842296317284723"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="22.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="2640529144460560082"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="8884886560230612593"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="11403503387235198689"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="37.500000" y="0.210000" z="25.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="14944844530016009309"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14077416754705486670"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="16493536396469956580"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="35.000000" y="0.210000" z="27.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17332979216316884521"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="15199324605315217460"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="17837101412768173873"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="32.500000" y="0.210000" z="30.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="8406256949448750181"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="15139002580426031261"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="9178276642592617251"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="27.500000" y="0.210000" z="30.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="14121542806355888885"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="12421769446988146801"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="11168430889108065575"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="22.500000" y="0.210000" z="30.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4863470174792658684"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17119908756879446174"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="17169741549003124920"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="17.500000" y="0.210000" z="30.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="5092739700850233777"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="18414770988499903371"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="1990977825153982102"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="27.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13531552311393340972"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="11086861143065219358"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="16096688630359394066"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="12.500000" y="0.210000" z="30.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="16258122667805933023"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="4795974372115117511"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="652155516525448537"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="10.000000" y="0.210000" z="27.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="11912627497204642732"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="14836272953229400150"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="15924705672107743397"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="45.000000" y="0.210000" z="7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="4228651798709470988"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6750181173453228264"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="13116380928071268821"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="45.000000" y="0.210000" z="12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="2637424665611116831"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="12791219624133759363"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="9341777680532124981"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="45.000000" y="0.210000" z="17.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="11446727543162058144"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="17224167988224602365"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="18234195100790203172"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="45.000000" y="0.210000" z="22.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="10413908898570330046"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="1177539789822825649"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="18233152185725694289"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="42.500000" y="0.210000" z="25.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="2476721902359512754"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="3445742920936386692"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="16846379010204903218"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="10.000000" y="0.210000" z="22.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17978519210632604734"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6407157267009673642"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="15633333741854901717"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="22.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="12828980498479955269"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="5167841600015343245"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="9128496729512110687"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="20.000000" y="0.210000" z="17.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="6388423949811080804"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6128777906878192623"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="15464612592175895283"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="-7.500000" y="0.210000" z="0.000000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="5.000000" y="0.250000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="10739860097146380026"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="9325355436660923861"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="6687005553168765441"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="-7.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="13131205437960420249"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="7734609470921084300"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="8097474293829494527"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="-12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="17309231922348135372"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="15551291748138873872"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
 		</Entity>
 	</Object>
 	<PostProcessingSettings>

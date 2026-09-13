@@ -11,6 +11,8 @@
 #include <Logger.h>
 #include <MathUtil.h>
 
+#include <map>
+
 namespace ToolKit
 {
   namespace
@@ -31,9 +33,29 @@ namespace ToolKit
       {"ambush_3", "ambushed_3"},
     };
 
-    // The catalogue. A relation with no variants authored (front and the two
-    // shoulders, so far) resolves to null and its strike keeps the plain bite;
-    // authoring front_*/fronted_* clips (for instance) is one row here.
+    // Front: the execution series, authored as thirteen paired scenes -- the
+    // attacker plays execution_N while its victim plays executed_N. These are
+    // the head on kills: the attacker walks into its prey and the clip covers
+    // the last stretch, however far the two are authored to travel.
+    const ExecutionVariant kExecution[] = {
+      {"execution_1", "executed_1"},
+      {"execution_2", "executed_2"},
+      {"execution_3", "executed_3"},
+      {"execution_4", "executed_4"},
+      {"execution_5", "executed_5"},
+      {"execution_6", "executed_6"},
+      {"execution_7", "executed_7"},
+      {"execution_8", "executed_8"},
+      {"execution_9", "executed_9"},
+      {"execution_10", "executed_10"},
+      {"execution_11", "executed_11"},
+      {"execution_12", "executed_12"},
+      {"execution_13", "executed_13"},
+    };
+
+    // The catalogue. A relation with no variants authored (the two shoulders,
+    // so far) resolves to null and its strike keeps the plain step; authoring
+    // clips for one is a row here.
     struct RelationEntry
     {
       ExecRelation rel;
@@ -43,7 +65,7 @@ namespace ToolKit
 
     const RelationEntry kCatalogue[] = {
       {ExecRelation::Behind, kAmbush, static_cast<int>(sizeof(kAmbush) / sizeof(kAmbush[0]))},
-      {ExecRelation::Front, nullptr, 0},
+      {ExecRelation::Front, kExecution, static_cast<int>(sizeof(kExecution) / sizeof(kExecution[0]))},
       {ExecRelation::Left, nullptr, 0},
       {ExecRelation::Right, nullptr, 0},
     };
@@ -72,12 +94,13 @@ namespace ToolKit
       return slots[RelationIndex(rel)];
     }
 
-    // Animation resource each relation's clip was measured from, so a clip is
-    // measured once per loaded resource instead of once per execution.
-    const Animation*& MeasuredSource(ExecRelation rel)
+    // Measured motion of every clip the catalogue has resolved, keyed by the
+    // loaded animation resource: each clip is measured once and then reused,
+    // whichever relation and whichever character asked for it first.
+    std::map<const Animation*, ClipMotion>& MotionCache()
     {
-      static const Animation* sources[4] = {nullptr, nullptr, nullptr, nullptr};
-      return sources[RelationIndex(rel)];
+      static std::map<const Animation*, ClipMotion> cache;
+      return cache;
     }
 
     // Which variant of a relation is due next: the variants take turns, so a
@@ -131,37 +154,62 @@ namespace ToolKit
       return nullptr;
     }
 
-    int& cycle              = VariantCycle(rel);
-    const ExecutionVariant& variant = entry->variants[cycle % entry->count];
-    cycle                   = (cycle + 1) % entry->count;
-
-    ExecutionClip& clip = ResolvedSlot(rel);
-    clip.attackerSignal = variant.attacker;
-    clip.victimSignal   = variant.victim;
-
-    AnimRecordPtr rec = attackerAnim->GetAnimRecord(clip.attackerSignal);
-    AnimationPtr anim = (rec != nullptr) ? rec->m_animation : nullptr;
-    if (anim == nullptr)
+    // The variants take turns, so repeated kills do not replay the same scene.
+    // A variant that cannot be played on this character -- its record is not
+    // authored on the prefab, or the clip carries no root travel -- must not
+    // cost the whole strike: step on through the series instead, so a partly
+    // authored set still performs the scenes it has.
+    int& cycle = VariantCycle(rel);
+    for (int attempt = 0; attempt < entry->count; attempt++)
     {
-      clip.valid = false;
-      return nullptr;
+      const ExecutionVariant& variant = entry->variants[cycle % entry->count];
+      cycle                           = (cycle + 1) % entry->count;
+
+      ExecutionClip& clip = ResolvedSlot(rel);
+      clip.attackerSignal = variant.attacker;
+      clip.victimSignal   = variant.victim;
+      clip.valid          = false;
+
+      AnimRecordPtr rec  = attackerAnim->GetAnimRecord(clip.attackerSignal);
+      AnimationPtr anim  = (rec != nullptr) ? rec->m_animation : nullptr;
+      if (anim == nullptr)
+      {
+        TK_LOG("Exec: '%s' is not on this character; trying the next %s variant.",
+               clip.attackerSignal.c_str(),
+               ExecRelationName(rel));
+        continue;
+      }
+
+      // Measure the clip once per loaded resource: the profile is pure
+      // animation data, so it is read on its first use and never guessed.
+      ClipMotion& motion = MotionCache()[anim.get()];
+      if (motion.duration <= 0.0f)
+      {
+        motion = MeasureClipMotion(anim);
+        TK_LOG("Exec: measured '%s' for a strike from %s: %.2f s, %.3f u of forward travel.",
+               clip.attackerSignal.c_str(),
+               ExecRelationName(rel),
+               motion.duration,
+               motion.totalTravel);
+      }
+
+      if (!motion.HasTravel())
+      {
+        TK_LOG("Exec: '%s' carries no root travel; trying the next %s variant.",
+               clip.attackerSignal.c_str(),
+               ExecRelationName(rel));
+        continue;
+      }
+
+      clip.attackerMotion = motion;
+      clip.valid          = true;
+      return &clip;
     }
 
-    // Measure the clip once per loaded resource: the profile is pure animation
-    // data, so it is read at init / on reload and never guessed at runtime.
-    if (MeasuredSource(rel) != anim.get())
-    {
-      clip.attackerMotion = MeasureClipMotion(anim);
-      MeasuredSource(rel) = anim.get();
-      TK_LOG("Exec: measured '%s' for a strike from %s: %.2f s, %.3f u of forward travel.",
-             clip.attackerSignal.c_str(),
-             ExecRelationName(rel),
-             clip.attackerMotion.duration,
-             clip.attackerMotion.totalTravel);
-    }
-
-    clip.valid = clip.attackerMotion.HasTravel();
-    return clip.valid ? &clip : nullptr;
+    TK_LOG("Exec: none of the %d %s variants is playable here; plain step.",
+           entry->count,
+           ExecRelationName(rel));
+    return nullptr;
   }
 
   int ExecutionLibrary::VariantCount(ExecRelation rel)
@@ -174,10 +222,10 @@ namespace ToolKit
   {
     for (const RelationEntry& entry : kCatalogue)
     {
-      VariantCycle(entry.rel)   = 0;
-      MeasuredSource(entry.rel) = nullptr;
-      ResolvedSlot(entry.rel)   = ExecutionClip();
+      VariantCycle(entry.rel) = 0;
+      ResolvedSlot(entry.rel) = ExecutionClip();
     }
+    MotionCache().clear();
   }
 
 } // namespace ToolKit

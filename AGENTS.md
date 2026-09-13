@@ -76,7 +76,8 @@ apply to all code in both repositories.
   carries the same anim controller records ("signals"): `rest`, `idle`,
   `walk_f_start`, `walk_f`, `walk_f_end`, `run_f_start`, `run_f`, `run_f_stop`,
   `fight_walk_f`, `turn_l_90`, `turn_l_180`, `turn_r_90`, `turn_r_180`, plus the
-  execution pairs `ambush_1/2/3` (striker) and `ambushed_1/2/3` (victim). Scene
+  execution pairs: `ambush_1/2/3` (striker) with `ambushed_1/2/3` (victim), and
+  `execution_1..13` (striker) with `executed_1..13` (victim). Scene
   files persist `ApplyRootMotion="0"`; the walk code enables root motion on the
   three walk clips at runtime, and the execution code does the same for the
   strike / reaction clips it plays.
@@ -89,8 +90,10 @@ apply to all code in both repositories.
 - The execution clips carry root motion too, and it is what places the strike:
   measured forward reach (the running max of the root track's travel along its
   net axis) is `ambush_1` ~1.64 u over 1.70 s, `ambush_2` ~0.46 u over 1.90 s,
-  `ambush_3` ~1.59 u over 1.70 s; the `ambushed_*` reactions are 3.73 s each.
-  Never hardcode those numbers -- they are measured at runtime.
+  `ambush_3` ~1.59 u over 1.70 s (reactions `ambushed_*` 3.73 s each), and for
+  the head on series `execution_1..13` 0.91-2.65 u over 1.90-3.37 s (reactions
+  `executed_1..13` 3.30-4.13 s). Never hardcode those numbers -- they are
+  measured at runtime.
 - The character actors carry an authored 180-degree Y yaw. Together with
   the engine's local-space root motion this maps the baked +Z root curve to
   forward walking. Do not "fix" apparent direction problems by reverting the
@@ -351,15 +354,24 @@ apply to all code in both repositories.
   `Behind` = the attacker walks the way the victim faces (it comes up its back),
   `Front` = they walk into each other, `Left` / `Right` = the victim's shoulders
   (its right is its facing turned toward `+X x +Y`). The catalogue in
-  `Execution.cpp` maps each relation to its clip variants:
-  `Behind -> ambush_1/2/3 + ambushed_1/2/3` (the victim's reaction is paired by
-  INDEX); `Front` / `Left` / `Right` have no variants yet, resolve to null and
-  leave the caller with its plain bite. Adding a direction -- or new variants --
-  is a table row, not code.
+  `Execution.cpp` maps each relation to its clip variants, the victim's
+  reaction paired by INDEX:
+  - `Behind -> ambush_1/2/3 + ambushed_1/2/3` (a strike from the back);
+  - `Front -> execution_1..13 + executed_1..13` (a head on kill);
+  - `Left` / `Right` have no variants yet, resolve to null and leave the caller
+    with its plain step.
+  Adding a direction -- or new variants -- is a table row, not code.
 - Variants take turns: `ExecutionLibrary::Resolve` cycles through a relation's
   variants (per session, reset by `ExecutionLibrary::Reset` in `Game::OnPlay`),
-  so a player eaten three times sees all three scenes. The resolved clip is also
-  measured there, once per loaded animation resource, and logged.
+  so repeated kills do not replay the same scene -- with the 13 front variants a
+  player eaten thirteen times sees all thirteen. A variant that cannot be played
+  on the character asking for it (its record is not on the prefab, or the clip
+  carries no root travel) is skipped, logged and the next one is tried, so a
+  partly authored set still performs the scenes it has instead of degrading to a
+  plain step.
+- Every resolved clip is measured once per LOADED ANIMATION RESOURCE (the
+  catalogue's motion cache) and logged the first time, so the measurement cost
+  does not grow with the number of variants.
 - Flow inside the walk (nothing is duplicated): `AnimatedUnit::StartExecution`
   resolves the relation + clip and hands both to `AnimatedUnit::StartAction`,
   the single implementation behind `StartWalk` and executions. The action runs
@@ -393,12 +405,11 @@ apply to all code in both repositories.
   the player's tile.
 - Where executions are used today: a step bite (`Game::ResolvePlayerArrival`)
   and a guard's lunge (`StationaryPatrol::Lunge(victim)`), each of which falls
-  back to `StartMove` when no clip is authored for the relation. In the current
-  rules a REAR step bite happens when a patrol follows the player along a line
-  (it steps onto the player's destination from the tile behind, which is the way
-  the player faces); every other case -- coming at it head on or from a
-  shoulder -- is frontal/side and therefore still a plain bite until those
-  relations get clips.
+  back to `StartMove` when no clip is authored for the relation. With both the
+  back and the head on series authored, a patrol following the player along a
+  line strikes its back (`ambush_*`) and a patrol that walks into the player --
+  or the player walking into a patrol -- strikes head on (`execution_*`). Only
+  the two shoulder relations are still plain steps.
 - The PLAYER strikes too. `Game::HandlePlayerClick` looks up the patrol on the
   clicked tile (`Game::EnemyOnTile`) and passes it to
   `Player::TryMove(node, isOccupied, victim)`: with a victim the step is tried
@@ -484,12 +495,17 @@ apply to all code in both repositories.
 - `Move: in-place turn NN deg (clip), plays Y.YY s (xS.SS)`: a stand-alone
   about-face filling its own T window.
 - `Exec: measured 'ambush_1' for a strike from behind: 1.70 s, 1.636 u of
-  forward travel.`: the clip measurement the start distance comes from (once
-  per loaded resource).
+  forward travel.`: the clip measurement the start distance comes from (logged
+  the first time a clip is resolved, once per loaded animation resource).
 - `Exec: strike from the behind -> 'ambush_1' + 'ambushed_1' (starts 1.64 u
   out).` / `Exec: no execution authored for a strike from the left; plain
   step.`: relation resolved, or no clip for it (the caller keeps the plain
   step: a bite for a patrol, a capture for the player).
+- `Exec: 'execution_9' is not on this character; trying the next front variant.`
+  / `Exec: 'x' carries no root travel; trying the next ... variant.` /
+  `Exec: none of the 13 front variants is playable here; plain step.`: a
+  variant was skipped, or the whole relation had nothing playable (check the
+  prefab's records and the clip's root track).
 - `Exec: strike 'ambush_1' started 1.64 u from the victim (1.70 s clip, 3.73 s
   scene).` / `Exec: victim reaction 'ambushed_1' playing (3.73 s at x1.30).` /
   `Exec: strike finished (elapsed ...)` / `Exec: scene finished after ...; the
