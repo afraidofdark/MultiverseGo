@@ -2313,7 +2313,7 @@
 		<Entity pi="8363942140354372158">
 			<N is="0">
 				<T x="0.016576" y="0.100000" z="0.007105"/>
-				<R x="0.000000" y="1.000000" z="0.000000" w="-0.000000"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
 				<S x="1.000000" y="1.000000" z="1.000000"/>
 			</N>
 			<Ca/>
@@ -2525,7 +2525,7 @@
 			<P t="10" name="TileTexture" v="0"/>
 			<P t="10" name="X-" v="0"/>
 			<P t="10" name="X+" v="0"/>
-			<P t="10" name="Z-" v="0"/>
+			<P t="10" name="Z-" v="1"/>
 			<P t="10" name="Z+" v="1"/>
 		</PB>
 		<Entity pi="14816613656464572554">
@@ -2561,9 +2561,128 @@
 			<Cube/>
 		</Entity>
 	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="9978823976221947243"/>
+			<P t="9" name="Name" v="stationary-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="stationary-patrol.scene"/>
+		</PB>
+		<Entity pi="13921096648432116666">
+			<N is="0">
+				<T x="0.002067" y="0.100000" z="0.015939"/>
+				<R x="0.000000" y="0.707107" z="0.000000" w="0.707107"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="10162404119363765288"/>
+			<P t="9" name="Name" v="stationary-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="stationary-patrol.scene"/>
+		</PB>
+		<Entity pi="11861631887115193399">
+			<N is="0">
+				<T x="0.002066" y="0.100000" z="0.015939"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="9166857710069325406"/>
+			<P t="9" name="Name" v="stationary-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="stationary-patrol.scene"/>
+		</PB>
+		<Entity pi="17104260605235443096">
+			<N is="0">
+				<T x="-0.015939" y="0.100000" z="0.002067"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
+		</Entity>
+	</Object>
+	<Object Cl="Cube">
+		<PB>
+			<P t="11" name="Id" v="4294551454903962968"/>
+			<P t="9" name="Name" v="Tile_2x-1"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="5" name="CubeScale" x="5.000000" y="0.200000" z="5.000000"/>
+			<P t="10" name="TileTexture" v="0"/>
+			<P t="10" name="X-" v="0"/>
+			<P t="10" name="X+" v="0"/>
+			<P t="10" name="Z-" v="0"/>
+			<P t="10" name="Z+" v="1"/>
+		</PB>
+		<Entity pi="14816613656464572554">
+			<N is="0">
+				<T x="0.000000" y="0.100000" z="-15.000000"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="3340602890529390042"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="6522362312738440678"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksCheckerDark.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Cube/>
+		</Entity>
+	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15496607170601867824"/>
+			<P t="11" name="Id" v="10445198287934218861"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2579,7 +2698,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="14872965587007494952"/>
+						<P t="11" name="Id" v="8103406852450998046"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2589,7 +2708,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="11198536897609009350"/>
+						<P t="11" name="Id" v="17758193970400311365"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2605,7 +2724,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15059933386476794982"/>
+			<P t="11" name="Id" v="5671138114019660034"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2621,7 +2740,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="14044186698821256884"/>
+						<P t="11" name="Id" v="17012847130301842699"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2631,7 +2750,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="5099561407544315335"/>
+						<P t="11" name="Id" v="16080377662301145331"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2647,7 +2766,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15591261324650687295"/>
+			<P t="11" name="Id" v="14481019591031752686"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2663,7 +2782,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15428945616015911603"/>
+						<P t="11" name="Id" v="12697268330495275784"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2673,7 +2792,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="15763849359411510368"/>
+						<P t="11" name="Id" v="7173321096035890703"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2689,7 +2808,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="13006532024013352669"/>
+			<P t="11" name="Id" v="9504745159216392647"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2705,7 +2824,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="17649292182977141232"/>
+						<P t="11" name="Id" v="4215168595549204331"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2715,7 +2834,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="7424524757624369597"/>
+						<P t="11" name="Id" v="10121015099050470917"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2731,7 +2850,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="12647958265401825817"/>
+			<P t="11" name="Id" v="18208410367684218220"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2747,7 +2866,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="11256104995254528241"/>
+						<P t="11" name="Id" v="1731506331771590212"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2757,7 +2876,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="16190071152661868"/>
+						<P t="11" name="Id" v="13573541608879430297"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2773,7 +2892,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="4433488182113690887"/>
+			<P t="11" name="Id" v="5553931677559571870"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2789,7 +2908,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="8170000903249539150"/>
+						<P t="11" name="Id" v="9844635442161964174"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2799,7 +2918,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="965423149264888497"/>
+						<P t="11" name="Id" v="13853592326109733638"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2815,7 +2934,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="18364601587878059953"/>
+			<P t="11" name="Id" v="13084069731732671764"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2831,7 +2950,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="4967835233693242324"/>
+						<P t="11" name="Id" v="7381822961821443166"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2841,7 +2960,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9703948209066987075"/>
+						<P t="11" name="Id" v="5273193821769729049"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2857,7 +2976,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="7706055492672794797"/>
+			<P t="11" name="Id" v="14582775689951286008"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2873,7 +2992,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="13757357575250240939"/>
+						<P t="11" name="Id" v="9351328065757316173"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2883,7 +3002,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9801450847564285675"/>
+						<P t="11" name="Id" v="4155053025937201853"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2899,7 +3018,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="11699344519830573167"/>
+			<P t="11" name="Id" v="2445654404565959571"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2915,7 +3034,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="7631153209949971241"/>
+						<P t="11" name="Id" v="2584570729154685535"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2925,7 +3044,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12846840589398812055"/>
+						<P t="11" name="Id" v="2265513814696392528"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2941,7 +3060,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5964007098884046312"/>
+			<P t="11" name="Id" v="12740397161135881002"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2957,7 +3076,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="4934014473157893287"/>
+						<P t="11" name="Id" v="11683895667306899309"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -2967,7 +3086,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12858209784770645922"/>
+						<P t="11" name="Id" v="16154154576359222293"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -2983,7 +3102,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15405905513467249859"/>
+			<P t="11" name="Id" v="11906297503277154914"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -2999,7 +3118,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="3678068581369701754"/>
+						<P t="11" name="Id" v="14156119849186081263"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3009,7 +3128,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="3405273233177470944"/>
+						<P t="11" name="Id" v="17468936954035738508"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3025,7 +3144,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="14000191159837903872"/>
+			<P t="11" name="Id" v="8467269177743071312"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3041,7 +3160,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="18365694553256332618"/>
+						<P t="11" name="Id" v="125513648518218565"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3051,7 +3170,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="2275422892258290650"/>
+						<P t="11" name="Id" v="10419249195779894885"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3067,7 +3186,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5068063480833310848"/>
+			<P t="11" name="Id" v="13889914166762949142"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3083,7 +3202,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="4112980303264929868"/>
+						<P t="11" name="Id" v="11639197014062920910"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3093,7 +3212,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="18389557637149456860"/>
+						<P t="11" name="Id" v="253508709678947908"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3109,7 +3228,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15372743998028906326"/>
+			<P t="11" name="Id" v="11138612183907889646"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3125,7 +3244,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="4835873889179820320"/>
+						<P t="11" name="Id" v="6151285947672252516"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3135,7 +3254,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="16061638523508074029"/>
+						<P t="11" name="Id" v="12034509729901406562"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3151,7 +3270,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="8893881551106766197"/>
+			<P t="11" name="Id" v="15665683847570625291"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3167,7 +3286,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="9301674912851387572"/>
+						<P t="11" name="Id" v="13522705701443412972"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3177,7 +3296,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="17258148521257191518"/>
+						<P t="11" name="Id" v="16894552816232650646"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3193,7 +3312,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3572113356281850279"/>
+			<P t="11" name="Id" v="1347107943466955438"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3209,7 +3328,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12579236293887900340"/>
+						<P t="11" name="Id" v="3256043221182602942"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3219,7 +3338,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="13194138862164268811"/>
+						<P t="11" name="Id" v="890668992419173036"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3235,7 +3354,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="17176236595563351922"/>
+			<P t="11" name="Id" v="513105306072145351"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3251,7 +3370,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5878074786253962025"/>
+						<P t="11" name="Id" v="1358566543865374354"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3261,7 +3380,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="7439663793004445734"/>
+						<P t="11" name="Id" v="14365045744436253544"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3277,7 +3396,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="16614801236865332073"/>
+			<P t="11" name="Id" v="15780187345352274013"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3293,7 +3412,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5648435781427725045"/>
+						<P t="11" name="Id" v="12801786498147386790"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3303,7 +3422,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="18288909569620430732"/>
+						<P t="11" name="Id" v="615321674677043033"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3319,7 +3438,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="11869552270101512779"/>
+			<P t="11" name="Id" v="9111645192969737195"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3335,7 +3454,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15284937426935077941"/>
+						<P t="11" name="Id" v="8092916369012248792"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3345,7 +3464,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="4889561338346984208"/>
+						<P t="11" name="Id" v="11980473287250170219"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3361,7 +3480,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5512075290498430721"/>
+			<P t="11" name="Id" v="10471446490979640320"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3377,7 +3496,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="6813596308628949353"/>
+						<P t="11" name="Id" v="10855948667290278612"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3387,7 +3506,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12598241213579055443"/>
+						<P t="11" name="Id" v="11090158864766735922"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3403,7 +3522,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="16429631630014825021"/>
+			<P t="11" name="Id" v="1487624371432473027"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3419,7 +3538,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="6748929624758329759"/>
+						<P t="11" name="Id" v="15417042558772367440"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3429,7 +3548,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="11370141161934457693"/>
+						<P t="11" name="Id" v="16779198231242455795"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3445,7 +3564,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3086768069776375388"/>
+			<P t="11" name="Id" v="14099029490827094517"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3461,7 +3580,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="10670057152464499351"/>
+						<P t="11" name="Id" v="14217255948579846927"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3471,7 +3590,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="14888712118759933196"/>
+						<P t="11" name="Id" v="13933293012843856997"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3487,7 +3606,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3826968814893602634"/>
+			<P t="11" name="Id" v="1669801150045091341"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3503,7 +3622,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="4280855674044607130"/>
+						<P t="11" name="Id" v="12548943049101791117"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3513,7 +3632,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="2108630541850178440"/>
+						<P t="11" name="Id" v="2608336880167321878"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3529,7 +3648,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="10526348474113439473"/>
+			<P t="11" name="Id" v="11227864830504708560"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3545,7 +3664,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="13102792823230935808"/>
+						<P t="11" name="Id" v="5870666397493011742"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3555,7 +3674,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="8715967337619590694"/>
+						<P t="11" name="Id" v="8502566519633814176"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3571,7 +3690,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="9209116657580301488"/>
+			<P t="11" name="Id" v="12020234327539663280"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3587,7 +3706,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12996651915305705056"/>
+						<P t="11" name="Id" v="11408642477962731369"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3597,7 +3716,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="3324321743022245143"/>
+						<P t="11" name="Id" v="11324493921649023779"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3613,7 +3732,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="18177002389865302052"/>
+			<P t="11" name="Id" v="10507286115144387079"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3629,7 +3748,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5363864753871670354"/>
+						<P t="11" name="Id" v="3039222449701330736"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3639,7 +3758,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="7441982201095732402"/>
+						<P t="11" name="Id" v="5013545900166120462"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3655,7 +3774,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="7482269555046624189"/>
+			<P t="11" name="Id" v="1120628342737871083"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3671,7 +3790,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="13441493061139320561"/>
+						<P t="11" name="Id" v="578717380767372635"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3681,7 +3800,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="6604021177540177257"/>
+						<P t="11" name="Id" v="14998056927628522267"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3697,7 +3816,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5382729544363420834"/>
+			<P t="11" name="Id" v="13142171278896388393"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3713,7 +3832,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="14240950856936498165"/>
+						<P t="11" name="Id" v="1075217805563683203"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3723,7 +3842,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="13467658904442684687"/>
+						<P t="11" name="Id" v="3602429112962028613"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3739,7 +3858,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="576311081938611797"/>
+			<P t="11" name="Id" v="3792690820835255419"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3755,7 +3874,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12413029832828609358"/>
+						<P t="11" name="Id" v="5227481799601995349"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3765,7 +3884,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="17972322293270051987"/>
+						<P t="11" name="Id" v="17705915292775627060"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3781,7 +3900,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="16229263166774773939"/>
+			<P t="11" name="Id" v="11082713975246810351"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3797,7 +3916,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="2482545931165917749"/>
+						<P t="11" name="Id" v="10544611482121484474"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3807,7 +3926,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="7301602763526543795"/>
+						<P t="11" name="Id" v="15380162415320884605"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3823,7 +3942,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="1097806091417047354"/>
+			<P t="11" name="Id" v="16932558325014588187"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3839,7 +3958,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="16655969542182920251"/>
+						<P t="11" name="Id" v="2081566629529301629"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3849,7 +3968,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9380479465195235188"/>
+						<P t="11" name="Id" v="16034712801277648920"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3865,7 +3984,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="12428931451030674361"/>
+			<P t="11" name="Id" v="3393312786784357004"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3881,7 +4000,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15997177676827390789"/>
+						<P t="11" name="Id" v="8402151186123382105"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3891,7 +4010,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="10797902162311396940"/>
+						<P t="11" name="Id" v="2611707359671857595"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3907,7 +4026,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="17662122597214953185"/>
+			<P t="11" name="Id" v="6186928522774217671"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3923,7 +4042,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="11402192195693900058"/>
+						<P t="11" name="Id" v="9162807402244553532"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3933,7 +4052,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="7178440743630410772"/>
+						<P t="11" name="Id" v="4542236214433185676"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3949,7 +4068,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="15829014846353508623"/>
+			<P t="11" name="Id" v="7943760835975568676"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -3965,7 +4084,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="14806721007943374695"/>
+						<P t="11" name="Id" v="1714418732698801589"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -3975,7 +4094,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="18252595746754007005"/>
+						<P t="11" name="Id" v="3353939469623279688"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -3991,7 +4110,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="14724515459175996455"/>
+			<P t="11" name="Id" v="2813801483368551146"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4007,7 +4126,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="14155261184682844158"/>
+						<P t="11" name="Id" v="6347675439752881457"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4017,7 +4136,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9098310818799408522"/>
+						<P t="11" name="Id" v="17540181597683300115"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4033,7 +4152,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="8006040852709043954"/>
+			<P t="11" name="Id" v="14542128716755052911"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4049,7 +4168,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="1532965696364460652"/>
+						<P t="11" name="Id" v="15877391721127151077"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4059,7 +4178,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12464244904987207996"/>
+						<P t="11" name="Id" v="12040142643322178090"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4075,7 +4194,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3560411836524235757"/>
+			<P t="11" name="Id" v="5251485447920865406"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4091,7 +4210,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="18032485898733033569"/>
+						<P t="11" name="Id" v="2843141873588412420"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4101,7 +4220,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="164569438310187102"/>
+						<P t="11" name="Id" v="16002114452816023057"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4117,7 +4236,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="4992251717035984646"/>
+			<P t="11" name="Id" v="7210719781635353836"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4133,7 +4252,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="679312460393257850"/>
+						<P t="11" name="Id" v="14632527337343188486"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4143,7 +4262,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="13347621413981781082"/>
+						<P t="11" name="Id" v="8680168292104205025"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4159,7 +4278,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="6808331383071586731"/>
+			<P t="11" name="Id" v="12952321147182300337"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4175,7 +4294,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5130734099066553540"/>
+						<P t="11" name="Id" v="13217342155552710867"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4185,7 +4304,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="4730963988426742666"/>
+						<P t="11" name="Id" v="538828471594223631"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4201,7 +4320,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="10829140343011739184"/>
+			<P t="11" name="Id" v="2017745550818550754"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4217,7 +4336,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15068619394138485079"/>
+						<P t="11" name="Id" v="8404593177518648747"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4227,7 +4346,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="16184543852740725161"/>
+						<P t="11" name="Id" v="11601182969572176855"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4243,7 +4362,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3921881398131368405"/>
+			<P t="11" name="Id" v="2450382991175218130"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4259,7 +4378,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="7076709666543753162"/>
+						<P t="11" name="Id" v="9206087216050721426"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4269,7 +4388,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="2221714764705130779"/>
+						<P t="11" name="Id" v="14133598000609241084"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4285,7 +4404,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="17364076818767938362"/>
+			<P t="11" name="Id" v="10416751773165174133"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4301,7 +4420,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="10948636509851265119"/>
+						<P t="11" name="Id" v="4783995282355684050"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4311,7 +4430,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="1696700246292335109"/>
+						<P t="11" name="Id" v="6477039164847202478"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4327,7 +4446,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="9120607499450036700"/>
+			<P t="11" name="Id" v="3957106537214730748"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4343,7 +4462,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="17139738887122338548"/>
+						<P t="11" name="Id" v="7898687704259790534"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4353,7 +4472,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="8479982519136020823"/>
+						<P t="11" name="Id" v="11751894238156946663"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4369,7 +4488,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="10835620999323705493"/>
+			<P t="11" name="Id" v="15424264184533261947"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4385,7 +4504,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="681840699704649362"/>
+						<P t="11" name="Id" v="1968475655713170519"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4395,7 +4514,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="4560305334468264603"/>
+						<P t="11" name="Id" v="17198652084260119978"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4411,7 +4530,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5372947519168953241"/>
+			<P t="11" name="Id" v="7769579672014305459"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4427,7 +4546,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="11778119849143425998"/>
+						<P t="11" name="Id" v="3425765398855550774"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4437,7 +4556,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="3500719777173474891"/>
+						<P t="11" name="Id" v="9448687568067092775"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4453,7 +4572,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="10709705368365071589"/>
+			<P t="11" name="Id" v="12275991700895620777"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4469,7 +4588,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5292918558793820025"/>
+						<P t="11" name="Id" v="19549617853565637"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4479,7 +4598,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="6304961202695736910"/>
+						<P t="11" name="Id" v="16735411372306192323"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4495,7 +4614,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="3809613037744793786"/>
+			<P t="11" name="Id" v="17315179220861110515"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4511,7 +4630,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="16524569293459397937"/>
+						<P t="11" name="Id" v="8469155843520433743"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4521,7 +4640,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="15724473210841359231"/>
+						<P t="11" name="Id" v="14368694168198683889"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4537,7 +4656,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="14372006284249071526"/>
+			<P t="11" name="Id" v="3506529224475117340"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4553,7 +4672,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="18434834321352033910"/>
+						<P t="11" name="Id" v="5816900234055778401"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4563,7 +4682,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="16893000729162206582"/>
+						<P t="11" name="Id" v="5958392227711879239"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4579,7 +4698,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="16053329036564113026"/>
+			<P t="11" name="Id" v="10342425776332696209"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4595,7 +4714,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12629836687062517546"/>
+						<P t="11" name="Id" v="632715581182722191"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4605,7 +4724,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="18337863873133807817"/>
+						<P t="11" name="Id" v="13414244381053530652"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4621,7 +4740,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="434978508102977142"/>
+			<P t="11" name="Id" v="8421424591218588380"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4637,7 +4756,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="13251755222755822294"/>
+						<P t="11" name="Id" v="16420550413387778345"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4647,7 +4766,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="15652149719289176424"/>
+						<P t="11" name="Id" v="8927782129143246955"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4663,7 +4782,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="14384900552706106189"/>
+			<P t="11" name="Id" v="716077534857587212"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4679,7 +4798,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="7270789485985423179"/>
+						<P t="11" name="Id" v="8611407085747063675"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4689,7 +4808,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="4052489306088014893"/>
+						<P t="11" name="Id" v="5331405862660317763"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4705,7 +4824,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="16910665633363192346"/>
+			<P t="11" name="Id" v="9715633643883357634"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4721,7 +4840,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12394445362077846848"/>
+						<P t="11" name="Id" v="463711068879123048"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4731,7 +4850,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="8272030688458124854"/>
+						<P t="11" name="Id" v="10790075864183385555"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4747,7 +4866,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="18343305808431752690"/>
+			<P t="11" name="Id" v="12088497670880888727"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4763,7 +4882,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="6599528048203171498"/>
+						<P t="11" name="Id" v="13469800391930206836"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4773,7 +4892,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="3077695267173927962"/>
+						<P t="11" name="Id" v="9811157283695711014"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4789,7 +4908,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="12163542820863350066"/>
+			<P t="11" name="Id" v="3054050667499481837"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4805,7 +4924,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="5033394261964495556"/>
+						<P t="11" name="Id" v="18257456346065137596"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4815,7 +4934,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9603363935203664922"/>
+						<P t="11" name="Id" v="13102028949773590326"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4831,7 +4950,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="7743880759016733416"/>
+			<P t="11" name="Id" v="10915767410672318838"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4847,7 +4966,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="12413643738289506931"/>
+						<P t="11" name="Id" v="1438231642324144702"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4857,7 +4976,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="1431505408235719061"/>
+						<P t="11" name="Id" v="527349716919098178"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4873,7 +4992,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="5658566172648242736"/>
+			<P t="11" name="Id" v="1811657447542443515"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4889,7 +5008,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="10478181789484823853"/>
+						<P t="11" name="Id" v="8644476395625007237"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4899,7 +5018,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="8552013646167378123"/>
+						<P t="11" name="Id" v="10256137895975670748"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4915,7 +5034,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="7256273231754350663"/>
+			<P t="11" name="Id" v="11928083420249314823"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4931,7 +5050,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="7099929183538730137"/>
+						<P t="11" name="Id" v="3878420455109441210"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4941,7 +5060,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="17146243412205710236"/>
+						<P t="11" name="Id" v="10523254755932357672"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4957,7 +5076,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="14819138591960506643"/>
+			<P t="11" name="Id" v="8501136119386824483"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -4973,7 +5092,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="16453358615786652676"/>
+						<P t="11" name="Id" v="15633200256972013435"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -4983,7 +5102,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="9681959292984175785"/>
+						<P t="11" name="Id" v="7014108146505862798"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -4999,7 +5118,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="12808327343378483826"/>
+			<P t="11" name="Id" v="4627670092211191243"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -5015,7 +5134,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="10956698048684224471"/>
+						<P t="11" name="Id" v="9281555442532836014"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -5025,7 +5144,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="1888662615144168036"/>
+						<P t="11" name="Id" v="14379738636947375990"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -5041,7 +5160,7 @@
 	</Object>
 	<Object Cl="Quad">
 		<PB>
-			<P t="11" name="Id" v="9741568628926894933"/>
+			<P t="11" name="Id" v="4874974879814762307"/>
 			<P t="9" name="Name" v="Bridge"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
@@ -5057,7 +5176,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="15531023742916301513"/>
+						<P t="11" name="Id" v="2387255825271189100"/>
 						<P t="12" name="Mesh"/>
 						<P t="10" name="CastShadow" v="1"/>
 					</PB>
@@ -5067,7 +5186,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="5632684735735613341"/>
+						<P t="11" name="Id" v="15603566218064958966"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -5079,6 +5198,72 @@
 				</Object>
 			</Ca>
 			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Quad">
+		<PB>
+			<P t="11" name="Id" v="10960330632745285415"/>
+			<P t="9" name="Name" v="Bridge"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="10" name="TileTexture" v="0"/>
+		</PB>
+		<Entity pi="1595151954608558117">
+			<N is="0">
+				<T x="0.000000" y="0.210000" z="-12.500000"/>
+				<R x="-0.707107" y="0.000000" z="0.000000" w="0.707107"/>
+				<S x="0.250000" y="5.000000" z="1.000000"/>
+			</N>
+			<Ca>
+				<Object Cl="MeshComponent">
+					<PB>
+						<P t="11" name="Id" v="9425216216724381805"/>
+						<P t="12" name="Mesh"/>
+						<P t="10" name="CastShadow" v="1"/>
+					</PB>
+					<Component>
+						<MeshComponent/>
+					</Component>
+				</Object>
+				<Object Cl="MaterialComponent">
+					<PB>
+						<P t="11" name="Id" v="9079082188905263270"/>
+					</PB>
+					<Component>
+						<MaterialComponent MaterialCount="1">
+							<0>
+								<ResourceRef Class="Material" File="BricksBridge.material"/>
+							</0>
+						</MaterialComponent>
+					</Component>
+				</Object>
+			</Ca>
+			<Quad/>
+		</Entity>
+	</Object>
+	<Object Cl="Prefab">
+		<PB>
+			<P t="11" name="Id" v="2615866545612878223"/>
+			<P t="9" name="Name" v="stationary-patrol"/>
+			<P t="9" name="Tag" v=""/>
+			<P t="10" name="Visible" v="1"/>
+			<P t="10" name="TransformLock" v="0"/>
+			<P t="9" name="PrefabPath" v="stationary-patrol.scene"/>
+		</PB>
+		<Entity pi="4294551454903962968">
+			<N is="0">
+				<T x="-0.015939" y="0.100000" z="0.002067"/>
+				<R x="0.000000" y="0.000000" z="0.000000" w="1.000000"/>
+				<S x="1.000000" y="1.000000" z="1.000000"/>
+			</N>
+			<Ca/>
+			<Prefab>
+				<PrefabRoots>
+					<root/>
+					<patrol/>
+				</PrefabRoots>
+			</Prefab>
 		</Entity>
 	</Object>
 	<PostProcessingSettings>
