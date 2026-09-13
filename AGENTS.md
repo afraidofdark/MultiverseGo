@@ -10,8 +10,10 @@ apply to all code in both repositories.
 - MultiverseGo (this repository): the game plugin and its content.
   - `Codes/`: the game. `Game.h/cpp` is the GamePlugin (turn flow, play/stop
     lifecycle). `Unit.h/cpp` holds the grid actors (player and patrols), the
-    shared animated walk, and the turn decisions. `Main.cpp` is the standalone
-    launcher.
+    shared animated walk, and the turn decisions. `ClipMotion.h/cpp` measures
+    what a clip's root key does to its actor (shared by the walk and the
+    execution). `Execution.h/cpp` is the execution/strike catalogue.
+    `Main.cpp` is the standalone launcher.
   - `Resources/`: `Scenes/test.scene` (main scene), `Prefabs/` (player and
     patrol prefab scenes), `Meshes/Character/` (skeleton, skinMesh, and the
     `.anim` clips under `Movement/` and `Execution/`), materials, audio...
@@ -73,12 +75,22 @@ apply to all code in both repositories.
   `MaterialComponent` and an `AABBOverrideComponent`. Every character's actor
   carries the same anim controller records ("signals"): `rest`, `idle`,
   `walk_f_start`, `walk_f`, `walk_f_end`, `run_f_start`, `run_f`, `run_f_stop`,
-  `fight_walk_f`, `turn_l_90`, `turn_l_180`, `turn_r_90`, `turn_r_180`. Scene
+  `fight_walk_f`, `turn_l_90`, `turn_l_180`, `turn_r_90`, `turn_r_180`, plus the
+  execution pairs `ambush_1/2/3` (striker) and `ambushed_1/2/3` (victim). Scene
   files persist `ApplyRootMotion="0"`; the walk code enables root motion on the
-  three walk clips at runtime.
-- Animation clips: `Resources/Meshes/Character/Player/Movement/*.anim` are
-  shared by every animated actor. The root
-  key (skeleton root bone) of the player character is `Character_Male_Jacket`.
+  three walk clips at runtime, and the execution code does the same for the
+  strike / reaction clips it plays.
+- Animation clips: `Resources/Meshes/Character/Player/Movement/*.anim` and
+  `.../Execution/*.anim` are shared by every animated actor. The root
+  key (skeleton root bone) of the player character is `Character_Male_Jacket`,
+  named by the `rootKey="..."` attribute of every `.anim` file -- that track is
+  the one the engine applies as root motion and the one the game measures (see
+  "Clip motion measurement").
+- The execution clips carry root motion too, and it is what places the strike:
+  measured forward reach (the running max of the root track's travel along its
+  net axis) is `ambush_1` ~1.64 u over 1.70 s, `ambush_2` ~0.46 u over 1.90 s,
+  `ambush_3` ~1.59 u over 1.70 s; the `ambushed_*` reactions are 3.73 s each.
+  Never hardcode those numbers -- they are measured at runtime.
 - The character actors carry an authored 180-degree Y yaw. Together with
   the engine's local-space root motion this maps the baked +Z root curve to
   forward walking. Do not "fix" apparent direction problems by reverting the
@@ -164,10 +176,11 @@ apply to all code in both repositories.
 - Distance math: every frame, `remaining` = horizontal distance from the actor
   node (`m_actor->m_node`) to the destination `node.center`. The loop-to-end
   switch fires when `remaining <= endReach`, where `endReach` is computed at
-  runtime by `ClipRootTravel`: the net horizontal displacement between the
-  first and the last root key of the end clip. Reference numbers for the
-  current assets: `walk_f_start` ~1.15 units over 0.8 s, `walk_f` ~1.92 units
-  per 1.3 s cycle, `walk_f_end` ~0.39 units over 0.8 s.
+  runtime by `MeasureClipRootTravel` (ClipMotion.h): the net horizontal
+  displacement between the first and the last root key of the end clip.
+  Reference numbers for the current assets: `walk_f_start` ~1.15 units over
+  0.8 s, `walk_f` ~1.92 units per 1.3 s cycle, `walk_f_end` ~0.39 units over
+  0.8 s.
 - Clip transitions crossfade: every phase switch (idle -> walk_f_start ->
   walk_f -> walk_f_end -> idle) goes through the helper `BlendTo`, which calls
   `AnimControllerComponent::SmoothTransition(signal, gWalkBlendDuration)` so
@@ -240,7 +253,9 @@ apply to all code in both repositories.
      bite resolves the moment the biting enemy STANDS on the player's tile
      (`bite->GetNode() == player tile`), not when its animation finishes: the
      eat does not wait for a queued turn or a fade, it bites and stops there
-     (`Game::EatPlayer`).
+     (`Game::EatPlayer`). A bite with an authored EXECUTION for its relation is
+     the exception: it runs its whole strike scene first (see "Execution
+     system"), and the loss lands on the scene's last beat.
   4. When the player arrived and no bite is pending/in flight and no enemy is
      moving, `StartPlayerTurn` hands the input back.
 - Guards never move on their own (their `OnTurn` is empty): the lunge is
@@ -269,6 +284,112 @@ apply to all code in both repositories.
   ANIMATED the moment the move lands (`TurnOnArrival`), so the patrol arrives
   and then turns like the player would.
 
+## Clip motion measurement (Codes/ClipMotion.h/cpp)
+
+- One shared model of "what does a clip do to its actor", used by BOTH the walk
+  and the execution: `ClipMotion { duration, totalTravel, keyTimes, keyTravel }`
+  built by `MeasureClipMotion(anim)` from the clip's `rootKey` track (key time =
+  `m_frame / fps`; travel = running max of the signed projection of the root
+  position onto the clip's NET travel axis, clamped to the playable duration),
+  plus `ClipMotion::TimeToTravel(distance)` and `MeasureClipRootTravel(record)`
+  (net first-to-last key displacement).
+- Nothing about a clip's length or reach is ever hardcoded: authoring a new
+  `.anim` (or re-exporting one) changes the walk's natural duration and an
+  execution's start distance by itself. Measurements happen at init / on
+  resource reload, never per frame.
+- `unit scale`: `MeasureClipMotion` returns `totalTravel == 0` for clips with no
+  net horizontal travel (turn-in-place, idle, `rest`); callers must treat that
+  as "cannot close a gap" (see `ClipMotion::HasTravel`).
+
+## Execution system (Codes/Execution.h/cpp)
+
+- An EXECUTION is a kill performed with authored animation instead of a plain
+  step: the attacker closes in, the LAST stretch is covered by its strike clip's
+  own root motion, and the victim plays the paired reaction clip at the same
+  time. The player and every patrol can be either side; nothing in the system is
+  player-specific or patrol-specific.
+- THE CLIP SAYS WHERE THE STRIKE STARTS. `ExecutionClip::StartDistance()` is the
+  strike's measured forward reach (`ClipMotion::totalTravel`), so the attacker
+  walks until it is exactly that far from the victim and then plays the clip,
+  whose root motion lands it on the victim's tile. Measured on the current
+  assets: `ambush_1` 1.64 u (1.70 s), `ambush_2` 0.46 u (1.90 s), `ambush_3`
+  1.59 u (1.70 s). Never write those numbers into code.
+- THE RELATION PICKS THE CLIP. `ExecutionLibrary::RelationOf(approach,
+  victimFacing)` classifies a strike from the four grid sides of the victim:
+  `Behind` = the attacker walks the way the victim faces (it comes up its back),
+  `Front` = they walk into each other, `Left` / `Right` = the victim's shoulders
+  (its right is its facing turned toward `+X x +Y`). The catalogue in
+  `Execution.cpp` maps each relation to its clip variants:
+  `Behind -> ambush_1/2/3 + ambushed_1/2/3` (the victim's reaction is paired by
+  INDEX); `Front` / `Left` / `Right` have no variants yet, resolve to null and
+  leave the caller with its plain bite. Adding a direction -- or new variants --
+  is a table row, not code.
+- Variants take turns: `ExecutionLibrary::Resolve` cycles through a relation's
+  variants (per session, reset by `ExecutionLibrary::Reset` in `Game::OnPlay`),
+  so a player eaten three times sees all three scenes. The resolved clip is also
+  measured there, once per loaded animation resource, and logged.
+- Flow inside the walk (nothing is duplicated): `AnimatedUnit::StartExecution`
+  resolves the relation + clip and hands both to `AnimatedUnit::StartAction`,
+  the single implementation behind `StartWalk` and executions. The action runs
+  through the SAME walk state machine -- turn, wind-up, stride loop -- and only
+  its LANDING phase differs: `ExecStrikeState` takes the place of `WalkEndState`
+  (it registers under the type name `"WalkEnd"`, exactly like
+  `InPlaceTurnDoneState` registers as `"WalkStart"`), so the approach stops at
+  `remaining <= strike reach` instead of the tile centre and the strike clip
+  covers the rest. The natural duration is measured with the strike clip
+  standing in for `walk_f_end`, so the action still closes in `gTurnDuration`
+  with ONE scale (`ApplyMoveTimeScale` also drives the strike clip through
+  `m_execSignal`).
+- The victim side: when the strike phase begins, the attacker calls
+  `victim->PlayExecutionReaction(signal, m_timeScale)` (through the
+  `onStrike` callback in the walk context). `AnimatedUnit` plays that clip as a
+  one-shot with root motion at the ATTACKER'S tempo and returns its length, so
+  both halves of the scene stay in step. A victim without the clip returns 0 and
+  the scene is just the strike.
+- The scene outlives the walk machine: when the strike ends, `FinishWalk` snaps
+  the attacker onto the victim's tile but SKIPS the idle settle and the tempo
+  reset, so the attacker holds the strike's final pose (one-shot clips hold
+  their last frame) while the victim's usually longer reaction plays out.
+  `AnimatedUnit` counts that scene down (`m_execActive` / `m_execT` /
+  `m_execDur`, advanced at the action's scale) and `IsExecuting()` reports it
+  (throughout the whole action, see below). When the scene ends the attacker
+  settles back into idle at 1x.
+- The kill lands on the LAST beat: `Game::UpdateActing` skips a bite while
+  `bite->IsExecuting()` is true, so an execution ends with the full scene and
+  then `Game::EatPlayer` (`Game: a patrol caught the player. You lose!`). A
+  plain bite keeps the old rule: the eat lands the moment the enemy STANDS on
+  the player's tile.
+- Where executions are used today: a step bite (`Game::ResolvePlayerArrival`)
+  and a guard's lunge (`StationaryPatrol::Lunge(victim)`), each of which falls
+  back to `StartMove` when no clip is authored for the relation. In the current
+  rules a REAR step bite happens when a patrol follows the player along a line
+  (it steps onto the player's destination from the tile behind, which is the way
+  the player faces); every other case -- coming at it head on or from a
+  shoulder -- is frontal/side and therefore still a plain bite until those
+  relations get clips.
+- The PLAYER strikes too. `Game::HandlePlayerClick` looks up the patrol on the
+  clicked tile (`Game::EnemyOnTile`) and passes it to
+  `Player::TryMove(node, isOccupied, victim)`: with a victim the step is tried
+  as an execution FIRST -- the walk is the approach, the strike clip carries the
+  player the last stretch onto the patrol -- and only a relation without clips
+  falls back to the plain walk (which captures the patrol on arrival, as
+  before). So a player that steps onto a guard from the tile BEHIND it (walking
+  the way the guard faces) performs `ambush_N` on it and the guard plays
+  `ambushed_N`.
+- A player execution is bookkept as `Game::m_executedEnemy`. The victim is
+  frozen for the turn like any patrol standing on the destination, but it is
+  NOT removed at arrival: it stays on the grid until its death scene is over
+  (`Game::FinishPlayerExecution`, called as soon as `IsExecuting()` drops),
+  which then removes it exactly like a captured patrol and declares a win that
+  was waiting on that tile (`Game::TryWin`). `Game::UpdateActing` drives the
+  player's `Frame` while it executes (the strike scene outlives its walk
+  machine) and keeps the turn open (`!m_player.IsExecuting()` is part of the
+  settle condition).
+- `AnimatedUnit::IsExecuting()` covers the WHOLE action -- approach, strike and
+  the victim's reaction -- not just the scene (`m_execAction`), so callers can
+  never resolve a turn on top of a half-played kill. `m_execActive` is the
+  narrower "the strike scene is running now" flag the scene clock uses.
+
 ## Uniform turn duration (time scaling)
 
 - Rule: EVERY action of a turn closes in exactly `gTurnDuration` seconds
@@ -280,25 +401,29 @@ apply to all code in both repositories.
   nothing finishes early: if the natural action is shorter than T its clips are
   slowed down to fill the window.
 - The move's NATURAL duration is measured from the animation data, not
-  hardcoded. `WalkClipTiming` (built by `BuildClipTiming` from each clip's root
-  key: key time = frame / fps; progress = running max of the signed projection
-  of the root position onto the net travel axis, clamped to the playable clip
-  duration) is cached per unit in `AnimatedUnit::EnsureWalkTimings` at init and
-  lazily when the clip resources (re)load. `EstimateWalkDuration` then sums
-  the machine phases exactly the way the FSM gates them (optional turn duration
-  + wind-up + as many stride cycles as needed + landing clip) into the natural
-  length (a 5-unit move with a turn measures ~4.7 s natural on the current
-  assets; without a turn ~3.7 s).
-- `AnimatedUnit::StartWalk` sums the move's natural duration AND the natural
-  length of any queued arrival turn, then computes `scale = actionNatural /
-  target`; `ApplyMoveTimeScale` stores it in `AnimatedUnit::m_timeScale` and
-  writes it into the `m_timeMultiplier` of every clip that can play during the
-  action (idle + the three walk clips + the four turn clips). The FSM timers
-  AND the clip playback -- including blend countdowns -- advance at that same
-  rate, so the phases stay in sync while the action is compressed or stretched
-  to T. `AnimatedUnit::Frame` feeds `dt * m_timeScale` to the machine;
-  `FinishWalk` restores 1x before the idle settle blend. Scale is per unit
-  (record multiplier), so units never fight over one global speed.
+  hardcoded. `MeasureClipMotion` (ClipMotion.h/cpp: key time = frame / fps;
+  travel = running max of the signed projection of the root position onto the
+  net travel axis, clamped to the playable clip duration) is cached per unit in
+  `AnimatedUnit::EnsureWalkTimings` at init and lazily when the clip resources
+  (re)load. `EstimateWalkDuration` then sums the machine phases exactly the way
+  the FSM gates them (optional turn duration + wind-up + as many stride cycles
+  as needed + landing clip) into the natural length (a 5-unit move with a turn
+  measures ~4.7 s natural on the current assets; without a turn ~3.7 s). An
+  execution measures the same way with the strike clip standing in for the
+  landing clip (a 5-unit rear strike measures ~3.9 s with `ambush_1`).
+- `AnimatedUnit::StartWalk` (and `StartExecution`, through the shared
+  `StartAction`) sums the move's natural duration AND the natural length of any
+  queued arrival turn, then computes `scale = actionNatural / target`;
+  `ApplyMoveTimeScale` stores it in `AnimatedUnit::m_timeScale` and writes it
+  into the `m_timeMultiplier` of every clip that can play during the action
+  (idle + the three walk clips + the four turn clips + an execution's strike
+  clip). The FSM timers AND the clip playback -- including blend countdowns --
+  advance at that same rate, so the phases stay in sync while the action is
+  compressed or stretched to T. `AnimatedUnit::Frame` feeds
+  `dt * m_timeScale` to the machine; `FinishWalk` restores 1x before the idle
+  settle blend (an execution keeps its tempo until its whole scene is over).
+  Scale is per unit (record multiplier), so units never fight over one global
+  speed.
 - Moves run per unit: the player's `TryMove` and every enemy's `StartMove`
   (tile step, glide fallback and bite lunge alike) close in `gTurnDuration`;
   there is no second "temporary" move duration global.
@@ -317,23 +442,47 @@ apply to all code in both repositories.
 
 - `Move: natural X.XX s -> Y.YY s (xS.SS, T T.TT), turn yes/no` (plus
   `, arrival turn included` when a queued about-face/arrival turn was counted
-  into the window): per-action timing, one per animated unit per turn. X is the
-  natural duration measured from the clips (walk phases + any queued arrival
-  turn), Y the duration it actually plays (equal to T) and S the applied time
-  scale (below 1.00 = slowed down, above = sped up). A missing/wrong X means
-  the clip timing profiles failed to build.
+  into the window, plus `, execution strike` when the landing phase is a strike
+  clip): per-action timing, one per animated unit per turn. X is the natural
+  duration measured from the clips (walk phases + any queued arrival turn), Y
+  the duration it actually plays (equal to T) and S the applied time scale
+  (below 1.00 = slowed down, above = sped up). A missing/wrong X means the clip
+  timing profiles failed to build. Reference values for a 5-unit rear strike
+  (`ambush_1`): natural ~3.9 s, x1.30.
 - `Move: in-place turn NN deg (clip), plays Y.YY s (xS.SS)`: a stand-alone
   about-face filling its own T window.
+- `Exec: measured 'ambush_1' for a strike from behind: 1.70 s, 1.636 u of
+  forward travel.`: the clip measurement the start distance comes from (once
+  per loaded resource).
+- `Exec: strike from the behind -> 'ambush_1' + 'ambushed_1' (starts 1.64 u
+  out).` / `Exec: no execution authored for a strike from the left; plain
+  step.`: relation resolved, or no clip for it (the caller keeps the plain
+  step: a bite for a patrol, a capture for the player).
+- `Exec: strike 'ambush_1' started 1.64 u from the victim (1.70 s clip, 3.73 s
+  scene).` / `Exec: victim reaction 'ambushed_1' playing (3.73 s at x1.30).` /
+  `Exec: strike finished (elapsed ...)` / `Exec: scene finished after ...; the
+  attacker settles back.`: the execution's beats. A scene that never finishes
+  means `m_execDur` never elapsed -- check that the victim's reaction clip
+  length is not being read as 0 when it should not be.
 - `Move: walk started (...) -> (...), gap ..., end clip reach ...`: during a
-  normal walk the gap must shrink every frame.
+  normal walk the gap must shrink every frame. In an execution this reach is
+  the strike's own reach (1.64 u for `ambush_1`), i.e. where the approach stops
+  and the strike takes over.
 - `Move: walk stalled (gap ... not shrinking); snapping to the tile.`: root
   motion direction/orientation mismatch; check the prefab yaw and the facing
   convention.
 - `Game: a guard strikes the player on (...).` / `Game: a patrol closes in on
-  the player on (...).`: an eat is inbound (a bite move started after the player
-  arrived); the loss lands the moment that enemy STANDS on the player's tile
+  the player on (...).` / `Game: a patrol ambushes the player on (...).`: an eat
+  is inbound (a bite move started after the player arrived); the loss lands the
+  moment that enemy STANDS on the player's tile
   (`Game: a patrol caught the player. You lose!`), even if the enemy still had
-  a landing turn queued -- it bites and stops.
+  a landing turn queued -- it bites and stops. An ambush (execution) instead
+  holds the loss until its whole strike + reaction scene has played.
+- `Game: the player executed a patrol on (...).`: the player's own strike scene
+  ended and the body left the grid (the patrol is gone only now, not on
+  arrival); a run won on that same tile is declared right after it.
+- `Game: player captured a patrol.`: unchanged -- the plain-step capture, i.e.
+  a player that stepped onto a patrol from a side with no execution authored.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor
