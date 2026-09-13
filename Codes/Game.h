@@ -63,6 +63,21 @@ namespace ToolKit
     // the patrols that decided to step onto the player's tile start their bite.
     void ResolvePlayerArrival();
 
+    // The patrol standing on a tile, or null when the tile is free. Used to
+    // offer the step as an execution when the player is about to land on one.
+    Unit* EnemyOnTile(GridNode* node) const;
+
+    // Ends the player's own execution: the strike scene has played out, so the
+    // patrol the player hit leaves the grid (its root entity is removed and the
+    // unit is dropped) exactly the way a captured one does, and a win that was
+    // waiting on that very tile is declared now.
+    void FinishPlayerExecution();
+
+    // Declares the win when the player stands on the target tile. Returns true
+    // when the run was won; the caller returns immediately, because nothing
+    // else may resolve after the run ends.
+    bool TryWin();
+
     // Advances the acting phase: drives the player's walk and every enemy
     // glide, and settles the turn once nothing moves anymore.
     void UpdateActing(float deltaTime);
@@ -105,6 +120,11 @@ namespace ToolKit
     // Bite moves currently gliding (a guard's lunge or a step bite); the first
     // one to land eats the player.
     std::vector<Unit*> m_activeBites;
+
+    // The patrol the PLAYER is executing this turn (its own strike scene), or
+    // null. It is never removed at arrival like a captured patrol: it stays
+    // until the scene has played out, then FinishPlayerExecution drops it.
+    Unit* m_executedEnemy = nullptr;
 
     EntityPtr m_target;      // Optional entity tagged "target".
 

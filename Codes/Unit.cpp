@@ -7,6 +7,8 @@
 
 #include "Unit.h"
 
+#include "Execution.h"
+
 #include <Animation.h>
 #include <AnimationControllerComponent.h>
 #include <Logger.h>
@@ -33,28 +35,15 @@ namespace ToolKit
       }
     }
 
-    // World-space direction vector a unit faces when heading toward dir.
-    Vec3 FacingVector(GridDir d)
+    // Grid direction a horizontal offset points along. Moves are axis aligned,
+    // so the dominant axis decides.
+    GridDir DirectionOf(const Vec3& delta)
     {
-      switch (d)
+      if (std::fabs(delta.x) >= std::fabs(delta.z))
       {
-        case GridDir::Xm: return Vec3(-1.0f, 0.0f, 0.0f);
-        case GridDir::Xp: return Vec3(1.0f, 0.0f, 0.0f);
-        case GridDir::Zm: return Vec3(0.0f, 0.0f, -1.0f);
-        default: return Vec3(0.0f, 0.0f, 1.0f);
+        return (delta.x < 0.0f) ? GridDir::Xm : GridDir::Xp;
       }
-    }
-
-    // The grid direction opposite to d (180-degree turn on the grid).
-    GridDir OppositeDir(GridDir d)
-    {
-      switch (d)
-      {
-        case GridDir::Xm: return GridDir::Xp;
-        case GridDir::Xp: return GridDir::Xm;
-        case GridDir::Zm: return GridDir::Zp;
-        default: return GridDir::Zm;
-      }
+      return (delta.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
     }
   } // namespace
 
@@ -89,6 +78,14 @@ namespace ToolKit
     float turnYawTo = 0.0f;                 // Top root yaw after the turn (rad).
     Quaternion actorBaseOrient;             // Actor local orientation before the turn.
     bool turning = false;                   // True while the turn plays.
+
+    // Execution phase data (see AnimatedUnit::StartExecution). The strike is
+    // the landing phase of the walk: it replaces walk_f_end, covers the last
+    // `execReach` of the gap with its own root motion, and ends the action.
+    String execSignal;             // Authored strike clip ("" = a plain walk).
+    std::function<float()> onStrike; // Plays the victim's side, returns its length.
+    float execSceneDur = 0.0f;     // Whole scene length, known once the strike starts.
+    bool strikeStarted = false;    // Set when the strike clip begins to play.
   };
 
   // Crossfade length (seconds) used whenever the walk state machine switches
@@ -102,33 +99,6 @@ namespace ToolKit
   // same length, so all units of a turn start and stop together. Tunable at
   // runtime like gWalkBlendDuration.
   float gTurnDuration = 3.0f;
-
-  float WalkClipTiming::TimeToTravel(float distance) const
-  {
-    if (distance <= 0.0f || keyTimes.empty() || keyTravel.empty())
-    {
-      return 0.0f;
-    }
-    if (distance >= totalTravel || totalTravel <= 0.0001f)
-    {
-      return duration;
-    }
-
-    for (size_t i = 1; i < keyTravel.size(); i++)
-    {
-      if (keyTravel[i] >= distance)
-      {
-        float segTrav = keyTravel[i] - keyTravel[i - 1];
-        if (segTrav <= 0.0001f)
-        {
-          return keyTimes[i];
-        }
-        float ratio = (distance - keyTravel[i - 1]) / segTrav;
-        return keyTimes[i - 1] + (keyTimes[i] - keyTimes[i - 1]) * ratio;
-      }
-    }
-    return duration;
-  }
 
   namespace
   {
@@ -174,112 +144,14 @@ namespace ToolKit
     }
 
     // Net horizontal root travel a clip makes when played from its first to its
-    // last key. The engine applies per-frame deltas whose sum telescopes to
-    // (last - first), so this is the exact distance the clip walks its actor.
-    // Zero when the animation has no usable root track.
-    float ClipRootTravel(AnimRecordPtr record)
-    {
-      AnimationPtr anim = record != nullptr ? record->m_animation : nullptr;
-      if (anim == nullptr || anim->m_rootKey.empty())
-      {
-        return 0.0f;
-      }
-
-      const KeyArray* keys = anim->m_keys.Find(anim->m_rootKey);
-      if (keys == nullptr || keys->size() < 2)
-      {
-        return 0.0f;
-      }
-
-      Vec3 delta = keys->back().m_position - keys->front().m_position;
-      return glm::sqrt(delta.x * delta.x + delta.z * delta.z);
-    }
-
-    // Builds the measured timing model of one clip from its root key track:
-    // the time of every reachable root key (frame / fps, clipped to the playable
-    // duration) and how far the actor has travelled towards its destination at
-    // that key. Maps any required remaining-distance drop to the clip time that
-    // covers it, exactly the way the engine interpolates the root curve. All
-    // timing is derived from the animation data -- no hardcoded durations.
-    WalkClipTiming BuildClipTiming(AnimationPtr anim)
-    {
-      WalkClipTiming t;
-      if (anim == nullptr)
-      {
-        return t;
-      }
-
-      t.duration = anim->m_duration;
-      const KeyArray* keys = anim->m_keys.Find(anim->m_rootKey);
-      if (keys == nullptr || keys->size() < 2)
-      {
-        return t;
-      }
-
-      const float fps = (anim->m_fps > 0.0f) ? anim->m_fps : 30.0f;
-      const Vec3 first = keys->front().m_position;
-      const Vec3 last  = keys->back().m_position;
-
-      // Travel axis: the net horizontal displacement of the root curve. The
-      // actor's progress toward a straight-ahead destination is the running max
-      // of the signed projection of its position onto this axis -- a curve that
-      // settles back slightly at its very end never reduces how far it has been.
-      Vec3 axis(last.x - first.x, 0.0f, last.z - first.z);
-      float axisLen = glm::length(axis);
-      if (axisLen < 0.0001f)
-      {
-        return t; // No net horizontal travel (turn / idle style clip).
-      }
-      axis /= axisLen;
-
-      float runMax = 0.0f;
-      size_t n = keys->size();
-      size_t i = 0;
-      for (; i < n; i++)
-      {
-        const Key& k = (*keys)[i];
-        float time = k.m_frame / fps;
-        if (time > t.duration + 0.0001f)
-        {
-          break; // Past the playable end; the engine clamps at m_duration.
-        }
-        Vec3 d = k.m_position - first;
-        runMax = glm::max(runMax, d.x * axis.x + d.z * axis.z);
-        t.keyTimes.push_back(time);
-        t.keyTravel.push_back(runMax);
-      }
-
-      // A key that crosses the playable end: interpolate the travel reached at
-      // exactly m_duration and append it as the final sample.
-      if (i < n && !t.keyTimes.empty() && i > 0)
-      {
-        const Key& kNext = (*keys)[i];
-        const Key& kPrev = (*keys)[i - 1];
-        float tNext = kNext.m_frame / fps;
-        float tPrev = kPrev.m_frame / fps;
-        if (tNext > tPrev)
-        {
-          float r = (t.duration - tPrev) / (tNext - tPrev);
-          Vec3 pos = kPrev.m_position + (kNext.m_position - kPrev.m_position) * r;
-          Vec3 d   = pos - first;
-          runMax = glm::max(runMax, d.x * axis.x + d.z * axis.z);
-          t.keyTimes.push_back(t.duration);
-          t.keyTravel.push_back(runMax);
-        }
-      }
-
-      if (!t.keyTravel.empty())
-      {
-        t.totalTravel = t.keyTravel.back();
-      }
-      return t;
-    }
+    // last key (see ClipMotion.h: MeasureClipRootTravel) is the exact distance
+    // the clip walks its actor; the walk uses it as the landing clip's reach.
 
     // Machine seconds the stride clip needs to cover distance. Its curve
     // repeats every cycle: each full cycle adds totalTravel over duration
     // seconds (the engine re-measures from the cycle start at the wrap), and
     // the leftover is covered by a partial cycle.
-    float LoopTravelTime(const WalkClipTiming& loop, float distance)
+    float LoopTravelTime(const ClipMotion& loop, float distance)
     {
       if (distance <= 0.0f || loop.totalTravel <= 0.0001f || loop.duration <= 0.0f)
       {
@@ -298,9 +170,9 @@ namespace ToolKit
     // clip timings.
     float EstimateWalkDuration(float turnDur,
                                float gap,
-                               const WalkClipTiming& start,
-                               const WalkClipTiming& loop,
-                               const WalkClipTiming& end)
+                               const ClipMotion& start,
+                               const ClipMotion& loop,
+                               const ClipMotion& end)
     {
       float d = turnDur; // 0 unless an in-place turn precedes the walk.
 
@@ -719,6 +591,87 @@ namespace ToolKit
       float m_elapsed = 0.0f;
     };
 
+    // Terminal phase of an EXECUTION: plays the authored strike clip
+    // (ambush_N) with root motion, which carries the attacker the last stretch
+    // onto its victim and ends the action. Registered under the type name of
+    // the landing phase ("WalkEnd"), because that is exactly the role it takes
+    // over: the walk hands over to it where it would have played walk_f_end,
+    // and its measured reach is what the approach is gated on. The strike is
+    // also the moment the victim reacts: onStrike starts the paired reaction
+    // clip, and the length it reports is how long the scene still runs after
+    // the attacker's own clip is over.
+    class ExecStrikeState : public State
+    {
+     public:
+      explicit ExecStrikeState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx == nullptr)
+        {
+          return;
+        }
+
+        if (m_ctx->anim != nullptr && !m_ctx->execSignal.empty())
+        {
+          if (AnimRecordPtr rec = m_ctx->anim->GetAnimRecord(m_ctx->execSignal))
+          {
+            rec->m_loop            = false; // One-shot; holds its final frame.
+            rec->m_applyRootMotion = true;  // It carries the strike's movement.
+          }
+          BlendTo(m_ctx->anim, m_ctx->execSignal);
+        }
+
+        float victimDur      = (m_ctx->onStrike != nullptr) ? m_ctx->onStrike() : 0.0f;
+        m_ctx->execSceneDur  = glm::max(m_ctx->endDur, victimDur);
+        m_ctx->strikeStarted = true;
+
+        TK_LOG("Exec: strike '%s' started %.2f u from the victim (%.2f s clip, %.2f s scene).",
+               m_ctx->execSignal.c_str(),
+               m_ctx->endReach,
+               m_ctx->endDur,
+               m_ctx->execSceneDur);
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        m_elapsed += deltaTime;
+        float remaining = WalkRemaining(*m_ctx);
+
+        // The strike ends the action when the clip has played through (by then
+        // its root motion has carried the attacker onto the victim) or when the
+        // actor is already standing on top of it.
+        bool reached  = remaining <= kWalkArriveEps;
+        bool clipDone = m_elapsed >= m_ctx->endDur;
+        if (reached || clipDone)
+        {
+          TK_LOG("Exec: strike finished (elapsed %.2f/%.2f, remaining %.3f).",
+                 m_elapsed,
+                 m_ctx->endDur,
+                 remaining);
+          m_ctx->arrived = true;
+        }
+
+        return State::NullSignal;
+      }
+
+      String Signaled(SignalId signal) override { return ""; }
+
+      String GetType() override { return "WalkEnd"; }
+
+     private:
+      AnimatedUnit::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+    };
+
     // Terminal phase of an in-place turn: ends the unit's action as soon as
     // the turn phase hands over. Registered under the type name the turn phase
     // signals ("WalkStart"), so the existing WalkTurn -> WalkToStart transition
@@ -902,6 +855,14 @@ namespace ToolKit
     StartGlide(node, duration);
   }
 
+  bool Unit::StartExecution(Unit* victim, float targetDuration)
+  {
+    // A unit with no animation cannot perform a strike scene: the caller keeps
+    // its plain bite (walk / glide onto the victim's tile and eat).
+    TK_LOG("Exec: this unit has no animation support; plain bite.");
+    return false;
+  }
+
   void Unit::StartTurn(GridDir dir)
   {
     if (m_root == nullptr)
@@ -1047,7 +1008,7 @@ namespace ToolKit
       return;
     }
 
-    auto rebuild = [](WalkClipTiming& timing,
+    auto rebuild = [](ClipMotion& timing,
                       AnimRecordPtr rec,
                       const AnimRecord*& cached) -> void
     {
@@ -1060,7 +1021,7 @@ namespace ToolKit
         return; // Same clip as measured before.
       }
       cached = rec.get();
-      timing = BuildClipTiming(rec->m_animation);
+      timing = MeasureClipMotion(rec->m_animation);
     };
 
     rebuild(m_timingStart, m_walkAnim->GetAnimRecord("walk_f_start"), m_timedStartRec);
@@ -1083,6 +1044,33 @@ namespace ToolKit
 
   void AnimatedUnit::Frame(float deltaTime)
   {
+    // An execution outlives its walk state machine: once the strike has landed
+    // the attacker holds its final pose while the victim's (usually longer)
+    // reaction plays out, and the kill only lands when that whole scene is
+    // over. The scene clock runs at the action's tempo, like the clips.
+    if (m_execActive)
+    {
+      m_execT += deltaTime * 0.001f * m_timeScale;
+      if (m_execT >= m_execDur)
+      {
+        m_execActive = false;
+        m_execAction = false;
+        TK_LOG("Exec: scene finished after %.2f s; the attacker settles back.", m_execDur);
+        ApplyMoveTimeScale(1.0f);
+        m_execSignal.clear();
+
+        if (m_walkAnim != nullptr)
+        {
+          if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+          {
+            idle->m_loop            = true;
+            idle->m_applyRootMotion = false;
+          }
+          BlendTo(m_walkAnim, "idle");
+        }
+      }
+    }
+
     if (m_walkSM == nullptr || m_walkCtx == nullptr)
     {
       // No animated walk running: advance a glide fallback, if any.
@@ -1131,6 +1119,16 @@ namespace ToolKit
     }
 
     m_walkSM->Update(dt);
+
+    // The strike phase just began: the execution scene is now running, and it
+    // is what IsExecuting() reports until the victim's reaction is over too.
+    if (ctx->strikeStarted && !m_execActive)
+    {
+      m_execActive = true;
+      m_execT      = 0.0f;
+      m_execDur    = ctx->execSceneDur;
+    }
+
     if (ctx->arrived)
     {
       FinishWalk(false);
@@ -1307,10 +1305,12 @@ namespace ToolKit
     m_timeScale = scale;
 
     // Every clip that can play during a move: idle may still be fading out when
-    // the move starts, the walk clips follow, and the turn clips cover the
-    // leading turn phase / in-place turns.
+    // the move starts, the walk clips follow, the turn clips cover the leading
+    // turn phase / in-place turns, and an execution's strike clip is the
+    // landing phase of the same action.
     if (m_walkAnim != nullptr)
     {
+      const String strike = m_execSignal;
       static const char* kScaledClips[] = {"idle",
                                            "walk_f_start",
                                            "walk_f",
@@ -1326,10 +1326,20 @@ namespace ToolKit
           rec->m_timeMultiplier = scale;
         }
       }
+
+      if (!strike.empty())
+      {
+        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(strike))
+        {
+          rec->m_timeMultiplier = scale;
+        }
+      }
     }
   }
 
-  bool Player::TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied)
+  bool Player::TryMove(GridNode* node,
+                       const std::function<bool(GridNode*)>& isOccupied,
+                       Unit* victim)
   {
     if (m_root == nullptr || m_grid == nullptr || m_hasMoved || IsWalking())
     {
@@ -1376,6 +1386,18 @@ namespace ToolKit
     // An animated player walks to the tile; without animation support it lands
     // instantly. Either way the move is accepted and counts as this turn's
     // single step.
+    //
+    // A unit standing on the destination is struck first: the step becomes an
+    // execution whose approach is this very walk and whose strike clip covers
+    // the last stretch onto its prey (a patrol taken from behind never sees it
+    // coming). Only when that does not fit -- the relation has no clip authored,
+    // the clips are not loaded -- does the step fall back to the plain walk.
+    if (victim != nullptr && StartExecution(victim))
+    {
+      m_hasMoved = true;
+      return true;
+    }
+
     if (!StartWalk(node, gTurnDuration))
     {
       PlaceOnNode(node);
@@ -1387,6 +1409,82 @@ namespace ToolKit
   }
 
   bool AnimatedUnit::StartWalk(GridNode* node, float targetDuration)
+  {
+    return StartAction(node, targetDuration, nullptr, nullptr);
+  }
+
+  bool AnimatedUnit::StartExecution(Unit* victim, float targetDuration)
+  {
+    if (victim == nullptr || victim->GetNode() == nullptr || m_node == nullptr ||
+        victim->GetNode() == m_node)
+    {
+      return false;
+    }
+
+    GridNode* dest = victim->GetNode();
+
+    // Which side of the victim this strike comes from decides the scene: the
+    // attacker walks in along `approach`, and the victim faces `their facing`
+    // on the tile it is being attacked on. Nothing about the attacker's own
+    // type enters the choice -- a patrol walking up the player's back and a
+    // player sneaking up a patrol's back resolve to the same relation.
+    GridDir approach = DirectionOf(dest->center - m_node->center);
+    ExecRelation rel = ExecutionLibrary::RelationOf(approach, victim->GetFacingDir());
+
+    const ExecutionClip* clip = ExecutionLibrary::Resolve(rel, m_walkAnim);
+    if (clip == nullptr)
+    {
+      // No clip authored for this relation (or the clips are not loaded): the
+      // caller keeps its plain step (a bite for a patrol, a capture for the
+      // player).
+      TK_LOG("Exec: no execution authored for a strike from the %s; plain step.",
+             ExecRelationName(rel));
+      return false;
+    }
+
+    TK_LOG("Exec: strike from the %s -> '%s' + '%s' (starts %.2f u out).",
+           ExecRelationName(rel),
+           clip->attackerSignal.c_str(),
+           clip->victimSignal.c_str(),
+           clip->StartDistance());
+
+    return StartAction(dest, targetDuration, clip, victim);
+  }
+
+  float AnimatedUnit::PlayExecutionReaction(const String& signal, float scale)
+  {
+    if (m_walkAnim == nullptr || m_actor == nullptr || signal.empty())
+    {
+      return 0.0f;
+    }
+
+    AnimRecordPtr rec = m_walkAnim->GetAnimRecord(signal);
+    if (rec == nullptr || rec->m_animation == nullptr)
+    {
+      return 0.0f;
+    }
+
+    // The victim's half of the scene: a one-shot reaction whose own root motion
+    // carries the victim where the strike throws it, played at the attacker's
+    // tempo so both halves stay in step. It is not a walk, so it never touches
+    // the victim's tile: the reaction is the last thing this unit does.
+    rec->m_loop            = false;
+    rec->m_applyRootMotion = true;
+    rec->m_timeMultiplier  = scale;
+    BlendTo(m_walkAnim, signal);
+
+    TK_LOG("Exec: victim reaction '%s' playing (%.2f s at x%.2f).",
+           signal.c_str(),
+           rec->m_animation->m_duration,
+           scale);
+
+    return rec->m_animation->m_duration;
+  }
+
+  bool AnimatedUnit::StartAction(GridNode* node,
+                                 float targetDuration,
+                                 const ExecutionClip* exec,
+                                 Unit* victim)
   {
     if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr)
     {
@@ -1430,12 +1528,30 @@ namespace ToolKit
     ctx->targetPos    = node->center;
     ctx->startDur     = startRec->m_animation->m_duration;
     ctx->endDur       = endRec->m_animation->m_duration;
-    ctx->endReach     = ClipRootTravel(endRec);
+    ctx->endReach     = MeasureClipRootTravel(endRec);
     ctx->totalDist    = HorizontalDistance(ctx->startPos, ctx->targetPos);
     ctx->bestRemaining = ctx->totalDist;
     ctx->sinceProgress = 0.0f;
     ctx->arrived       = false;
     ctx->rootNode     = m_root->m_node;
+
+    // Execution: the authored strike clip takes the landing phase's place, so
+    // its measured reach is the distance the approach stops at and its length
+    // is how long the final phase runs. The victim's side of the scene starts
+    // the moment the strike does, at the very same tempo.
+    if (exec != nullptr)
+    {
+      m_execSignal      = exec->attackerSignal;
+      m_execAction      = true;
+      ctx->execSignal   = exec->attackerSignal;
+      ctx->endDur       = exec->AttackDuration();
+      ctx->endReach     = exec->StartDistance();
+      ctx->onStrike     = [this, victim, signal = exec->victimSignal]() -> float
+      {
+        return (victim != nullptr) ? victim->PlayExecutionReaction(signal, m_timeScale)
+                                   : 0.0f;
+      };
+    }
 
     // Decide whether the unit must turn in place before walking. Preferred
     // path: the re-authored turn clips rotate the actor through ROOT MOTION
@@ -1512,11 +1628,27 @@ namespace ToolKit
     }
 
     EnsureWalkTimings();
-    float naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
-                                            ctx->totalDist,
-                                            m_timingStart,
-                                            m_timingLoop,
-                                            m_timingEnd);
+
+    // Natural length of the action. For a plain step that is the walk's own
+    // phases (turn + wind-up + strides + landing clip); for an execution the
+    // strike clip IS the landing phase -- it covers the last `startDistance` of
+    // the gap exactly the way walk_f_end covers its own reach -- so it is
+    // measured in its place. A gap already inside the strike's reach skips the
+    // approach entirely: the wind-up plays and the strike follows.
+    float naturalDur = 0.0f;
+    if (exec != nullptr && ctx->totalDist <= exec->StartDistance())
+    {
+      naturalDur = m_timingStart.duration + exec->AttackDuration();
+    }
+    else
+    {
+      naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
+                                        ctx->totalDist,
+                                        m_timingStart,
+                                        m_timingLoop,
+                                        (exec != nullptr) ? exec->attackerMotion : m_timingEnd);
+    }
+
     float actionNatural = naturalDur + arrivalTurnDur;
     float scale = 1.0f;
     if (target > 0.01f && actionNatural > 0.01f && m_timingStart.duration > 0.0f)
@@ -1529,19 +1661,24 @@ namespace ToolKit
     // plays after the landing, so the whole action closes in `target` seconds.
     ApplyMoveTimeScale(scale);
 
-    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f, T %.2f), turn %s%s.",
+    TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f, T %.2f), turn %s%s%s.",
            actionNatural,
            actionNatural / scale,
            scale,
            target,
            ctx->turning ? "yes" : "no",
-           arrivalTurnDur > 0.0f ? ", arrival turn included" : "");
+           arrivalTurnDur > 0.0f ? ", arrival turn included" : "",
+           exec != nullptr ? ", execution strike" : "");
 
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
     m_walkSM->PushState(new WalkStartState(ctx));
     m_walkSM->PushState(new WalkLoopState(ctx));
-    m_walkSM->PushState(new WalkEndState(ctx));
+    // The landing phase: the walk's own stop clip, or the authored strike that
+    // takes its place in an execution (same state machine type name, so the
+    // walk hands over to it exactly where it would have played walk_f_end).
+    m_walkSM->PushState(exec != nullptr ? static_cast<State*>(new ExecStrikeState(ctx))
+                                        : static_cast<State*>(new WalkEndState(ctx)));
     m_walkSM->m_currentState = m_walkSM->QueryState(ctx->turning ? "WalkTurn" : "WalkStart");
     m_walkSM->m_currentState->TransitionIn(nullptr);
 
@@ -1560,6 +1697,17 @@ namespace ToolKit
     WalkContext* ctx = m_walkCtx;
     GridNode* dest   = (ctx != nullptr) ? ctx->to : nullptr;
     Vec3 targetPos   = (ctx != nullptr) ? ctx->targetPos : Vec3(0.0f);
+
+    // An execution is NOT over when its walk machine is: the attacker holds the
+    // strike's final pose (the one-shot clip holds it by itself) until the
+    // victim's reaction, which is usually much longer, has played out. So the
+    // idle settle and the tempo reset are skipped here and happen when the
+    // scene ends (see Frame). An execution whose walk never made it to its
+    // strike -- the stall watchdog landed it early, or the run ended mid
+    // approach -- is treated like any other landing and its action ends here,
+    // so nothing keeps waiting for a scene that will never play.
+    const bool execution = (ctx != nullptr) && !ctx->execSignal.empty();
+    const bool execScene = execution && m_execActive;
 
     // The scale the finished action ran at: a queued arrival turn must reuse it
     // so it stays part of the same, already-budgeted action.
@@ -1624,20 +1772,33 @@ namespace ToolKit
     }
 
     // The walk is over: restore normal playback speed before the idle settle
-    // blend, so the loop and its future fades run at 1x again.
-    ApplyMoveTimeScale(1.0f);
-
-    // Settle the character back into the idle loop with a crossfade. BlendTo
-    // also turns off the root motion of the outgoing walk clip, so the
-    // snapped-to-node actor does not drift while the end clip fades out.
-    if (m_walkAnim != nullptr)
+    // blend, so the loop and its future fades run at 1x again. An execution
+    // keeps its tempo and its pose until its whole scene is over -- and a walk
+    // that never reached its strike (the stall watchdog landed it early) is
+    // treated like any other landing, so the unit cannot get stuck holding a
+    // pose with no scene left to end it.
+    if (!execScene)
     {
-      if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+      if (execution)
       {
-        idle->m_loop            = true; // idle is a looping clip.
-        idle->m_applyRootMotion = false;
+        m_execAction = false;
+        m_execSignal.clear();
       }
-      BlendTo(m_walkAnim, "idle");
+
+      ApplyMoveTimeScale(1.0f);
+
+      // Settle the character back into the idle loop with a crossfade. BlendTo
+      // also turns off the root motion of the outgoing walk clip, so the
+      // snapped-to-node actor does not drift while the end clip fades out.
+      if (m_walkAnim != nullptr)
+      {
+        if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+        {
+          idle->m_loop            = true; // idle is a looping clip.
+          idle->m_applyRootMotion = false;
+        }
+        BlendTo(m_walkAnim, "idle");
+      }
     }
 
     // A patrol that must turn to a heading / idle stare the moment its move
@@ -1645,8 +1806,10 @@ namespace ToolKit
     // the end of its line) plays that turn ANIMATED now, the way the player
     // would, instead of snapping. Falls back to an instant orientation without
     // turn clips; a forced landing (stalled walk, end of the run) just takes
-    // the orientation without starting a new action.
-    if (m_hasDeferredTurn)
+    // the orientation without starting a new action. An execution drops it: the
+    // strike ends the action, so the attacker holds its pose instead of turning
+    // on the body.
+    if (m_hasDeferredTurn && !execScene)
     {
       Quaternion target = m_deferredTurn;
       m_hasDeferredTurn = false;
@@ -1690,13 +1853,20 @@ namespace ToolKit
     m_actorLocalBase = Vec3(0.0f);
 
     m_timeScale = 1.0f;
-    m_timingStart = WalkClipTiming();
-    m_timingLoop  = WalkClipTiming();
-    m_timingEnd   = WalkClipTiming();
+    m_timingStart = ClipMotion();
+    m_timingLoop  = ClipMotion();
+    m_timingEnd   = ClipMotion();
     m_timedStartRec = nullptr;
     m_timedLoopRec  = nullptr;
     m_timedEndRec   = nullptr;
     m_hasDeferredTurn = false;
+
+    // A running execution scene never outlives the session either.
+    m_execAction = false;
+    m_execActive = false;
+    m_execT      = 0.0f;
+    m_execDur    = 0.0f;
+    m_execSignal.clear();
 
     Unit::Reset();
   }
@@ -1726,7 +1896,7 @@ namespace ToolKit
     return watched;
   }
 
-  void StationaryPatrol::Lunge()
+  void StationaryPatrol::Lunge(Unit* victim)
   {
     GridNode* watched = ThreatTile();
     if (watched == nullptr)
@@ -1741,8 +1911,16 @@ namespace ToolKit
     // The one step forward onto the prey's tile. ThreatTile() only answers with
     // a connected neighbour, so this is a legal move and not a reach across a
     // wall. The guard already faces this way, so the step reads purely as a
-    // strike. The shared animated move (or glide fallback) makes the bite
-    // visible; the game eats the player when the move lands.
+    // strike. When an execution is authored for the relation between the guard
+    // and its prey (a prey walking away from it, showing its back) the strike
+    // clip performs it; otherwise the shared animated move (or glide fallback)
+    // makes the bite visible and the game eats the player when it lands.
+    if (victim != nullptr && StartExecution(victim))
+    {
+      TK_LOG("Guard: ambushes the prey on (%d, %d).", watched->ix, watched->iz);
+      return;
+    }
+
     StartMove(watched);
     TK_LOG("Guard: lunges forward onto (%d, %d) and bites.",
            watched->ix,

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include "ClipMotion.h"
 #include "GridGraph.h"
 
 #include <Entity.h>
@@ -22,6 +23,10 @@ namespace ToolKit
   class AnimRecord;
   class StateMachine;
 
+  // Defined in Execution.h: the authored strike StartAction plays when a move
+  // is an execution instead of a plain step (only the pointer crosses here).
+  struct ExecutionClip;
+
   // Crossfade length (seconds) used whenever the walk state machine switches
   // clips (idle -> walk_f_start -> walk_f -> walk_f_end -> idle). Kept as a
   // global so it can be tuned at runtime (e.g. bound to a settings value);
@@ -34,22 +39,6 @@ namespace ToolKit
   // turn start and stop together. Tunable at runtime like gWalkBlendDuration.
   // Defined in Unit.cpp.
   extern float gTurnDuration;
-
-  // Measured timing model of one walk clip: how much horizontal root travel the
-  // clip's root key makes over its key frames, and when. Built from the actual
-  // animation data (never hardcoded) so the walk's natural duration can be
-  // predicted for time scaling.
-  struct WalkClipTiming
-  {
-    float duration = 0.0f;        // Clip duration (seconds).
-    float totalTravel = 0.0f;     // Net horizontal root travel over the clip.
-    std::vector<float> keyTimes;  // Time of each root key (seconds).
-    std::vector<float> keyTravel; // Cumulative horizontal travel at each key.
-
-    // Clip time (seconds) the clip needs to travel the given horizontal
-    // distance from its first frame. 0 when the clip has no usable root track.
-    float TimeToTravel(float distance) const;
-  };
 
   // Base class for every actor placed on the grid (player, enemies).
   //
@@ -106,6 +95,28 @@ namespace ToolKit
     // of a turn move the same way.
     virtual void StartMove(GridNode* node, float targetDuration = -1.0f);
 
+    // Starts an EXECUTION of victim: instead of walking onto its tile, the unit
+    // closes in and finishes the approach with the authored strike clip for the
+    // relation between the two (which side of the victim it comes from), while
+    // the victim plays the paired reaction -- one scene, one tempo.
+    //
+    // The clip itself says where the strike must start: its measured root
+    // motion reach is the distance the unit keeps from the victim, so the
+    // animation lands it exactly on top of its prey. Returns false when nothing
+    // is authored for that relation (or the clips are not loaded), and the
+    // caller keeps its plain bite: walk onto the victim's tile and eat.
+    virtual bool StartExecution(Unit* victim, float targetDuration = -1.0f);
+
+    // True while an execution started by this unit is still playing: the strike
+    // and the victim's reaction are one scene, and the kill lands when it ends.
+    virtual bool IsExecuting() const { return false; }
+
+    // Plays the victim side of an execution -- the reaction clip paired with the
+    // attacker's strike -- at the attacker's tempo, and returns its length in
+    // machine seconds. 0 (and no-op) when this unit has no such clip, so the
+    // attacker only has to wait for its own strike.
+    virtual float PlayExecutionReaction(const String& signal, float scale) { return 0.0f; }
+
     // Turns in place to face a grid direction. The base implementation snaps
     // instantly (RotationTo on the top root); AnimatedUnit overrides it with
     // the shared in-place turn animation (turn clip + fold) when the unit has
@@ -133,8 +144,10 @@ namespace ToolKit
     // made just before the player standing there is eaten, so the kill reads as
     // a real strike instead of an invisible rule. Only a guard that eats from a
     // static zone needs it -- a moving patrol already lunges onto the player as
-    // its step, so it keeps this empty default.
-    virtual void Lunge() {}
+    // its step, so it keeps this empty default. victim is the unit about to be
+    // eaten, so the guard can perform the strike with the authored execution
+    // for the relation between them instead of a plain step.
+    virtual void Lunge(Unit* victim) {}
 
     // True while this unit is the active one and may act.
     void SetActive(bool active) { m_active = active; }
@@ -231,6 +244,22 @@ namespace ToolKit
     // units of a turn use identical movement.
     void StartMove(GridNode* node, float targetDuration = -1.0f) override;
 
+    // True while an execution this unit started is still playing: from the
+    // approach, through the strike, until the victim's reaction is over (see
+    // StartExecution). Nothing may resolve a turn on top of a half-played kill.
+    bool IsExecuting() const override { return m_execAction; }
+
+    // Performs an execution of victim with the authored clip for the relation
+    // between the two. The approach runs through the SAME walk state machine as
+    // a normal step -- only its landing phase is the strike clip instead of
+    // walk_f_end -- so the whole action keeps one tempo and closes in
+    // gTurnDuration.
+    bool StartExecution(Unit* victim, float targetDuration = -1.0f) override;
+
+    // Plays the victim side of an execution and returns its length (see
+    // Unit::PlayExecutionReaction).
+    float PlayExecutionReaction(const String& signal, float scale) override;
+
     // Turns in place to face dir with the shared in-place turn animation
     // (turn clip + fold), or snaps instantly when no turn clips exist.
     void StartTurn(GridDir dir) override;
@@ -269,6 +298,17 @@ namespace ToolKit
     // usable animation support (the caller picks the glide/instant fallback).
     // targetDuration < 0 means gTurnDuration.
     bool StartWalk(GridNode* node, float targetDuration);
+
+    // The single implementation behind StartWalk and StartExecution: the shared
+    // walk state machine, where the landing phase is either the walk's own stop
+    // clip or -- when exec is given -- an authored execution strike whose
+    // measured reach replaces the landing clip's. Keeping both in one place is
+    // what makes an execution "a step that ends in a strike" instead of a
+    // second movement implementation.
+    bool StartAction(GridNode* node,
+                     float targetDuration,
+                     const ExecutionClip* exec,
+                     Unit* victim);
 
     // Ends the current walk: tears down the state machine and settles the
     // actor onto the destination node. forceSnap teleports (stalled/failed
@@ -312,12 +352,12 @@ namespace ToolKit
     // top root and future turns start from a clean frame.
     Vec3 m_actorLocalBase;
 
-    // Measured timing of the three walk clips (see WalkClipTiming). Cached per
+    // Measured timing of the three walk clips (see ClipMotion). Cached per
     // AnimRecord instance; EnsureWalkTimings rebuilds a profile when its clip
     // record changes.
-    WalkClipTiming m_timingStart;
-    WalkClipTiming m_timingLoop;
-    WalkClipTiming m_timingEnd;
+    ClipMotion m_timingStart;
+    ClipMotion m_timingLoop;
+    ClipMotion m_timingEnd;
     const AnimRecord* m_timedStartRec = nullptr;
     const AnimRecord* m_timedLoopRec = nullptr;
     const AnimRecord* m_timedEndRec = nullptr;
@@ -331,6 +371,19 @@ namespace ToolKit
     // lands (see TurnOnArrival). Consumed by FinishWalk.
     Quaternion m_deferredTurn;
     bool m_hasDeferredTurn = false;
+
+    // Execution state (see StartExecution). The action itself runs in the walk
+    // state machine; m_execActive tracks the SCENE that outlives it -- the
+    // attacker holds its strike pose while the victim's (usually longer)
+    // reaction plays out -- so IsExecuting() stays true until the last beat of
+    // the kill, from the very start of the approach.
+    bool m_execAction = false;    // The action being played is an execution.
+    bool m_execActive = false;    // Its strike scene is running right now.
+    float m_execT     = 0.0f;     // Scene time so far (machine seconds, scaled).
+    float m_execDur   = 0.0f;     // Length of the whole scene (machine seconds).
+    // Strike clip of the running scene, added to the clips ApplyMoveTimeScale
+    // drives so the strike keeps the action's tempo like every walk phase.
+    String m_execSignal;
   };
 
   // The player. Moves one tile per turn along connected tiles, driven by mouse
@@ -351,7 +404,16 @@ namespace ToolKit
     // starts a root-motion walk instead of snapping; returns true when the
     // move was accepted (walking or, without animation support, already
     // landed). Only the first successful move of a turn counts.
-    bool TryMove(GridNode* node, const std::function<bool(GridNode*)>& isOccupied);
+    //
+    // victim is the unit standing on node, when there is one: the step is then
+    // FIRST tried as an execution (the walk approaches and the authored strike
+    // clip carries the player the last stretch onto its prey), which is how the
+    // player sneaks up on a patrol's back. Anything the execution does not fit
+    // (a frontal/side step, a missing clip) falls through to the plain walk,
+    // and the patrol standing there is captured on arrival as before.
+    bool TryMove(GridNode* node,
+                 const std::function<bool(GridNode*)>& isOccupied,
+                 Unit* victim = nullptr);
 
     void Reset() override;
 
@@ -376,9 +438,11 @@ namespace ToolKit
     // Null when the passage is blocked or the patrol stands at the grid edge.
     GridNode* ThreatTile() const override;
 
-    // The bite: starts the animated step (or glide fallback) onto the watched
-    // tile. Does nothing when there is no watched tile to lunge into.
-    void Lunge() override;
+    // The bite: the animated step (or glide fallback) onto the watched tile, or
+    // -- when an execution is authored for the relation between the guard and
+    // its prey -- the authored strike instead. Does nothing when there is no
+    // watched tile to lunge into.
+    void Lunge(Unit* victim) override;
   };
 
   // A patrol that walks its line: one tile per turn along its facing direction,

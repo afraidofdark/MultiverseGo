@@ -7,6 +7,8 @@
 
 #include "Game.h"
 
+#include "Execution.h"
+
 #include <Logger.h>
 #include <MathUtil.h>
 #include <Scene.h>
@@ -92,6 +94,10 @@ namespace ToolKit
     m_grid.Clear();
     m_target = nullptr;
     m_player.Reset();
+
+    // Execution clips are measured per loaded resource, so a fresh session
+    // measures them again and the variant cycle starts over.
+    ExecutionLibrary::Reset();
 
     ScenePtr scene = GetSceneManager()->GetCurrentScene();
     if (scene == nullptr)
@@ -187,6 +193,7 @@ namespace ToolKit
     m_capturedEnemies.clear();
     m_stepBites.clear();
     m_activeBites.clear();
+    m_executedEnemy    = nullptr;
     m_arrivalProcessed = false;
     m_grid.Clear();
     m_target = nullptr;
@@ -219,6 +226,10 @@ namespace ToolKit
     m_capturedEnemies.clear();
     m_stepBites.clear();
     m_activeBites.clear();
+
+    // The player's own execution is committed BEFORE this (Player::TryMove
+    // starts the strike when the step lands on a patrol), so m_executedEnemy is
+    // already set here and survives the bookkeeping reset.
 
     // The player acts first: every enemy reacts to the tile the player WILL
     // stand on (its committed destination) and to the heading it will face
@@ -302,7 +313,10 @@ namespace ToolKit
 
     // 1) The player captures every patrol that stood on the tile it moved to.
     //    (Capture before the guards react, so a tile that is both an enemy's
-    //    own and another's threat tile resolves as a trade.)
+    //    own and another's threat tile resolves as a trade.) The patrol the
+    //    player is EXECUTING is the exception: it is the victim of a strike
+    //    scene that is still playing, so it stays on the grid until the scene
+    //    is over (FinishPlayerExecution) instead of popping out mid-animation.
     if (!m_capturedEnemies.empty())
     {
       ScenePtr scene = GetSceneManager()->GetCurrentScene();
@@ -311,7 +325,7 @@ namespace ToolKit
         bool captured = std::find(m_capturedEnemies.begin(),
                                   m_capturedEnemies.end(),
                                   it->get()) != m_capturedEnemies.end();
-        if (!captured)
+        if (!captured || it->get() == m_executedEnemy)
         {
           ++it;
           continue;
@@ -338,7 +352,7 @@ namespace ToolKit
     {
       if (enemy->ThreatTile() == playerNode)
       {
-        enemy->Lunge();
+        enemy->Lunge(&m_player);
         TK_LOG("Game: a guard strikes the player on (%d, %d). You lose!", playerNode->ix, playerNode->iz);
         m_activeBites.push_back(enemy.get());
       }
@@ -348,38 +362,103 @@ namespace ToolKit
       return;
     }
 
-    // 3) Win check -- only when no guard strike is coming.
-    if (IsTargetNode(playerNode))
+    // 3) Win check -- only when no guard strike is coming, and not while the
+    //    player is still playing its own execution scene on that tile: the
+    //    victim has to die on screen before the run can end, so the win waits
+    //    for FinishPlayerExecution.
+    if (!m_player.IsExecuting() && TryWin())
     {
-      m_won = true;
-      TK_LOG("Game: player reached the target. You win!");
-
-      // Nothing may stay frozen mid-glide when the run ends.
-      for (auto& enemy : m_enemies)
-      {
-        enemy->LandMove();
-      }
       return;
     }
 
     // 4) Patrols that decided to STEP onto the player's tile start their bite
-    //    now, with the player already standing there.
+    //    now, with the player already standing there. A strike from the player's
+    //    back (a patrol that walked up behind it) is performed with the authored
+    //    execution -- the patrol closes in and the ambush clip covers the last
+    //    stretch; a relation with no clips authored keeps the plain bite.
     if (!m_stepBites.empty())
     {
       for (Unit* u : m_stepBites)
       {
-        u->StartMove(playerNode);
-        TK_LOG("Game: a patrol closes in on the player on (%d, %d).", playerNode->ix, playerNode->iz);
+        if (u->StartExecution(&m_player))
+        {
+          TK_LOG("Game: a patrol ambushes the player on (%d, %d).", playerNode->ix, playerNode->iz);
+        }
+        else
+        {
+          u->StartMove(playerNode);
+          TK_LOG("Game: a patrol closes in on the player on (%d, %d).", playerNode->ix, playerNode->iz);
+        }
         m_activeBites.push_back(u);
       }
       m_stepBites.clear();
     }
   }
 
+  bool Game::TryWin()
+  {
+    if (m_won || m_lost || !IsTargetNode(m_player.GetNode()))
+    {
+      return false;
+    }
+
+    m_won = true;
+    TK_LOG("Game: player reached the target. You win!");
+
+    // Nothing may stay frozen mid-glide when the run ends.
+    for (auto& enemy : m_enemies)
+    {
+      enemy->LandMove();
+    }
+    return true;
+  }
+
+  void Game::FinishPlayerExecution()
+  {
+    Unit* victim    = m_executedEnemy;
+    m_executedEnemy = nullptr;
+    if (victim == nullptr)
+    {
+      return;
+    }
+
+    // The strike scene played out: the patrol the player hit leaves the grid
+    // exactly the way a captured one does -- its root entity is removed and the
+    // unit is dropped from the enemy list -- so the kill reads as the scene it
+    // just showed instead of a body standing on the tile afterwards.
+    GridNode* tile = victim->GetNode();
+    ScenePtr scene = GetSceneManager()->GetCurrentScene();
+    for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
+    {
+      if (it->get() != victim)
+      {
+        continue;
+      }
+
+      if (EntityPtr root = (*it)->GetRoot())
+      {
+        if (scene != nullptr)
+        {
+          scene->RemoveEntity(root);
+        }
+      }
+      m_enemies.erase(it);
+      break;
+    }
+    TK_LOG("Game: the player executed a patrol on (%d, %d).",
+           tile != nullptr ? tile->ix : -1,
+           tile != nullptr ? tile->iz : -1);
+
+    // The kill may have landed the player on the target tile: the win waited
+    // for exactly this moment.
+    TryWin();
+  }
+
   void Game::UpdateActing(float deltaTime)
   {
-    // Drive the player's walk and every enemy glide in parallel.
-    if (m_player.IsWalking())
+    // Drive the player's walk (or the strike scene that outlives it) and every
+    // enemy move/glide in parallel.
+    if (m_player.IsWalking() || m_player.IsExecuting())
     {
       m_player.Frame(deltaTime);
     }
@@ -393,6 +472,18 @@ namespace ToolKit
       return;
     }
 
+    // The player's own execution scene has just ended: the patrol it struck
+    // dies now, and a win that was waiting on that tile is declared. This runs
+    // before the arrival resolution below, so a scene that ends in the same
+    // frame the player landed on its tile still resolves in one go.
+    if (m_executedEnemy != nullptr && !m_player.IsExecuting())
+    {
+      FinishPlayerExecution();
+      if (m_won || m_lost)
+      {
+        return;
+      }
+    }
     // The player physically arrived: run the arrival resolution (captures,
     // guard lunges, win check, delayed bites).
     if (!m_arrivalProcessed && !m_player.IsWalking())
@@ -406,14 +497,16 @@ namespace ToolKit
 
     // A bite is the moment the biting enemy STANDS on the player's tile: the
     // eat does not wait for anything else the enemy had queued (a landing turn,
-    // a fade) to play out -- it bites and stops there. The first bite wins; the
-    // remaining enemies are left where they are (EatPlayer lands any unit that
-    // is still mid-move).
+    // a fade) to play out -- it bites and stops there. A bite performed as an
+    // EXECUTION instead waits for its whole scene: the strike AND the victim's
+    // reaction are one kill, and the loss lands on its last beat. The first bite
+    // wins; the remaining enemies are left where they are (EatPlayer lands any
+    // unit that is still mid-move).
     {
       GridNode* playerNode = m_player.GetNode();
       for (Unit* bite : m_activeBites)
       {
-        if (bite == nullptr)
+        if (bite == nullptr || bite->IsExecuting())
         {
           continue;
         }
@@ -428,9 +521,11 @@ namespace ToolKit
       }
     }
 
-    // Everything settled: the player arrived, no bite is pending or in flight,
-    // and every unit finished its move. The turn comes back to the player.
-    if (m_arrivalProcessed && m_activeBites.empty() && m_stepBites.empty() && !AnyEnemyMoving())
+    // Everything settled: the player arrived, its own strike scene (if any) is
+    // over, no bite is pending or in flight, and every unit finished its move.
+    // The turn comes back to the player.
+    if (m_arrivalProcessed && m_executedEnemy == nullptr && !m_player.IsExecuting() &&
+        m_activeBites.empty() && m_stepBites.empty() && !AnyEnemyMoving())
     {
       StartPlayerTurn();
     }
@@ -496,11 +591,19 @@ namespace ToolKit
       return; // Clicked outside the grid.
     }
 
-    if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }))
+    // A patrol standing on the clicked tile is the player's prey: the step is
+    // offered to the execution first (the same strike an enemy would use), so
+    // sneaking up on a patrol's back kills it with the authored scene instead
+    // of the instant capture a plain step would give.
+    Unit* victim = EnemyOnTile(node);
+
+    if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }, victim))
     {
       // The player's move is committed: enemies react to it right now and every
       // move of the turn plays out in parallel. Arrival-based resolution runs
       // when the walk finishes (or immediately for actors without animation).
+      // A player that came in striking keeps its victim until its scene is over.
+      m_executedEnemy = m_player.IsExecuting() ? victim : nullptr;
       BeginPlayerMove(node);
       return;
     }
@@ -508,6 +611,23 @@ namespace ToolKit
     {
       TK_LOG("Game: move to (%d, %d) rejected", node->ix, node->iz);
     }
+  }
+
+  Unit* Game::EnemyOnTile(GridNode* node) const
+  {
+    if (node == nullptr)
+    {
+      return nullptr;
+    }
+
+    for (const auto& enemy : m_enemies)
+    {
+      if (enemy->GetNode() == node)
+      {
+        return enemy.get();
+      }
+    }
+    return nullptr;
   }
 
   bool Game::IsMoveBlocked(GridNode* node) const
@@ -518,8 +638,8 @@ namespace ToolKit
     }
 
     // Only the player's own tile blocks the move. Free tiles are moves, and a
-    // patrol's tile is a capture attempt resolved when the player arrives
-    // (ResolvePlayerArrival).
+    // patrol's tile is a capture attempt -- or, from its back, the player's own
+    // execution -- resolved when the player arrives (ResolvePlayerArrival).
     return m_player.GetNode() == node;
   }
 
@@ -527,6 +647,10 @@ namespace ToolKit
   {
     m_lost  = true;
     m_phase = TurnPhase::Idle;
+
+    // The player died: whatever it was executing dies with it (the prey stays
+    // on the grid, since nothing resolves after a loss).
+    m_executedEnemy = nullptr;
 
     // The bite landed while other enemies may still be mid-glide: land them on
     // their tiles so nothing stays frozen between two tiles when the run ends.
