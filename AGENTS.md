@@ -225,6 +225,38 @@ apply to all code in both repositories.
   (`Unit::StartMove` / `AnimatedUnit::StartMove`), so scenes without animated
   character prefabs keep working.
 
+## Play, pause and stop (GamePlugin lifecycle)
+
+- Two layers, deliberately separated:
+  1. The EDITOR owns the simulation state. The play / pause / stop buttons
+     (`SimulationWindow::ShowActionButtons`) only call `App::SetGameMod(...)`,
+     and the engine wide consequences of a state live there, in
+     `App::ApplySimulationServices`: it pauses / resumes the animation player,
+     and any future engine service that runs on its own during a play session
+     belongs in the same place. This behaviour is identical for every project,
+     so it must not be repeated in each game plugin.
+  2. The PLUGIN is only told about the change (`OnPlay / OnPause / OnResume /
+     OnStop`) and does its own, game specific work. This game currently needs
+     none of them, so they are empty.
+- `Game::Frame` is called only while the simulation is RUNNING
+  (`PluginManager::Update`), so pausing freezes the turn flow by itself: the
+  walk FSM simply gets no delta time.
+- The engine's animation player does not work that way: `Main::Frame` updates it
+  every frame whatever the simulation state is, which is why pausing has to hold
+  it too (see above). The API is `AnimationPlayer::Pause / Resume / IsPaused`
+  (engine, GDTK `ToolKit/Resources/Animation.{h,cpp}`) and it holds every
+  record: record times, blend countdowns and root motion all stop, the animation
+  data of the last update is kept, and resuming carries on from the same time
+  with no jump.
+- Do not pause per record instead: `AnimControllerComponent::Pause` pauses only
+  the ACTIVE record (and dereferences it without a null check), so a fade-out
+  that is still registered or a unit whose clip just ended would keep moving.
+- Engine and editor changes are made in the GDTK checkout and rebuilt there
+  (`cmake --build <GDTK>/build --target ToolKit -j 4`, and `--target Editor` for
+  editor code such as `App.cpp`). The editor loads
+  `<GDTK>/BinDebug/libToolKitd.so` from its own directory via `$ORIGIN`, so a
+  running editor must be restarted to pick up a new engine library.
+
 ## Parallel turn orchestration (in Game.cpp)
 
 - One concurrent act per turn: a click on a connected neighbor commits the
