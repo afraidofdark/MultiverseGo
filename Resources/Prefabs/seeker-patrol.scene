@@ -80,35 +80,35 @@
 				</Object>
 				<Object Cl="AnimControllerComponent">
 					<PB>
-						<P t="11" name="Id" v="5203316209869909011"/>
+						<P t="11" name="Id" v="9952987327729153470"/>
 						<P t="16" name="Records">
-							<List size="19">
-								<0 SignalName="walk_f" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f.anim"/>
-								</0>
-								<1 SignalName="run_f" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f.anim"/>
-								</1>
-								<2 SignalName="idle" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/idle.anim"/>
-								</2>
-								<3 SignalName="rest" ApplyRootMotion="0">
+							<List size="44">
+								<0 SignalName="rest" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/rest.anim"/>
-								</3>
-								<4 SignalName="run_f_start" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_start.anim"/>
-								</4>
-								<5 SignalName="run_f_stop" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_stop.anim"/>
-								</5>
-								<6 SignalName="walk_f_start" ApplyRootMotion="0">
+								</0>
+								<1 SignalName="idle" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/idle.anim"/>
+								</1>
+								<2 SignalName="walk_f_start" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_start.anim"/>
-								</6>
-								<7 SignalName="fight_walk_f" ApplyRootMotion="0">
-									<ResourceRef Class="Animation" File="Character/Player/Movement/fight_walk_f.anim"/>
-								</7>
-								<8 SignalName="walk_f_end" ApplyRootMotion="0">
+								</2>
+								<3 SignalName="walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f.anim"/>
+								</3>
+								<4 SignalName="walk_f_end" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f_end.anim"/>
+								</4>
+								<5 SignalName="run_f_start" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_start.anim"/>
+								</5>
+								<6 SignalName="run_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f.anim"/>
+								</6>
+								<7 SignalName="run_f_stop" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/run_f_stop.anim"/>
+								</7>
+								<8 SignalName="fight_walk_f" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Movement/fight_walk_f.anim"/>
 								</8>
 								<9 SignalName="turn_l_90" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_l_90.anim"/>
@@ -140,6 +140,81 @@
 								<18 SignalName="ambushed_3" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Execution/ambushed_3.anim"/>
 								</18>
+								<19 SignalName="execution_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_1.anim"/>
+								</19>
+								<20 SignalName="execution_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_2.anim"/>
+								</20>
+								<21 SignalName="execution_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_3.anim"/>
+								</21>
+								<22 SignalName="execution_4" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_4.anim"/>
+								</22>
+								<23 SignalName="execution_5" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_5.anim"/>
+								</23>
+								<24 SignalName="execution_6" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_7.anim"/>
+								</24>
+								<25 SignalName="execution_8" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_8.anim"/>
+								</25>
+								<26 SignalName="execution_9" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_9.anim"/>
+								</26>
+								<27 SignalName="execution_10" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_10.anim"/>
+								</27>
+								<28 SignalName="execution_11" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_11.anim"/>
+								</28>
+								<29 SignalName="execution_12" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_12.anim"/>
+								</29>
+								<30 SignalName="execution_13" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_13.anim"/>
+								</30>
+								<31 SignalName="executed_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_1.anim"/>
+								</31>
+								<32 SignalName="executed_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_2.anim"/>
+								</32>
+								<33 SignalName="executed_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_3.anim"/>
+								</33>
+								<34 SignalName="executed_4" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_4.anim"/>
+								</34>
+								<35 SignalName="executed_5" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_5.anim"/>
+								</35>
+								<36 SignalName="executed_6" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_6.anim"/>
+								</36>
+								<37 SignalName="executed_7" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_7.anim"/>
+								</37>
+								<38 SignalName="executed_8" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_8.anim"/>
+								</38>
+								<39 SignalName="executed_9" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_9.anim"/>
+								</39>
+								<40 SignalName="executed_10" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_10.anim"/>
+								</40>
+								<41 SignalName="executed_11" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_11.anim"/>
+								</41>
+								<42 SignalName="executed_12" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_12.anim"/>
+								</42>
+								<43 SignalName="executed_13" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_13.anim"/>
+								</43>
 							</List>
 						</P>
 					</PB>

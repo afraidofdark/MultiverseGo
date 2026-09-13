@@ -1,13 +1,13 @@
 <S name="player" version="v0.4.9">
 	<Object Cl="Entity">
 		<PB>
-			<P t="11" name="Id" v="13527587903935178888"/>
+			<P t="11" name="Id" v="15804766666354375980"/>
 			<P t="9" name="Name" v="player"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
 			<P t="10" name="TransformLock" v="0"/>
 		</PB>
-		<Entity pi="12835503511749776436">
+		<Entity pi="10778373534730071694">
 			<N is="0">
 				<T x="0.000000" y="0.000000" z="0.000000"/>
 				<R x="0.000000" y="1.000000" z="0.000000" w="0.000000"/>
@@ -16,7 +16,7 @@
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="17191694228430720037"/>
+						<P t="11" name="Id" v="4944266826306479832"/>
 						<P t="12" name="Mesh">
 							<ResourceRef Class="SkinMesh" File="Character/Player/animation_Character_Male_Jacket_004.skinMesh"/>
 						</P>
@@ -28,7 +28,7 @@
 				</Object>
 				<Object Cl="SkeletonComponent">
 					<PB>
-						<P t="11" name="Id" v="16602139652351332905"/>
+						<P t="11" name="Id" v="1785465077489040461"/>
 						<P t="17" name="SkeletonResource">
 							<ResourceRef Class="Skeleton" File="Character/Player/animation_Character_Male_Jacket_004.skeleton"/>
 						</P>
@@ -39,7 +39,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12025677849555474941"/>
+						<P t="11" name="Id" v="2142325054724681242"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -49,11 +49,22 @@
 						</MaterialComponent>
 					</Component>
 				</Object>
+				<Object Cl="AABBOverrideComponent">
+					<PB>
+						<P t="11" name="Id" v="14702889461753255477"/>
+						<P t="5" name="PositionOffset" x="-0.392167" y="0.030253" z="-0.166591"/>
+						<P t="5" name="Size" x="0.751181" y="1.829808" z="0.318971"/>
+						<P t="18" name="UpdateBoundaryFromMesh"/>
+					</PB>
+					<Component>
+						<AABBOverrideComponent/>
+					</Component>
+				</Object>
 				<Object Cl="AnimControllerComponent">
 					<PB>
-						<P t="11" name="Id" v="6480112259472380303"/>
+						<P t="11" name="Id" v="9952987327729153470"/>
 						<P t="16" name="Records">
-							<List size="19">
+							<List size="44">
 								<0 SignalName="rest" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/rest.anim"/>
 								</0>
@@ -111,6 +122,81 @@
 								<18 SignalName="ambushed_3" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Execution/ambushed_3.anim"/>
 								</18>
+								<19 SignalName="execution_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_1.anim"/>
+								</19>
+								<20 SignalName="execution_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_2.anim"/>
+								</20>
+								<21 SignalName="execution_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_3.anim"/>
+								</21>
+								<22 SignalName="execution_4" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_4.anim"/>
+								</22>
+								<23 SignalName="execution_5" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_5.anim"/>
+								</23>
+								<24 SignalName="execution_6" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_7.anim"/>
+								</24>
+								<25 SignalName="execution_8" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_8.anim"/>
+								</25>
+								<26 SignalName="execution_9" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_9.anim"/>
+								</26>
+								<27 SignalName="execution_10" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_10.anim"/>
+								</27>
+								<28 SignalName="execution_11" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_11.anim"/>
+								</28>
+								<29 SignalName="execution_12" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_12.anim"/>
+								</29>
+								<30 SignalName="execution_13" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/execution_13.anim"/>
+								</30>
+								<31 SignalName="executed_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_1.anim"/>
+								</31>
+								<32 SignalName="executed_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_2.anim"/>
+								</32>
+								<33 SignalName="executed_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_3.anim"/>
+								</33>
+								<34 SignalName="executed_4" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_4.anim"/>
+								</34>
+								<35 SignalName="executed_5" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_5.anim"/>
+								</35>
+								<36 SignalName="executed_6" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_6.anim"/>
+								</36>
+								<37 SignalName="executed_7" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_7.anim"/>
+								</37>
+								<38 SignalName="executed_8" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_8.anim"/>
+								</38>
+								<39 SignalName="executed_9" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_9.anim"/>
+								</39>
+								<40 SignalName="executed_10" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_10.anim"/>
+								</40>
+								<41 SignalName="executed_11" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_11.anim"/>
+								</41>
+								<42 SignalName="executed_12" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_12.anim"/>
+								</42>
+								<43 SignalName="executed_13" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/executed_13.anim"/>
+								</43>
 							</List>
 						</P>
 					</PB>
@@ -118,23 +204,12 @@
 						<AnimControllerComponent/>
 					</Component>
 				</Object>
-				<Object Cl="AABBOverrideComponent">
-					<PB>
-						<P t="11" name="Id" v="17717705686971848236"/>
-						<P t="5" name="PositionOffset" x="-0.392167" y="0.030253" z="-0.166591"/>
-						<P t="5" name="Size" x="0.751181" y="1.829808" z="0.318971"/>
-						<P t="18" name="UpdateBoundaryFromMesh"/>
-					</PB>
-					<Component>
-						<AABBOverrideComponent/>
-					</Component>
-				</Object>
 			</Ca>
 		</Entity>
 	</Object>
 	<Object Cl="EntityNode">
 		<PB>
-			<P t="11" name="Id" v="12835503511749776436"/>
+			<P t="11" name="Id" v="10778373534730071694"/>
 			<P t="9" name="Name" v="root"/>
 			<P t="9" name="Tag" v="player"/>
 			<P t="10" name="Visible" v="1"/>
