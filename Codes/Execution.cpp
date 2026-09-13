@@ -53,21 +53,26 @@ namespace ToolKit
       {"execution_13", "executed_13"},
     };
 
-    // The catalogue. A relation with no variants authored (the two shoulders,
-    // so far) resolves to null and its strike keeps the plain step; authoring
-    // clips for one is a row here.
+    // The catalogue. `fallback` is the relation a strike from this side plays as
+    // when this relation has no clips of its own: the victim is turned to face
+    // the attacker first and the scene then runs as that relation. The two
+    // shoulders have no scenes authored, so a strike over one of them is SET UP
+    // into a head on kill instead of keeping the plain step -- and authoring
+    // clips for a shoulder later makes it play its own scenes again, because the
+    // variants of a relation always win over its fallback.
     struct RelationEntry
     {
       ExecRelation rel;
       const ExecutionVariant* variants;
       int count;
+      ExecRelation fallback; // Relation to turn this approach into; rel = none.
     };
 
     const RelationEntry kCatalogue[] = {
-      {ExecRelation::Behind, kAmbush, static_cast<int>(sizeof(kAmbush) / sizeof(kAmbush[0]))},
-      {ExecRelation::Front, kExecution, static_cast<int>(sizeof(kExecution) / sizeof(kExecution[0]))},
-      {ExecRelation::Left, nullptr, 0},
-      {ExecRelation::Right, nullptr, 0},
+      {ExecRelation::Behind, kAmbush, static_cast<int>(sizeof(kAmbush) / sizeof(kAmbush[0])), ExecRelation::Behind},
+      {ExecRelation::Front, kExecution, static_cast<int>(sizeof(kExecution) / sizeof(kExecution[0])), ExecRelation::Front},
+      {ExecRelation::Left, nullptr, 0, ExecRelation::Front},
+      {ExecRelation::Right, nullptr, 0, ExecRelation::Front},
     };
 
     int RelationIndex(ExecRelation rel)
@@ -144,14 +149,38 @@ namespace ToolKit
     return (side > 0.0f) ? ExecRelation::Right : ExecRelation::Left;
   }
 
-  const ExecutionClip* ExecutionLibrary::Resolve(ExecRelation rel,
-                                                 AnimControllerComponent* attackerAnim)
+  ExecutionPlan ExecutionLibrary::Resolve(ExecRelation rel,
+                                          AnimControllerComponent* attackerAnim)
   {
+    ExecutionPlan plan;
+    plan.relation = rel;
+
     const RelationEntry* entry = CatalogueEntry(rel);
-    if (entry == nullptr || entry->count <= 0 || entry->variants == nullptr ||
-        attackerAnim == nullptr)
+    if (entry == nullptr || attackerAnim == nullptr)
     {
-      return nullptr;
+      return plan;
+    }
+
+    // No scenes authored for this side of the victim: instead of giving the
+    // caller its plain step, the strike is SET UP as the relation the side
+    // declares. The victim turns its front toward the attacker first (the plan
+    // says so) and the head on scene then plays, so a strike over a shoulder is
+    // the same kill from a different approach. A relation whose fallback is
+    // itself simply has nothing to play and keeps the plain step.
+    if (entry->count <= 0 && entry->fallback != entry->rel)
+    {
+      plan.relation              = entry->fallback;
+      plan.victimTurnsToAttacker = true;
+      TK_LOG("Exec: strike from the %s: the victim turns to face the attacker first, "
+             "then the strike plays as a %s.",
+             ExecRelationName(rel),
+             ExecRelationName(plan.relation));
+      entry = CatalogueEntry(plan.relation);
+    }
+
+    if (entry == nullptr || entry->count <= 0 || entry->variants == nullptr)
+    {
+      return plan;
     }
 
     // The variants take turns, so repeated kills do not replay the same scene.
@@ -159,13 +188,13 @@ namespace ToolKit
     // authored on the prefab, or the clip carries no root travel -- must not
     // cost the whole strike: step on through the series instead, so a partly
     // authored set still performs the scenes it has.
-    int& cycle = VariantCycle(rel);
+    int& cycle = VariantCycle(plan.relation);
     for (int attempt = 0; attempt < entry->count; attempt++)
     {
       const ExecutionVariant& variant = entry->variants[cycle % entry->count];
       cycle                           = (cycle + 1) % entry->count;
 
-      ExecutionClip& clip = ResolvedSlot(rel);
+      ExecutionClip& clip = ResolvedSlot(plan.relation);
       clip.attackerSignal = variant.attacker;
       clip.victimSignal   = variant.victim;
       clip.valid          = false;
@@ -176,7 +205,7 @@ namespace ToolKit
       {
         TK_LOG("Exec: '%s' is not on this character; trying the next %s variant.",
                clip.attackerSignal.c_str(),
-               ExecRelationName(rel));
+               ExecRelationName(plan.relation));
         continue;
       }
 
@@ -188,7 +217,7 @@ namespace ToolKit
         motion = MeasureClipMotion(anim);
         TK_LOG("Exec: measured '%s' for a strike from %s: %.2f s, %.3f u of forward travel.",
                clip.attackerSignal.c_str(),
-               ExecRelationName(rel),
+               ExecRelationName(plan.relation),
                motion.duration,
                motion.totalTravel);
       }
@@ -197,19 +226,20 @@ namespace ToolKit
       {
         TK_LOG("Exec: '%s' carries no root travel; trying the next %s variant.",
                clip.attackerSignal.c_str(),
-               ExecRelationName(rel));
+               ExecRelationName(plan.relation));
         continue;
       }
 
       clip.attackerMotion = motion;
       clip.valid          = true;
-      return &clip;
+      plan.clip           = &clip;
+      return plan;
     }
 
     TK_LOG("Exec: none of the %d %s variants is playable here; plain step.",
            entry->count,
-           ExecRelationName(rel));
-    return nullptr;
+           ExecRelationName(plan.relation));
+    return plan;
   }
 
   int ExecutionLibrary::VariantCount(ExecRelation rel)

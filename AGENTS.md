@@ -307,8 +307,12 @@ apply to all code in both repositories.
   `AnimatedUnit::StartTurn(dir)` / `StartInPlaceTurn(yaw)` play the turn clip +
   fold mini state machine (no walking states) and `TurnOnArrival(orient)`
   queues the turn to play the moment the current move lands. Used for the
-  LinearPatrol line-end about-face and the SeekerPatrol arrival turn / idle
-  stare; units without turn clips snap instantly (Unit::StartTurn fallback).
+  LinearPatrol line-end about-face, the SeekerPatrol arrival turn / idle stare
+  and the victim's pre-strike turn of a side strike
+  (`TurnToFaceAttacker`, see "Execution system"); units without turn clips snap
+  instantly (Unit::StartTurn fallback). Any in-place turn also raises
+  `IsTurning()` until its action ends, which is what the side strike's hold
+  gates on.
   The line patrol checks, while taking its step, whether the step lands on the
   LAST tile of its line (the tile beyond is missing or blocked) and about-faces
   on arrival, so the turn shares the turn with the final step instead of
@@ -349,18 +353,43 @@ apply to all code in both repositories.
   whose root motion lands it on the victim's tile. Measured on the current
   assets: `ambush_1` 1.64 u (1.70 s), `ambush_2` 0.46 u (1.90 s), `ambush_3`
   1.59 u (1.70 s). Never write those numbers into code.
-- THE RELATION PICKS THE CLIP. `ExecutionLibrary::RelationOf(approach,
-  victimFacing)` classifies a strike from the four grid sides of the victim:
-  `Behind` = the attacker walks the way the victim faces (it comes up its back),
-  `Front` = they walk into each other, `Left` / `Right` = the victim's shoulders
-  (its right is its facing turned toward `+X x +Y`). The catalogue in
-  `Execution.cpp` maps each relation to its clip variants, the victim's
-  reaction paired by INDEX:
+- THE RELATION PICKS THE CLIP, AND A SIDE STRIKE IS SET UP, NOT SKIPPED.
+  `ExecutionLibrary::RelationOf(approach, victimFacing)` classifies a strike from
+  the four grid sides of the victim: `Behind` = the attacker walks the way the
+  victim faces (it comes up its back), `Front` = they walk into each other,
+  `Left` / `Right` = the victim's shoulders (its right is its facing turned
+  toward `+X x +Y`). `ExecutionLibrary::Resolve` returns an `ExecutionPlan`
+  (the clip pair + how the scene has to be set up), and the catalogue in
+  `Execution.cpp` maps each relation to its clip variants, the victim's reaction
+  paired by INDEX:
   - `Behind -> ambush_1/2/3 + ambushed_1/2/3` (a strike from the back);
   - `Front -> execution_1..13 + executed_1..13` (a head on kill);
-  - `Left` / `Right` have no variants yet, resolve to null and leave the caller
-    with its plain step.
-  Adding a direction -- or new variants -- is a table row, not code.
+  - `Left` / `Right` have no scenes of their own, so a strike over a shoulder is
+    turned INTO a head on kill instead of keeping the plain step: the plan's
+    `victimTurnsToAttacker` is set, the victim turns its FRONT toward the
+    attacker first, and the scene then plays as `Front` (`execution_N`).
+  Adding a direction -- or new variants -- is a table row, not code: a relation
+  whose variants list is not empty always plays them, so authoring shoulder clips
+  later switches the shoulders back to their own scenes.
+- THE VICTIM'S PRE-STRIKE TURN (the first step of a side strike): the attacker's
+  `StartAction` calls `victim->TurnToFaceAttacker(dir, scale)` right after it has
+  computed its own time scale -- so the turn plays at the ATTACKER'S tempo, in the
+  SAME action window as the approach (a stand-alone turn would fill a whole
+  `gTurnDuration` window for itself and would still be turning when the strike
+  landed). `AnimatedUnit` plays it as the usual in-place turn clip + fold;
+  `Unit` (no animation) snaps the front on instantly, and a victim that is
+  already acting is left alone (the strike then takes it as it stands, logged).
+  `AnimatedUnit::IsTurning()` (`m_turningInPlace`, set by `StartInPlaceTurn` and
+  cleared by `FinishWalk`/`Reset`) reports that turn, and the walk context's
+  `victimTurning` callback hands it to the strike.
+- THE STRIKE WAITS FOR THAT FRONT. `ExecStrikeState` starts the strike clip the
+  frame the victim's turn is over; while it is not, the attacker HOLDS where the
+  approach left it (its outgoing walk clip's root motion is switched off so it
+  does not walk on through its victim, and `ctx->waitingForVictim` keeps the
+  stall watchdog quiet). The wait is bounded by the strike clip's own length, so
+  a turn that never ends cannot lock the turn flow. In practice the hold is
+  usually empty -- a 1.0 s turn clip at the action's ~1.7x tempo finishes at
+  ~0.6 s of a ~2 s pre-strike approach.
 - Variants take turns: `ExecutionLibrary::Resolve` cycles through a relation's
   variants (per session, reset by `ExecutionLibrary::Reset` in `Game::OnPlay`),
   so repeated kills do not replay the same scene -- with the 13 front variants a
@@ -405,20 +434,22 @@ apply to all code in both repositories.
   the player's tile.
 - Where executions are used today: a step bite (`Game::ResolvePlayerArrival`)
   and a guard's lunge (`StationaryPatrol::Lunge(victim)`), each of which falls
-  back to `StartMove` when no clip is authored for the relation. With both the
-  back and the head on series authored, a patrol following the player along a
-  line strikes its back (`ambush_*`) and a patrol that walks into the player --
-  or the player walking into a patrol -- strikes head on (`execution_*`). Only
-  the two shoulder relations are still plain steps.
+  back to `StartMove` when no scene can be played for the relation. With the back
+  and the head on series authored, a patrol following the player along a line
+  strikes its back (`ambush_*`), a patrol that walks into the player -- or the
+  player walking into a patrol -- strikes head on (`execution_*`), and a strike
+  that comes over the victim's shoulder turns the victim to face the attacker
+  first and then plays the same head on scene (`execution_*`, see above).
 - The PLAYER strikes too. `Game::HandlePlayerClick` looks up the patrol on the
   clicked tile (`Game::EnemyOnTile`) and passes it to
   `Player::TryMove(node, isOccupied, victim)`: with a victim the step is tried
   as an execution FIRST -- the walk is the approach, the strike clip carries the
-  player the last stretch onto the patrol -- and only a relation without clips
-  falls back to the plain walk (which captures the patrol on arrival, as
+  player the last stretch onto the patrol -- and only a step with no playable
+  scene falls back to the plain walk (which captures the patrol on arrival, as
   before). So a player that steps onto a guard from the tile BEHIND it (walking
   the way the guard faces) performs `ambush_N` on it and the guard plays
-  `ambushed_N`.
+  `ambushed_N`, while a player that comes at it over a shoulder turns the guard
+  to face it and then performs `execution_N`.
 - A player execution is bookkept as `Game::m_executedEnemy`. The victim is
   frozen for the turn like any patrol standing on the destination, but it is
   NOT removed at arrival: it stays on the grid until its death scene is over
@@ -498,9 +529,20 @@ apply to all code in both repositories.
   forward travel.`: the clip measurement the start distance comes from (logged
   the first time a clip is resolved, once per loaded animation resource).
 - `Exec: strike from the behind -> 'ambush_1' + 'ambushed_1' (starts 1.64 u
-  out).` / `Exec: no execution authored for a strike from the left; plain
-  step.`: relation resolved, or no clip for it (the caller keeps the plain
-  step: a bite for a patrol, a capture for the player).
+  out).` / `Exec: strike from the left -> the victim shows its front, then
+  'execution_7' + 'executed_7' (starts 1.2 u out).` / `Exec: no execution
+  authored for a strike from the right; plain step.`: relation resolved, or a
+  side strike set up as a head on kill (the victim turns first), or nothing
+  playable at all (the caller keeps the plain step: a bite for a patrol, a
+  capture for the player).
+- `Exec: strike from the right: the victim turns to face the attacker first, then
+  the strike plays as a front.` (from `ExecutionLibrary::Resolve`) and
+  `Exec: the victim turns to face the attacker at x1.67.`: the side strike's
+  setup. `Exec: the victim faces the attacker instantly (no turn animation).` /
+  `Exec: the victim cannot turn now; the strike takes it as it stands.` /
+  `Exec: the victim is still turning after X.XX s; striking anyway.`: the
+  fallbacks -- the last one means the strike gave up waiting for the front
+  (check the victim's turn clips and its action state).
 - `Exec: 'execution_9' is not on this character; trying the next front variant.`
   / `Exec: 'x' carries no root travel; trying the next ... variant.` /
   `Exec: none of the 13 front variants is playable here; plain step.`: a
@@ -529,8 +571,10 @@ apply to all code in both repositories.
 - `Game: the player executed a patrol on (...).`: the player's own strike scene
   ended and the body left the grid (the patrol is gone only now, not on
   arrival); a run won on that same tile is declared right after it.
-- `Game: player captured a patrol.`: unchanged -- the plain-step capture, i.e.
-  a player that stepped onto a patrol from a side with no execution authored.
+- `Game: player captured a patrol.`: the plain-step capture, i.e. a step the
+  execution system could not play as a scene (no animation support on the
+  player, or no playable variant for the relation) -- every animated player that
+  steps onto a patrol now kills it with a scene instead.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor

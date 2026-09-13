@@ -23,9 +23,10 @@ namespace ToolKit
   class AnimRecord;
   class StateMachine;
 
-  // Defined in Execution.h: the authored strike StartAction plays when a move
-  // is an execution instead of a plain step (only the pointer crosses here).
-  struct ExecutionClip;
+  // Defined in Execution.h: the plan of the authored strike StartAction plays
+  // when a move is an execution instead of a plain step (only the pointer /
+  // reference crosses here).
+  struct ExecutionPlan;
 
   // Crossfade length (seconds) used whenever the walk state machine switches
   // clips (idle -> walk_f_start -> walk_f -> walk_f_end -> idle). Kept as a
@@ -122,6 +123,23 @@ namespace ToolKit
     // the shared in-place turn animation (turn clip + fold) when the unit has
     // turn clips, so every unit turns the same way the player does.
     virtual void StartTurn(GridDir dir);
+
+    // Side strike setup: turns the unit in place so its FRONT points along
+    // towardAttacker, the direction that leads from here to the attacker closing
+    // in on it. This is the FIRST step of a strike that comes over this unit's
+    // shoulder (see ExecutionPlan::victimTurnsToAttacker): the head on scene that
+    // follows has to find the two facing each other. `scale` is the attacker's
+    // action tempo -- the turn belongs to the SAME action window as the approach,
+    // so unlike a stand-alone turn it must not fill a turn window of its own
+    // (it would still be turning when the strike lands). The base implementation
+    // snaps the root onto that heading: instant, so nothing has to wait for it.
+    virtual void TurnToFaceAttacker(GridDir towardAttacker, float scale);
+
+    // True while an in-place turn this unit is playing has not finished. An
+    // attacker whose strike needs the victim's front (a side strike, see
+    // TurnToFaceAttacker) holds its strike until this is false, so the reaction
+    // clip never cuts a half finished turn.
+    virtual bool IsTurning() const { return false; }
 
     // Lands a running move immediately (snaps the unit onto its destination
     // tile). Used when the run ends mid-move so no unit stays frozen between
@@ -264,6 +282,17 @@ namespace ToolKit
     // (turn clip + fold), or snaps instantly when no turn clips exist.
     void StartTurn(GridDir dir) override;
 
+    // Turns to face the attacker of a strike that comes over this unit's
+    // shoulder, with the shared in-place turn animation played at the attacker's
+    // tempo (see Unit::TurnToFaceAttacker). Falls back to the instant snap when
+    // the unit has no turn clips, and leaves a unit that is already acting alone
+    // (the strike then takes it as it stands instead of hijacking its move).
+    void TurnToFaceAttacker(GridDir towardAttacker, float scale) override;
+
+    // True while the in-place turn this unit started is still playing (see
+    // Unit::IsTurning): the strike that waits for this unit's front gates on it.
+    bool IsTurning() const override { return m_turningInPlace; }
+
     // True when turn clips are loaded on this unit's animation controller, so
     // in-place turns (and the arrival turn of a landing patrol) can animate.
     bool HasAnimatedTurn() const;
@@ -301,13 +330,15 @@ namespace ToolKit
 
     // The single implementation behind StartWalk and StartExecution: the shared
     // walk state machine, where the landing phase is either the walk's own stop
-    // clip or -- when exec is given -- an authored execution strike whose
-    // measured reach replaces the landing clip's. Keeping both in one place is
-    // what makes an execution "a step that ends in a strike" instead of a
-    // second movement implementation.
+    // clip or -- when the plan carries a strike -- an authored execution strike
+    // whose measured reach replaces the landing clip's. Keeping both in one place
+    // is what makes an execution "a step that ends in a strike" instead of a
+    // second movement implementation. A plan that asks for it also starts the
+    // VICTIM's pre-strike turn (see ExecutionPlan::victimTurnsToAttacker) at this
+    // action's tempo, and the strike phase then waits for that turn to end.
     bool StartAction(GridNode* node,
                      float targetDuration,
-                     const ExecutionClip* exec,
+                     const ExecutionPlan& plan,
                      Unit* victim);
 
     // Ends the current walk: tears down the state machine and settles the
@@ -371,6 +402,11 @@ namespace ToolKit
     // lands (see TurnOnArrival). Consumed by FinishWalk.
     Quaternion m_deferredTurn;
     bool m_hasDeferredTurn = false;
+
+    // True while an in-place turn this unit started (a stand-alone about-face, a
+    // seeker's stare, or the pre-strike turn of a side strike) is still playing.
+    // Reported by IsTurning() and cleared the moment that turn's action ends.
+    bool m_turningInPlace = false;
 
     // Execution state (see StartExecution). The action itself runs in the walk
     // state machine; m_execActive tracks the SCENE that outlives it -- the

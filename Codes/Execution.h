@@ -53,10 +53,40 @@ namespace ToolKit
     float AttackDuration() const { return attackerMotion.duration; }
   };
 
+  // What a strike resolves to BEFORE a single frame of it plays: the clip pair
+  // to perform and the setup the scene needs. Keeping the setup next to the clip
+  // is what lets an approach that has no scene of its own -- a strike from the
+  // victim's side -- still play one (see victimTurnsToAttacker).
+  struct ExecutionPlan
+  {
+    // The clips to play: the attacker's strike and, paired by index, the
+    // victim's reaction. Null when nothing is playable for this approach, and
+    // the caller then keeps its plain step (a bite for a patrol, a capture for
+    // the player).
+    const ExecutionClip* clip = nullptr;
+
+    // The relation the scene PLAYS as. It is the relation of the approach
+    // itself, except for a side strike: the left and right relations have no
+    // clips of their own, so the victim turns to face the attacker first and the
+    // scene then plays as the FRONT relation -- a head on kill -- instead of
+    // degrading to a plain step.
+    ExecRelation relation = ExecRelation::Front;
+
+    // True when the victim has to turn its FRONT toward the attacker before the
+    // strike may start. That turn is the FIRST step of a side strike: it is what
+    // makes the head on scene that follows find the two facing each other, so
+    // the attacker's strike phase holds until it is over.
+    bool victimTurnsToAttacker = false;
+
+    bool HasClip() const { return clip != nullptr; }
+  };
+
   // The catalogue of executions, keyed by relation and driven by the animation
   // assets: which clips a relation uses and how far each of them starts from.
   // Adding a direction is a table entry, never code -- and a relation with no
-  // clips authored simply reports none, so the caller keeps its plain bite.
+  // clips authored declares which relation a strike from that side falls back
+  // on (turning the victim to face the attacker), so the caller keeps its plain
+  // bite only where even that is impossible.
   class ExecutionLibrary
   {
    public:
@@ -67,9 +97,11 @@ namespace ToolKit
     // Resolves the execution authored for the relation, cycling through the
     // variant clips (ambush_1/2/3) so repeated kills do not replay the same
     // scene, and measuring the chosen clip against the attacker's controller.
-    // Returns null when the relation has no clip authored, the clip is missing
-    // or it carries no root travel.
-    static const ExecutionClip* Resolve(ExecRelation rel, AnimControllerComponent* attackerAnim);
+    // The plan's relation is the relation the scene plays as (see
+    // ExecutionPlan) and its clip is null when nothing can be played -- the
+    // relation has no clips, the clip is missing on this character or it carries
+    // no root travel.
+    static ExecutionPlan Resolve(ExecRelation rel, AnimControllerComponent* attackerAnim);
 
     // Number of authored variants of a relation (0 when it has none).
     static int VariantCount(ExecRelation rel);

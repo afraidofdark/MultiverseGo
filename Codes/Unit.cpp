@@ -86,6 +86,16 @@ namespace ToolKit
     std::function<float()> onStrike; // Plays the victim's side, returns its length.
     float execSceneDur = 0.0f;     // Whole scene length, known once the strike starts.
     bool strikeStarted = false;    // Set when the strike clip begins to play.
+
+    // Pre-strike turn of a SIDE strike (a strike the victim never faces, see
+    // ExecutionPlan::victimTurnsToAttacker): the victim turns to face the
+    // attacker while the approach runs, and this reports whether that turn is
+    // still going. Null when the victim had nothing to turn (every other strike),
+    // so the strike starts immediately. `waitingForVictim` is set while the
+    // strike phase is holding for that turn, so the walk's stall watchdog knows
+    // the attacker is standing still ON PURPOSE.
+    std::function<bool()> victimTurning;
+    bool waitingForVictim = false;
   };
 
   // Crossfade length (seconds) used whenever the walk state machine switches
@@ -600,6 +610,11 @@ namespace ToolKit
     // also the moment the victim reacts: onStrike starts the paired reaction
     // clip, and the length it reports is how long the scene still runs after
     // the attacker's own clip is over.
+    //
+    // A SIDE strike hands over to this state while the victim is still turning
+    // to face the attacker: the strike then HOLDS -- the attacker stands where
+    // the approach left it, holding the pose it arrived on -- until that turn is
+    // over, because the whole point of the turn is the front this strike needs.
     class ExecStrikeState : public State
     {
      public:
@@ -608,30 +623,9 @@ namespace ToolKit
       void TransitionIn(State* prevState) override
       {
         m_elapsed = 0.0f;
-        if (m_ctx == nullptr)
-        {
-          return;
-        }
-
-        if (m_ctx->anim != nullptr && !m_ctx->execSignal.empty())
-        {
-          if (AnimRecordPtr rec = m_ctx->anim->GetAnimRecord(m_ctx->execSignal))
-          {
-            rec->m_loop            = false; // One-shot; holds its final frame.
-            rec->m_applyRootMotion = true;  // It carries the strike's movement.
-          }
-          BlendTo(m_ctx->anim, m_ctx->execSignal);
-        }
-
-        float victimDur      = (m_ctx->onStrike != nullptr) ? m_ctx->onStrike() : 0.0f;
-        m_ctx->execSceneDur  = glm::max(m_ctx->endDur, victimDur);
-        m_ctx->strikeStarted = true;
-
-        TK_LOG("Exec: strike '%s' started %.2f u from the victim (%.2f s clip, %.2f s scene).",
-               m_ctx->execSignal.c_str(),
-               m_ctx->endReach,
-               m_ctx->endDur,
-               m_ctx->execSceneDur);
+        m_wait    = 0.0f;
+        m_started = false;
+        StartStrikeIfVictimReady();
       }
 
       void TransitionOut(State* nextState) override {}
@@ -641,6 +635,37 @@ namespace ToolKit
         if (m_ctx == nullptr)
         {
           return State::NullSignal;
+        }
+
+        // Holding for the victim's front. The wait is bounded by the strike
+        // clip's own length: a turn that somehow never ends must not lock the
+        // turn flow, so after that the scene plays anyway (the clips are still
+        // the pair the relation resolved, they just start on a turning victim).
+        if (!m_started)
+        {
+          m_wait += deltaTime;
+          const bool ready = VictimReady();
+          if (!ready && m_wait < m_ctx->endDur)
+          {
+            // Stand still where the approach left off: the walk clip that is
+            // still active would otherwise keep driving the actor forward --
+            // straight through the very victim it is waiting to strike.
+            if (m_ctx->anim != nullptr)
+            {
+              if (AnimRecordPtr active = m_ctx->anim->GetActiveRecord())
+              {
+                active->m_applyRootMotion = false;
+              }
+            }
+            return State::NullSignal;
+          }
+
+          if (!ready)
+          {
+            TK_LOG("Exec: the victim is still turning after %.2f s; striking anyway.",
+                   m_wait);
+          }
+          StartStrike();
         }
 
         m_elapsed += deltaTime;
@@ -668,8 +693,63 @@ namespace ToolKit
       String GetType() override { return "WalkEnd"; }
 
      private:
+      // True when the strike may start: the victim's pre-strike turn is over.
+      // Always true for a scene whose victim never had to turn.
+      bool VictimReady() const
+      {
+        return (m_ctx->victimTurning == nullptr) || !m_ctx->victimTurning();
+      }
+
+      // First frame of the strike: the attacker's clip starts, the victim's
+      // paired reaction starts with it, and the scene clock begins.
+      void StartStrikeIfVictimReady()
+      {
+        if (m_ctx == nullptr)
+        {
+          return;
+        }
+
+        if (VictimReady())
+        {
+          StartStrike();
+        }
+        else
+        {
+          m_ctx->waitingForVictim = true;
+        }
+      }
+
+      void StartStrike()
+      {
+        m_started               = true;
+        m_ctx->waitingForVictim = false;
+        m_ctx->sinceProgress    = 0.0f; // The strike's travel gets a fresh watchdog.
+
+        if (m_ctx->anim != nullptr && !m_ctx->execSignal.empty())
+        {
+          if (AnimRecordPtr rec = m_ctx->anim->GetAnimRecord(m_ctx->execSignal))
+          {
+            rec->m_loop            = false; // One-shot; holds its final frame.
+            rec->m_applyRootMotion = true;  // It carries the strike's movement.
+          }
+          BlendTo(m_ctx->anim, m_ctx->execSignal);
+        }
+
+        float victimDur      = (m_ctx->onStrike != nullptr) ? m_ctx->onStrike() : 0.0f;
+        m_ctx->execSceneDur  = glm::max(m_ctx->endDur, victimDur);
+        m_ctx->strikeStarted = true;
+
+        TK_LOG("Exec: strike '%s' started %.2f u from the victim (%.2f s clip, %.2f s scene).",
+               m_ctx->execSignal.c_str(),
+               m_ctx->endReach,
+               m_ctx->endDur,
+               m_ctx->execSceneDur);
+      }
+
       AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
+      float m_wait    = 0.0f; // Machine seconds spent holding for the victim.
+      bool m_started  = false;
     };
 
     // Terminal phase of an in-place turn: ends the unit's action as soon as
@@ -873,6 +953,14 @@ namespace ToolKit
     // Instant in-place rotation fallback (no turn clips on this unit).
     m_root->m_node->SetOrientation(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(dir)),
                                    TransformationSpace::TS_WORLD);
+  }
+
+  void Unit::TurnToFaceAttacker(GridDir towardAttacker, float scale)
+  {
+    // No animation support: the front is snapped onto the attacker. That is all
+    // the head on strike needs, and because it is instant nothing ever waits for
+    // it (IsTurning() stays false).
+    Unit::StartTurn(towardAttacker);
   }
 
   void Unit::SetArrivalOrientation(const Quaternion& worldOrient)
@@ -1095,8 +1183,9 @@ namespace ToolKit
     // Stall watchdog: root motion that never converges (misaligned direction,
     // missing walk data) must not lock the turn forever. The gap shrinking at
     // least a little every frame keeps the timer at zero. A turn-in-place
-    // phase legitimately makes no distance progress, so it is exempt.
-    if (!ctx->turning && dt < 0.5f)
+    // phase -- and a strike holding for the victim's pre-strike turn -- makes no
+    // distance progress by design, so both are exempt.
+    if (!ctx->turning && !ctx->waitingForVictim && dt < 0.5f)
     {
       float remaining = WalkRemaining(*ctx);
       if (remaining < ctx->bestRemaining - 0.001f)
@@ -1173,6 +1262,35 @@ namespace ToolKit
       return;
     }
     Unit::StartTurn(dir);
+  }
+
+  void AnimatedUnit::TurnToFaceAttacker(GridDir towardAttacker, float scale)
+  {
+    // The same in-place turn every other unit plays, at the ATTACKER's tempo:
+    // the turn is part of the attacker's action window, so a stand-alone turn
+    // (which fills a whole window of its own) would leave the victim still
+    // turning when the strike lands.
+    if (HasAnimatedTurn() && m_walkSM == nullptr)
+    {
+      Quaternion target = RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(towardAttacker));
+      StartInPlaceTurn(YawOf(target), scale);
+      TK_LOG("Exec: the victim turns to face the attacker at x%.2f.", scale);
+      return;
+    }
+
+    if (m_walkSM != nullptr)
+    {
+      // Already acting (a move of its own, or a turn toward another attacker):
+      // leave that action alone. The strike then finds whichever front the
+      // victim happens to be showing instead of being hijacked by a snap.
+      TK_LOG("Exec: the victim cannot turn now; the strike takes it as it stands.");
+      return;
+    }
+
+    // No turn clips on this unit: show the front at once rather than making the
+    // strike wait for a turn that cannot play.
+    TK_LOG("Exec: the victim faces the attacker instantly (no turn animation).");
+    Unit::TurnToFaceAttacker(towardAttacker, scale);
   }
 
   bool AnimatedUnit::HasAnimatedTurn() const
@@ -1293,6 +1411,10 @@ namespace ToolKit
            ctx->turnDur / scale,
            scale);
 
+    // Reported by IsTurning() for as long as this action runs: an attacker whose
+    // strike needs this unit's front (a side strike) holds its strike until here.
+    m_turningInPlace = true;
+
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
     m_walkSM->PushState(new InPlaceTurnDoneState(ctx));
@@ -1410,7 +1532,7 @@ namespace ToolKit
 
   bool AnimatedUnit::StartWalk(GridNode* node, float targetDuration)
   {
-    return StartAction(node, targetDuration, nullptr, nullptr);
+    return StartAction(node, targetDuration, ExecutionPlan(), nullptr);
   }
 
   bool AnimatedUnit::StartExecution(Unit* victim, float targetDuration)
@@ -1431,24 +1553,39 @@ namespace ToolKit
     GridDir approach = DirectionOf(dest->center - m_node->center);
     ExecRelation rel = ExecutionLibrary::RelationOf(approach, victim->GetFacingDir());
 
-    const ExecutionClip* clip = ExecutionLibrary::Resolve(rel, m_walkAnim);
-    if (clip == nullptr)
+    ExecutionPlan plan = ExecutionLibrary::Resolve(rel, m_walkAnim);
+    if (!plan.HasClip())
     {
-      // No clip authored for this relation (or the clips are not loaded): the
-      // caller keeps its plain step (a bite for a patrol, a capture for the
-      // player).
+      // Nothing authored for this relation (and no relation it can be turned
+      // into), or the clips are not loaded: the caller keeps its plain step (a
+      // bite for a patrol, a capture for the player).
       TK_LOG("Exec: no execution authored for a strike from the %s; plain step.",
              ExecRelationName(rel));
       return false;
     }
 
-    TK_LOG("Exec: strike from the %s -> '%s' + '%s' (starts %.2f u out).",
-           ExecRelationName(rel),
-           clip->attackerSignal.c_str(),
-           clip->victimSignal.c_str(),
-           clip->StartDistance());
+    if (plan.victimTurnsToAttacker)
+    {
+      // A strike over the victim's shoulder: it has no scene of its own, so the
+      // victim is turned to face the attacker FIRST and the head on scene then
+      // plays (StartAction starts that turn; the strike waits for it).
+      TK_LOG("Exec: strike from the %s -> the victim shows its front, then '%s' + "
+             "'%s' (starts %.2f u out).",
+             ExecRelationName(rel),
+             plan.clip->attackerSignal.c_str(),
+             plan.clip->victimSignal.c_str(),
+             plan.clip->StartDistance());
+    }
+    else
+    {
+      TK_LOG("Exec: strike from the %s -> '%s' + '%s' (starts %.2f u out).",
+             ExecRelationName(rel),
+             plan.clip->attackerSignal.c_str(),
+             plan.clip->victimSignal.c_str(),
+             plan.clip->StartDistance());
+    }
 
-    return StartAction(dest, targetDuration, clip, victim);
+    return StartAction(dest, targetDuration, plan, victim);
   }
 
   float AnimatedUnit::PlayExecutionReaction(const String& signal, float scale)
@@ -1483,9 +1620,10 @@ namespace ToolKit
 
   bool AnimatedUnit::StartAction(GridNode* node,
                                  float targetDuration,
-                                 const ExecutionClip* exec,
+                                 const ExecutionPlan& plan,
                                  Unit* victim)
   {
+    const ExecutionClip* exec = plan.clip;
     if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr)
     {
       return false; // No animation support; the caller picks the fallback.
@@ -1670,6 +1808,19 @@ namespace ToolKit
            arrivalTurnDur > 0.0f ? ", arrival turn included" : "",
            exec != nullptr ? ", execution strike" : "");
 
+    // A side strike starts with the VICTIM's turn: the victim shows its front to
+    // the attacker while the approach runs, so the head on scene that follows
+    // finds the two facing each other. It plays at this action's tempo -- the
+    // turn is part of the same window -- and its length is NOT counted into the
+    // budget above: the strike phase holds for it instead (see ExecStrikeState),
+    // which keeps the two in step whatever the clips measure.
+    if (plan.victimTurnsToAttacker && victim != nullptr && glm::length(stepDir) > 0.0001f)
+    {
+      GridDir towardAttacker = OppositeDir(DirectionOf(stepDir));
+      ctx->victimTurning     = [victim]() -> bool { return victim->IsTurning(); };
+      victim->TurnToFaceAttacker(towardAttacker, scale);
+    }
+
     m_walkSM = new StateMachine();
     m_walkSM->PushState(new WalkTurnState(ctx));
     m_walkSM->PushState(new WalkStartState(ctx));
@@ -1716,6 +1867,10 @@ namespace ToolKit
     delete m_walkSM;
     m_walkSM  = nullptr;
     m_walkCtx = nullptr;
+
+    // Whatever action this was -- an in-place turn included -- it is over, so a
+    // strike waiting for this unit's front may go ahead.
+    m_turningInPlace = false;
 
     if (ctx != nullptr)
     {
@@ -1860,6 +2015,7 @@ namespace ToolKit
     m_timedLoopRec  = nullptr;
     m_timedEndRec   = nullptr;
     m_hasDeferredTurn = false;
+    m_turningInPlace  = false;
 
     // A running execution scene never outlives the session either.
     m_execAction = false;
