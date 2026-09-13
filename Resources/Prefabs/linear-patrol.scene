@@ -82,7 +82,7 @@
 					<PB>
 						<P t="11" name="Id" v="17131285357893850006"/>
 						<P t="16" name="Records">
-							<List size="13">
+							<List size="19">
 								<0 SignalName="walk_f" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/walk_f.anim"/>
 								</0>
@@ -122,6 +122,24 @@
 								<12 SignalName="turn_r_180" ApplyRootMotion="0">
 									<ResourceRef Class="Animation" File="Character/Player/Movement/turn_r_180.anim"/>
 								</12>
+								<13 SignalName="ambush_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambush_1.anim"/>
+								</13>
+								<14 SignalName="ambush_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambush_2.anim"/>
+								</14>
+								<15 SignalName="ambush_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambush_3.anim"/>
+								</15>
+								<16 SignalName="ambushed_1" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambushed_1.anim"/>
+								</16>
+								<17 SignalName="ambushed_2" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambushed_2.anim"/>
+								</17>
+								<18 SignalName="ambushed_3" ApplyRootMotion="0">
+									<ResourceRef Class="Animation" File="Character/Player/Execution/ambushed_3.anim"/>
+								</18>
 							</List>
 						</P>
 					</PB>
