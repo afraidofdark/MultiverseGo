@@ -45,6 +45,15 @@ namespace ToolKit
       }
       return (delta.z < 0.0f) ? GridDir::Zm : GridDir::Zp;
     }
+
+    // The stride clips a move loops on. A PLAIN step travels with walk_f; an
+    // EXECUTION closes in with the FIGHT walk (fight_walk_f), because the
+    // attacker is walking into a kill instead of travelling -- see
+    // AnimatedUnit::StartAction. Both are looping cycles that carry root motion,
+    // so whichever one is chosen is the clip that covers the gap and the one the
+    // move's timing is measured on.
+    constexpr const char* kStrideSignal      = "walk_f";
+    constexpr const char* kFightStrideSignal = "fight_walk_f";
   } // namespace
 
   // Data the unit's walk state machine operates on. One instance lives per
@@ -60,6 +69,7 @@ namespace ToolKit
     float startDur = 0.0f;                  // walk_f_start duration (seconds).
     float endDur = 0.0f;                    // walk_f_end duration (seconds).
     float endReach = 0.0f;                  // Root travel of the full end clip.
+    String loopSignal = kStrideSignal;      // Stride clip the loop phase plays.
     float totalDist = 0.0f;                 // Horizontal gap start -> target.
     float bestRemaining = 0.0f;             // Smallest gap seen (stall watchdog).
     float sinceProgress = 0.0f;             // Seconds since the gap last shrank.
@@ -108,7 +118,7 @@ namespace ToolKit
   // fit it and every enemy move (walk, glide fallback or bite) runs for the
   // same length, so all units of a turn start and stop together. Tunable at
   // runtime like gWalkBlendDuration.
-  float gTurnDuration = 3.0f;
+  float gTurnDuration = 2.5f;
 
   namespace
   {
@@ -480,10 +490,12 @@ namespace ToolKit
       float m_elapsed = 0.0f;
     };
 
-    // Middle phase: keeps the stride clip (walk_f) looping while root motion
-    // covers the gap. Leaves for the end clip the moment the remaining distance
-    // fits the end clip's own root travel, so the walk can stop exactly on the
-    // destination node no matter how long the gap is.
+    // Middle phase: keeps the STRIDE clip looping while root motion covers the
+    // gap -- walk_f for a plain step, fight_walk_f when the move is an execution
+    // (the attacker walks into a kill; see AnimatedUnit::StartAction). Leaves for
+    // the landing phase the moment the remaining distance fits its root travel,
+    // so the walk can stop exactly on the destination node no matter how long
+    // the gap or which stride it is made of.
     class WalkLoopState : public State
     {
      public:
@@ -494,7 +506,7 @@ namespace ToolKit
         m_elapsed = 0.0f;
         if (m_ctx != nullptr && m_ctx->anim != nullptr)
         {
-          BlendTo(m_ctx->anim, "walk_f");
+          BlendTo(m_ctx->anim, m_ctx->loopSignal);
         }
       }
 
@@ -1113,8 +1125,13 @@ namespace ToolKit
     };
 
     rebuild(m_timingStart, m_walkAnim->GetAnimRecord("walk_f_start"), m_timedStartRec);
-    rebuild(m_timingLoop, m_walkAnim->GetAnimRecord("walk_f"), m_timedLoopRec);
+    rebuild(m_timingLoop, m_walkAnim->GetAnimRecord(kStrideSignal), m_timedLoopRec);
     rebuild(m_timingEnd, m_walkAnim->GetAnimRecord("walk_f_end"), m_timedEndRec);
+
+    // The stride an execution closes in with. Measured like the others, never
+    // assumed: a fight walk that carries no root travel cannot cover a gap and
+    // is reported so by HasTravel (StartAction then keeps walk_f).
+    rebuild(m_timingFightLoop, m_walkAnim->GetAnimRecord(kFightStrideSignal), m_timedFightLoopRec);
   }
 
   AnimatedUnit::~AnimatedUnit()
@@ -1427,9 +1444,10 @@ namespace ToolKit
     m_timeScale = scale;
 
     // Every clip that can play during a move: idle may still be fading out when
-    // the move starts, the walk clips follow, the turn clips cover the leading
-    // turn phase / in-place turns, and an execution's strike clip is the
-    // landing phase of the same action.
+    // the move starts, the walk clips follow, the stride an execution closes in
+    // with (fight_walk_f) is the same loop phase under another clip, the turn
+    // clips cover the leading turn phase / in-place turns, and an execution's
+    // strike clip is the landing phase of the same action.
     if (m_walkAnim != nullptr)
     {
       const String strike = m_execSignal;
@@ -1437,6 +1455,7 @@ namespace ToolKit
                                            "walk_f_start",
                                            "walk_f",
                                            "walk_f_end",
+                                           "fight_walk_f",
                                            "turn_l_90",
                                            "turn_l_180",
                                            "turn_r_90",
@@ -1767,6 +1786,38 @@ namespace ToolKit
 
     EnsureWalkTimings();
 
+    // WHICH STRIDE CLOSES IN. A plain step travels with walk_f; an EXECUTION
+    // closes in with the FIGHT walk (fight_walk_f), so a kill reads as one: the
+    // attacker is walking into its victim, not travelling. Only the LOOP phase
+    // changes -- the wind-up it starts with and the phase that ends the action
+    // (the strike clip) are the ones the action already chose -- and the chosen
+    // clip's own measured motion is what the move is timed on below, so a
+    // faster or slower combat cycle sizes its own approach.
+    const ClipMotion* strideMotion = &m_timingLoop;
+    if (exec != nullptr)
+    {
+      AnimRecordPtr fightRec   = m_walkAnim->GetAnimRecord(kFightStrideSignal);
+      const bool fightPlayable = fightRec != nullptr && fightRec->m_animation != nullptr;
+      if (fightPlayable && m_timingFightLoop.HasTravel())
+      {
+        fightRec->m_loop            = true; // A stride cycle: it loops.
+        fightRec->m_applyRootMotion = true; // ... and it is what covers the gap.
+        ctx->loopSignal             = kFightStrideSignal;
+        strideMotion                = &m_timingFightLoop;
+        TK_LOG("Exec: closing in on '%s' (%.2f s per %.3f u stride cycle).",
+               kFightStrideSignal,
+               m_timingFightLoop.duration,
+               m_timingFightLoop.totalTravel);
+      }
+      else
+      {
+        TK_LOG("Exec: '%s' is %s; closing in with '%s'.",
+               kFightStrideSignal,
+               fightPlayable ? "carrying no root travel" : "not on this character",
+               kStrideSignal);
+      }
+    }
+
     // Natural length of the action. For a plain step that is the walk's own
     // phases (turn + wind-up + strides + landing clip); for an execution the
     // strike clip IS the landing phase -- it covers the last `startDistance` of
@@ -1783,7 +1834,7 @@ namespace ToolKit
       naturalDur = EstimateWalkDuration(ctx->turning ? ctx->turnDur : 0.0f,
                                         ctx->totalDist,
                                         m_timingStart,
-                                        m_timingLoop,
+                                        *strideMotion,
                                         (exec != nullptr) ? exec->attackerMotion : m_timingEnd);
     }
 
@@ -2011,9 +2062,11 @@ namespace ToolKit
     m_timingStart = ClipMotion();
     m_timingLoop  = ClipMotion();
     m_timingEnd   = ClipMotion();
+    m_timingFightLoop = ClipMotion();
     m_timedStartRec = nullptr;
     m_timedLoopRec  = nullptr;
     m_timedEndRec   = nullptr;
+    m_timedFightLoopRec = nullptr;
     m_hasDeferredTurn = false;
     m_turningInPlace  = false;
 

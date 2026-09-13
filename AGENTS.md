@@ -145,8 +145,14 @@ apply to all code in both repositories.
      - `WalkStart`: plays the one-shot `walk_f_start` (`m_loop = false`); it
        holds its final frame at its end and the state switches on its own
        elapsed time reaching the clip duration.
-     - `WalkLoop`: plays `walk_f` (a looping clip) while the remaining distance
-       is larger than the end clip's root travel.
+     - `WalkLoop`: plays the move's STRIDE clip (a looping clip) while the
+       remaining distance is larger than the landing phase's root travel. The
+       stride is `walk_f` for a plain step and `fight_walk_f` when the move is an
+       EXECUTION (see "Execution system": an attacker walking into its victim
+       walks the fight cycle). The context carries it as `ctx->loopSignal`, so
+       the phase itself is stride-agnostic and the clip's own measured motion is
+       what the move is timed on (`StartAction` passes that profile to
+       `EstimateWalkDuration`).
      - `WalkEnd`: plays the one-shot `walk_f_end`; the walk ends when the
        remaining distance drops below `kWalkArriveEps` (~0.03 units) or the
        clip has fully played.
@@ -175,7 +181,7 @@ apply to all code in both repositories.
   keeps the walk direction identical to a straight move.
 - Clip loop flags (app): the walk machine marks the clips explicitly before
   playing them -- `walk_f_start` and `walk_f_end` are ONE-SHOT
-  (`m_loop = false`), `walk_f` and `idle` loop (`m_loop = true`).
+  (`m_loop = false`), `walk_f`, `fight_walk_f` and `idle` loop (`m_loop = true`).
 - Distance math: every frame, `remaining` = horizontal distance from the actor
   node (`m_actor->m_node`) to the destination `node.center`. The loop-to-end
   switch fires when `remaining <= endReach`, where `endReach` is computed at
@@ -183,7 +189,8 @@ apply to all code in both repositories.
   displacement between the first and the last root key of the end clip.
   Reference numbers for the current assets: `walk_f_start` ~1.15 units over
   0.8 s, `walk_f` ~1.92 units per 1.3 s cycle, `walk_f_end` ~0.39 units over
-  0.8 s.
+  0.8 s, `fight_walk_f` ~1.91 units per 1.1 s cycle (the same step at a faster
+  combat cadence, measured the same way into `m_timingFightLoop`).
 - Clip transitions crossfade: every phase switch (idle -> walk_f_start ->
   walk_f -> walk_f_end -> idle) goes through the helper `BlendTo`, which calls
   `AnimControllerComponent::SmoothTransition(signal, gWalkBlendDuration)` so
@@ -413,6 +420,18 @@ apply to all code in both repositories.
   standing in for `walk_f_end`, so the action still closes in `gTurnDuration`
   with ONE scale (`ApplyMoveTimeScale` also drives the strike clip through
   `m_execSignal`).
+- AN EXECUTION CLOSES IN WITH THE FIGHT WALK. `StartAction` puts
+  `fight_walk_f` in the loop phase (`ctx->loopSignal`) instead of `walk_f`
+  whenever the move carries a strike, so the attacker walks into its victim on
+  the combat cycle rather than the travel cycle; the wind-up it starts with and
+  the strike that ends it are unaffected. The clip is chosen by MEASUREMENT, not
+  by name alone: `EnsureWalkTimings` measures it into `m_timingFightLoop` and
+  `StartAction` picks it only when it is loaded and carries root travel
+  (`HasTravel`), logging `Exec: closing in on 'fight_walk_f' (...)`; otherwise
+  it keeps `walk_f` and logs why. Because the LOOP is what covers the gap, that
+  same measured profile is what `EstimateWalkDuration` times the approach with,
+  so a faster or slower combat cycle sizes its own approach and the action still
+  closes in `gTurnDuration`.
 - The victim side: when the strike phase begins, the attacker calls
   `victim->PlayExecutionReaction(signal, m_timeScale)` (through the
   `onStrike` callback in the walk context). `AnimatedUnit` plays that clip as a
@@ -490,7 +509,8 @@ apply to all code in both repositories.
   queued arrival turn, then computes `scale = actionNatural / target`;
   `ApplyMoveTimeScale` stores it in `AnimatedUnit::m_timeScale` and writes it
   into the `m_timeMultiplier` of every clip that can play during the action
-  (idle + the three walk clips + the four turn clips + an execution's strike
+  (idle + the three walk clips + the stride an execution closes in with + the
+  four turn clips + an execution's strike
   clip). The FSM timers AND the clip playback -- including blend countdowns --
   advance at that same rate, so the phases stay in sync while the action is
   compressed or stretched to T. `AnimatedUnit::Frame` feeds
@@ -528,6 +548,11 @@ apply to all code in both repositories.
 - `Exec: measured 'ambush_1' for a strike from behind: 1.70 s, 1.636 u of
   forward travel.`: the clip measurement the start distance comes from (logged
   the first time a clip is resolved, once per loaded animation resource).
+- `Exec: closing in on 'fight_walk_f' (1.10 s per 1.911 u stride cycle).`: the
+  approach walks the fight cycle instead of `walk_f` (see "Execution system").
+  `Exec: 'fight_walk_f' is not on this character` / `... carrying no root
+  travel; closing in with 'walk_f'.`: the fallback -- the prefab has no such
+  record, or the clip cannot cover a gap, so the approach travels normally.
 - `Exec: strike from the behind -> 'ambush_1' + 'ambushed_1' (starts 1.64 u
   out).` / `Exec: strike from the left -> the victim shows its front, then
   'execution_7' + 'executed_7' (starts 1.2 u out).` / `Exec: no execution

@@ -367,7 +367,8 @@ namespace ToolKit
 
     // Applies a move time scale: stores it for the FSM timers and writes it into
     // the m_timeMultiplier of every clip that can play during a move (idle +
-    // the three walk clips + the four turn clips). 1.0 restores normal speed.
+    // the three walk clips + the stride an execution closes in with + the four
+    // turn clips + the strike). 1.0 restores normal speed.
     void ApplyMoveTimeScale(float scale);
 
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
@@ -392,6 +393,12 @@ namespace ToolKit
     const AnimRecord* m_timedStartRec = nullptr;
     const AnimRecord* m_timedLoopRec = nullptr;
     const AnimRecord* m_timedEndRec = nullptr;
+
+    // Measured motion of the stride an EXECUTION closes in with (fight_walk_f),
+    // measured exactly like the walk clips. No travel means the clip cannot
+    // cover a gap, and the approach keeps walk_f (see StartAction).
+    ClipMotion m_timingFightLoop;
+    const AnimRecord* m_timedFightLoopRec = nullptr;
 
     // Time scale of the running walk: real duration = natural FSM duration /
     // m_timeScale. Set by StartWalk so the whole move (turn + walk) finishes in
