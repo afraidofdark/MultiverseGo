@@ -180,6 +180,11 @@ namespace ToolKit
     StartPlayerTurn();
   }
 
+  // Nothing game specific happens on pause / resume. Pausing has to hold the
+  // engine's animation playback as well, but that is the same for every project
+  // and the editor applies it when the simulation state changes
+  // (App::SetGameMod -> App::ApplySimulationServices), so these hooks stay free
+  // for the game's own work.
   void Game::OnPause() {}
 
   void Game::OnResume() {}
