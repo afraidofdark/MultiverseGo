@@ -445,12 +445,26 @@ apply to all code in both repositories.
   `AnimatedUnit` counts that scene down (`m_execActive` / `m_execT` /
   `m_execDur`, advanced at the action's scale) and `IsExecuting()` reports it
   (throughout the whole action, see below). When the scene ends the attacker
-  settles back into idle at 1x.
+  settles back into idle at 1x -- or, when the PLAYER is the attacker, the game
+  cuts that wait short with `SettleExecutionScene` the moment its action ends
+  (see below), so the turn never waits on the body.
 - The kill lands on the LAST beat: `Game::UpdateActing` skips a bite while
   `bite->IsExecuting()` is true, so an execution ends with the full scene and
   then `Game::EatPlayer` (`Game: a patrol caught the player. You lose!`). A
   plain bite keeps the old rule: the eat lands the moment the enemy STANDS on
   the player's tile.
+- WHAT THE PLAYER'S TURN WAITS FOR: its own ACTION, never the victim's death
+  animation. The player's execution is resolved the frame its WALK MACHINE ends
+  -- that machine IS the action (approach + strike) -- so its victim leaves the
+  grid, a win waiting on that tile is declared and the input comes back in that
+  same frame, while a reaction clip that still had a second left simply dies with
+  the body. `AnimatedUnit::SettleExecutionScene` closes the player's scene state
+  right there (drops `m_execAction`/`m_execActive`, restores 1x and crossfades
+  into idle -- the settle `FinishWalk` skipped because a scene was running), so a
+  move committed immediately after can never be clobbered by a scene clock that
+  would otherwise run out in the middle of it. The LOSE side is deliberately
+  unchanged: a patrol striking the player still holds the loss until its whole
+  scene has played out, because there is no next turn to hurry to.
 - Where executions are used today: a step bite (`Game::ResolvePlayerArrival`)
   and a guard's lunge (`StationaryPatrol::Lunge(victim)`), each of which falls
   back to `StartMove` when no scene can be played for the relation. With the back
@@ -471,13 +485,14 @@ apply to all code in both repositories.
   to face it and then performs `execution_N`.
 - A player execution is bookkept as `Game::m_executedEnemy`. The victim is
   frozen for the turn like any patrol standing on the destination, but it is
-  NOT removed at arrival: it stays on the grid until its death scene is over
-  (`Game::FinishPlayerExecution`, called as soon as `IsExecuting()` drops),
-  which then removes it exactly like a captured patrol and declares a win that
-  was waiting on that tile (`Game::TryWin`). `Game::UpdateActing` drives the
-  player's `Frame` while it executes (the strike scene outlives its walk
-  machine) and keeps the turn open (`!m_player.IsExecuting()` is part of the
-  settle condition).
+  NOT removed at arrival: it stays on the grid until the player's own action is
+  over (`Game::FinishPlayerExecution`, called the frame the player's walk
+  machine ends), which then removes it exactly like a captured patrol, settles
+  the player back into idle (`SettleExecutionScene`) and declares a win that was
+  waiting on that tile (`Game::TryWin`). `Game::UpdateActing` drives the player's
+  `Frame` while it executes, and the turn's settle condition (`!m_player.
+  IsExecuting()`) is satisfied by that settle -- so the input comes back in the
+  very frame the player finished its kill.
 - `AnimatedUnit::IsExecuting()` covers the WHOLE action -- approach, strike and
   the victim's reaction -- not just the scene (`m_execAction`), so callers can
   never resolve a turn on top of a half-played kill. `m_execActive` is the
@@ -593,9 +608,12 @@ apply to all code in both repositories.
   (`Game: a patrol caught the player. You lose!`), even if the enemy still had
   a landing turn queued -- it bites and stops. An ambush (execution) instead
   holds the loss until its whole strike + reaction scene has played.
-- `Game: the player executed a patrol on (...).`: the player's own strike scene
-  ended and the body left the grid (the patrol is gone only now, not on
-  arrival); a run won on that same tile is declared right after it.
+- `Game: the player executed a patrol on (...).`: the player's own walk machine
+  ended, so the kill resolved: the patrol left the grid and, if a win was waiting
+  on that tile, it was declared right after. Its death animation does not have to
+  have finished -- it is already out of the game (`Exec: the attacker's action is
+  over; it settles into idle while the body plays on.` is the player settling at
+  the same moment).
 - `Game: player captured a patrol.`: the plain-step capture, i.e. a step the
   execution system could not play as a scene (no animation support on the
   player, or no playable variant for the relation) -- every animated player that

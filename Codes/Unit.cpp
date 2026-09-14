@@ -2045,6 +2045,41 @@ namespace ToolKit
     }
   }
 
+  void AnimatedUnit::SettleExecutionScene()
+  {
+    if (!m_execActive && !m_execAction)
+    {
+      return;
+    }
+
+    // What the scene clock does when it runs out (see Frame), done NOW instead.
+    // The attacker's ACTION is over, so nothing here may keep the turn waiting --
+    // and the walk machine is already gone, so the idle settle it skipped has to
+    // happen here. The victim's death animation is left alone: it plays on a body
+    // that is already out of the game, and no action of this unit depends on it.
+    m_execActive = false;
+    m_execAction = false;
+    m_execT      = 0.0f;
+    m_execDur    = 0.0f;
+
+    // Same order as the scene clock's own end (see Frame): the clips the action
+    // drove go back to 1x before the signal that names the strike is dropped.
+    ApplyMoveTimeScale(1.0f);
+    m_execSignal.clear();
+
+    if (m_walkAnim != nullptr)
+    {
+      if (AnimRecordPtr idle = m_walkAnim->GetAnimRecord("idle"))
+      {
+        idle->m_loop            = true;
+        idle->m_applyRootMotion = false;
+      }
+      BlendTo(m_walkAnim, "idle");
+    }
+
+    TK_LOG("Exec: the attacker's action is over; it settles into idle while the body plays on.");
+  }
+
   void AnimatedUnit::Reset()
   {
     // Playback and the walk state machine never outlive the actor. The

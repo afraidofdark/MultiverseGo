@@ -427,10 +427,12 @@ namespace ToolKit
       return;
     }
 
-    // The strike scene played out: the patrol the player hit leaves the grid
+    // The player's strike has played out: the patrol it hit leaves the grid
     // exactly the way a captured one does -- its root entity is removed and the
-    // unit is dropped from the enemy list -- so the kill reads as the scene it
-    // just showed instead of a body standing on the tile afterwards.
+    // unit is dropped from the enemy list -- so the kill reads as the action it
+    // just performed instead of a body standing on the tile afterwards. It is
+    // already out of the game at this point: whether its death animation would
+    // have had time to finish does not matter, and nothing waits for it.
     GridNode* tile = victim->GetNode();
     ScenePtr scene = GetSceneManager()->GetCurrentScene();
     for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
@@ -450,6 +452,13 @@ namespace ToolKit
       m_enemies.erase(it);
       break;
     }
+
+    // The player's action is over even though its scene clock is not (the body it
+    // was holding its pose for is gone): settle it back into idle now, so the turn
+    // can hand the input back and a move committed later can never be clobbered by
+    // a scene that would otherwise end in the middle of it.
+    m_player.SettleExecutionScene();
+
     TK_LOG("Game: the player executed a patrol on (%d, %d).",
            tile != nullptr ? tile->ix : -1,
            tile != nullptr ? tile->iz : -1);
@@ -477,11 +486,15 @@ namespace ToolKit
       return;
     }
 
-    // The player's own execution scene has just ended: the patrol it struck
-    // dies now, and a win that was waiting on that tile is declared. This runs
-    // before the arrival resolution below, so a scene that ends in the same
-    // frame the player landed on its tile still resolves in one go.
-    if (m_executedEnemy != nullptr && !m_player.IsExecuting())
+    // The player's own execution is resolved the frame its WALK MACHINE ends --
+    // that machine IS the player's action (the approach and the strike). The turn
+    // waits for the player, never for the death animation that follows the kill:
+    // the victim is out of the game the moment the strike lands on it, so the
+    // patrol leaves the grid now and a win that was waiting on that tile is
+    // declared now, while whatever the body still plays is left to play. This runs
+    // before the arrival resolution below, so a kill that ends in the same frame
+    // the player landed on its tile still resolves in one go.
+    if (m_executedEnemy != nullptr && !m_player.IsWalking())
     {
       FinishPlayerExecution();
       if (m_won || m_lost)

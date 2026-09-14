@@ -112,6 +112,14 @@ namespace ToolKit
     // and the victim's reaction are one scene, and the kill lands when it ends.
     virtual bool IsExecuting() const { return false; }
 
+    // Ends the execution SCENE this unit holds -- the pose it keeps while its
+    // victim's death animation plays out -- WITHOUT waiting for that animation.
+    // The ACTION (the approach and the strike) is what a turn waits for; what the
+    // victim plays afterwards is the victim's own business, so the attacker
+    // settles back into idle the moment its own walk state machine ends, exactly
+    // as it does at the end of any other move. No-op while no scene is running.
+    virtual void SettleExecutionScene() {}
+
     // Plays the victim side of an execution -- the reaction clip paired with the
     // attacker's strike -- at the attacker's tempo, and returns its length in
     // machine seconds. 0 (and no-op) when this unit has no such clip, so the
@@ -266,6 +274,12 @@ namespace ToolKit
     // approach, through the strike, until the victim's reaction is over (see
     // StartExecution). Nothing may resolve a turn on top of a half-played kill.
     bool IsExecuting() const override { return m_execAction; }
+
+    // Ends the execution scene this unit holds without waiting for the victim's
+    // death animation to finish (see Unit::SettleExecutionScene): it drops the
+    // scene state, restores 1x and crossfades into the idle loop, exactly the way
+    // the scene clock settles the attacker when the scene runs its course.
+    void SettleExecutionScene() override;
 
     // Performs an execution of victim with the authored clip for the relation
     // between the two. The approach runs through the SAME walk state machine as
