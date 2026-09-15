@@ -599,6 +599,50 @@ apply to all code in both repositories.
   `StartInPlaceTurn(yaw)` scales its clip to `gTurnDuration` through the same
   `ApplyMoveTimeScale`.
 
+## Master camera (Codes/FollowUpCameraController.h/cpp)
+
+- The game can be played through a camera placed in the scene BY HAND instead of
+  the editor's own view camera. The hook is a tag: `Game::SetupMasterCamera`
+  (called at the end of `OnPlay`) looks up `scene->GetFirstByTag("master")` and, if
+  that entity really is a camera (`SafeCast<Camera>` -- in ToolKit a camera IS an
+  entity, `Camera : public Entity`, so `m_node` is its transform and
+  `GetViewMatrix()` is the inverse of it), it does two things: `SetCamera` on the
+  plugin's viewport (the run then renders through it) and `FollowUpCameraController
+  ::Init`. A scene with no `master` entity -- or one that is not a camera -- is left
+  alone completely: the viewport keeps the editor's camera and no follow runs.
+- The viewport's own camera is remembered (`Game::m_editorCamera`) and put back by
+  `Game::RestoreViewportCamera` from `OnStop`, and the master camera is put back on
+  the spot it was authored at (`m_masterCameraHome`), so a session leaves neither
+  the editor's view nor the scene changed. Note `ViewportBase::SetCamera` also
+  clears any attached-camera id; the editor's view is the same camera object
+  afterwards, so this is invisible.
+- Clicking keeps working through the new camera for free: the game unprojects
+  clicks with `m_viewport->RayFromMousePosition()`, which goes through
+  `Viewport::RayFromScreenSpacePoint` -> `GetCamera()`. The renderer re-derives the
+  lens per frame as `SetLens(camera->Fov(), aspect, ...)`, so the authored FOV is
+  kept and only the aspect follows the viewport.
+- `FollowUpCameraController` deliberately FOLLOWS instead of AIMING: `Init`
+  captures the camera -> target offset it finds (which is exactly the framing the
+  camera was authored with) and holds that offset while the target moves, so the
+  placement is preserved (rotation is never touched) and the first update wants
+  the camera precisely where it already is -- no start-up jump, no look-at roll
+  guessing. Convergence is exponential and frame rate independent
+  (`1 - exp(-rate * dt)`, `SetSmoothing`, default 4/s), not a per frame lerp.
+  Height is NOT ridden by default (`SetFollowHeight`): the walk cycle's bob and a
+  body sinking into the ground must not move the view.
+- The follow target is the PLAYER's actor entity, via
+  `Unit::GetFollowTarget()` -- `AnimatedUnit` overrides it to return `m_actor`, the
+  skinned child that root motion actually moves during a walk, because the prefab
+  top root only jumps onto the destination tile when the walk lands. Following the
+  root would smear that jump across the whole move.
+- `Game::Frame` updates the follow right after the `m_won || m_lost` early return,
+  i.e. only while the run is live: once the run is over the PLAYER's own body sinks
+  into the ground (see "Removing an actor (corpse sink)") and a live follow would
+  drag the whole view down with it.
+- `Codes/CMakeLists.txt` lists the new source in both the plugin and the standalone
+  target lists (and in `HEADERS`); a new game source that is missing there simply
+  never gets compiled into the plugin.
+
 ## Logs and failure signatures
 
 - `Move: natural X.XX s -> Y.YY s (xS.SS, T T.TT), turn yes/no` (plus
@@ -680,6 +724,14 @@ apply to all code in both repositories.
 - `Game: a body sank into the ground and left the scene.`: the corpse reached the
   bottom and its entity was removed. A body that never logs this either never
   finished its wait or its root entity lost its node.
+- `Game: rendering with the camera tagged 'master'; it follows the player from
+  X.XX u away (smoothing Y.YY/s).`: the run took a scene camera over (see "Master
+  camera"). `X` is the framing that will be kept, i.e. how far the camera was
+  authored from the player -- keep an eye on it if the follow ever looks wrong
+  (a camera placed at the player's own tile gives an offset of ~0). The two
+  fallbacks, `Game: no entity tagged 'master'; keeping the viewport's own camera.`
+  and `... the entity tagged 'master' is not a camera; ...`, mean the scene has
+  nothing to play through and the editor's camera is untouched.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor

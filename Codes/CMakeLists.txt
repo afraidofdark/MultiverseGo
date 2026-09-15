@@ -22,7 +22,7 @@ project(${GAME_PROJECT_NAME})
 string(TOLOWER ${CMAKE_CXX_COMPILER_ID} TK_COMPILER)
 message("Compiling ${GAME_PROJECT_NAME} with ${TK_COMPILER} for platform ${TK_PLATFORM} (${TK_BUILD_TYPE})")
 
-set(HEADERS Game.h Unit.h ClipMotion.h Execution.h)
+set(HEADERS Game.h Unit.h ClipMotion.h Execution.h FollowUpCameraController.h)
 
 # The grid data model lives in the grider plugin and is shared verbatim: the
 # game compiles its GridGraph.cpp in place rather than keeping a second copy.
@@ -40,7 +40,7 @@ if(${PLUGIN_BUILD})
     # SDL2/imgui symbols are provided at runtime by the host editor process.
     # ----------------------------------------------------------------------- #
     set(CMAKE_DEBUG_POSTFIX d) # Matches TK_PLUGIN_DEBUG_EXT ("d.so" / "d.dll").
-    add_library(${GAME_PROJECT_NAME} SHARED Game.cpp Unit.cpp ClipMotion.cpp Execution.cpp ${GRIDGRAPH_SRC} ${HEADERS})
+    add_library(${GAME_PROJECT_NAME} SHARED Game.cpp Unit.cpp ClipMotion.cpp Execution.cpp FollowUpCameraController.cpp ${GRIDGRAPH_SRC} ${HEADERS})
 
     # The editor loads the project name verbatim -- strip the default "lib" prefix.
     set_target_properties(${GAME_PROJECT_NAME} PROPERTIES PREFIX "")
@@ -51,9 +51,9 @@ else()
     # Standalone build: executable hosting the engine.
     # ----------------------------------------------------------------------- #
     if("${TK_PLATFORM}" STREQUAL "${TK_WINDOWS}")
-        add_executable(${GAME_PROJECT_NAME} WIN32 Game.cpp Main.cpp ClipMotion.cpp Execution.cpp ${GRIDGRAPH_SRC} ${HEADERS})
+        add_executable(${GAME_PROJECT_NAME} WIN32 Game.cpp Main.cpp ClipMotion.cpp Execution.cpp FollowUpCameraController.cpp ${GRIDGRAPH_SRC} ${HEADERS})
     else()
-        add_executable(${GAME_PROJECT_NAME} Game.cpp Main.cpp ClipMotion.cpp Execution.cpp ${GRIDGRAPH_SRC} ${HEADERS})
+        add_executable(${GAME_PROJECT_NAME} Game.cpp Main.cpp ClipMotion.cpp Execution.cpp FollowUpCameraController.cpp ${GRIDGRAPH_SRC} ${HEADERS})
     endif()
 
     # Pre-built vendored deps consumed directly by the standalone app.

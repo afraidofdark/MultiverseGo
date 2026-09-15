@@ -42,7 +42,7 @@
 			<P t="11" name="Id" v="5250761863265191082"/>
 			<P t="19" name="ShadowPCF">
 				<List size="4">
-					<CurrVal v="1"/>
+					<CurrVal v="0"/>
 					<0 valType="3" valName="Off" v="0"/>
 					<1 valType="3" valName="4 sample" v="4"/>
 					<2 valType="3" valName="9 sample" v="9"/>
@@ -55,7 +55,7 @@
 			<P t="10" name="UseParallelSplitPartitioning" v="1"/>
 			<P t="2" name="ParallelSplitLambda" v="0.500000"/>
 			<P t="10" name="StableShadowMap" v="0"/>
-			<P t="10" name="Use2KShadowAtlasLayer" v="0"/>
+			<P t="10" name="Use2KShadowAtlasLayer" v="1"/>
 			<P t="19" name="VSMBlurKernelSize">
 				<List size="3">
 					<CurrVal v="1"/>
@@ -66,7 +66,7 @@
 			</P>
 			<P t="19" name="VSMBlurTapCount">
 				<List size="6">
-					<CurrVal v="1"/>
+					<CurrVal v="3"/>
 					<0 valType="3" valName="Off" v="0"/>
 					<1 valType="3" valName="1 tap" v="1"/>
 					<2 valType="3" valName="2 tap" v="2"/>
@@ -103,7 +103,7 @@
 			</shader>
 			<shader file="C:/Users/Cihan/Desktop/GDTK/Resources/Engine/Shaders/defaultFragment.shader">
 				<define name="highlightCascades" val="0"/>
-				<define name="ShadowPCF" val="4"/>
+				<define name="ShadowPCF" val="0"/>
 			</shader>
 			<shader file="C:/Users/Cihan/Desktop/GDTK/Resources/Engine/Shaders/gaussBlur7x1Frag.shader">
 				<define name="KernelSize" val="7"/>

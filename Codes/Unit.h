@@ -200,6 +200,13 @@ namespace ToolKit
     GridNode* GetNode() { return m_node; }
     GridNode* GetNode() const { return m_node; }
 
+    // The entity a follow camera should watch (Game::SetupMasterCamera). Animated
+    // units return their ACTOR -- the skinned child that root motion actually
+    // MOVES while the unit walks -- because the prefab top root only jumps to the
+    // destination tile when the walk lands. Units without an actor fall back to
+    // the root entity.
+    virtual EntityPtr GetFollowTarget() const { return m_root; }
+
     // World position of the root entity.
     Vec3 GetWorldPosition() const;
 
@@ -266,6 +273,14 @@ namespace ToolKit
     // True while a root-motion walk (a live walk state machine) is running, as
     // opposed to a glide.
     bool IsWalking() const { return m_walkSM != nullptr; }
+
+    // The ACTOR entity when this unit has one, so a follow camera rides the
+    // character root motion moves instead of the tile the top root stands on
+    // (see Unit::GetFollowTarget).
+    EntityPtr GetFollowTarget() const override
+    {
+      return (m_actor != nullptr) ? m_actor : m_root;
+    }
 
     // True while any move (animated walk or glide) is running.
     bool IsMoving() const override { return m_walkSM != nullptr || Unit::IsMoving(); }

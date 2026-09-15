@@ -11,6 +11,7 @@
 
 #include <Logger.h>
 #include <MathUtil.h>
+#include <ObjectFactory.h>
 #include <Scene.h>
 #include <Viewport.h>
 
@@ -59,6 +60,11 @@ namespace ToolKit
     {
       return;
     }
+
+    // A camera tagged "master" (see SetupMasterCamera) rides the player while the
+    // run is live. It is deliberately NOT updated once the run ended: a body
+    // sinking into the ground must not drag the view down with it.
+    m_followCamera.Update(deltaTime);
 
     // A committed turn plays out over the coming frames: the player's walk and
     // every enemy glide advance together, and the turn settles (or resolves a
@@ -190,6 +196,10 @@ namespace ToolKit
       m_target = targets[0];
     }
 
+    // A camera tagged "master" takes the render over and follows the player (a
+    // scene without one keeps the viewport camera it had).
+    SetupMasterCamera();
+
     StartPlayerTurn();
   }
 
@@ -234,6 +244,85 @@ namespace ToolKit
     m_prevPlayerNode = nullptr;
     m_player.StopAnimation();
     m_player.Reset();
+
+    // The run's camera put the editor's view back (see SetupMasterCamera).
+    RestoreViewportCamera();
+  }
+
+  void Game::SetupMasterCamera()
+  {
+    m_editorCamera     = nullptr;
+    m_masterCameraHome = Vec3(0.0f);
+
+    if (m_viewport == nullptr)
+    {
+      return; // Nothing renders through a viewport this session: leave it alone.
+    }
+
+    ScenePtr scene = GetSceneManager()->GetCurrentScene();
+    if (scene == nullptr)
+    {
+      return;
+    }
+
+    // Optional: a scene camera tagged "master" is the one the game is played
+    // through. Everything below is skipped without it, so a scene that does not
+    // care about cameras keeps the editor's own view.
+    EntityPtr master = scene->GetFirstByTag("master");
+    if (master == nullptr)
+    {
+      TK_LOG("Game: no entity tagged 'master'; keeping the viewport's own camera.");
+      return;
+    }
+
+    CameraPtr camera = SafeCast<Camera>(master);
+    if (camera == nullptr)
+    {
+      TK_LOG("Game: the entity tagged 'master' is not a camera; keeping the "
+             "viewport's own camera.");
+      return;
+    }
+
+    // The run renders through it from now on. The camera the viewport used is kept
+    // so the editor gets its own view back on stop (RestoreViewportCamera).
+    m_editorCamera = m_viewport->GetCamera();
+    m_viewport->SetCamera(camera);
+
+    // Follow the player with the framing this camera was AUTHORED with: the
+    // offset it starts at is the framing that is kept (see the controller), so the
+    // first frame does not move it at all.
+    m_masterCameraHome = master->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+    m_followCamera.Init(camera, m_player.GetFollowTarget());
+
+    TK_LOG("Game: rendering with the camera tagged 'master'; it follows the player "
+           "from %.2f u away (smoothing %.2f/s).",
+           glm::length(m_followCamera.GetOffset()),
+           m_followCamera.GetSmoothing());
+  }
+
+  void Game::RestoreViewportCamera()
+  {
+    if (m_followCamera.IsValid())
+    {
+      // The follow moved the camera across the grid: put it back where it was
+      // authored, so a play session leaves the scene as it found it.
+      if (CameraPtr camera = m_followCamera.GetCamera())
+      {
+        if (camera->m_node != nullptr)
+        {
+          camera->m_node->SetTranslation(m_masterCameraHome,
+                                         TransformationSpace::TS_WORLD);
+        }
+      }
+    }
+
+    m_followCamera = FollowUpCameraController();
+
+    if (m_viewport != nullptr && m_editorCamera != nullptr)
+    {
+      m_viewport->SetCamera(m_editorCamera);
+    }
+    m_editorCamera = nullptr;
   }
 
   void Game::StartPlayerTurn()

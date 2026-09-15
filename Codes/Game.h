@@ -12,6 +12,7 @@
 
 #include <memory>
 
+#include "FollowUpCameraController.h"
 #include "GridGraph.h"
 #include "Unit.h"
 
@@ -55,6 +56,17 @@ namespace ToolKit
 
     void StartPlayerTurn();
     void HandlePlayerClick();
+
+    // Takes over the render when the scene carries a camera tagged "master": that
+    // camera is set on the viewport (the game then renders through it) and made to
+    // follow the player smoothly. A scene without one -- or with a "master" entity
+    // that is not a camera -- is left exactly as it is: the viewport keeps the
+    // camera the editor gave it and no follow runs.
+    void SetupMasterCamera();
+
+    // Puts the editor's own camera back on the viewport and the master camera back
+    // on the spot it was authored at, so a play session leaves nothing behind.
+    void RestoreViewportCamera();
 
     // True when the node is blocked for the player's move: only the player's
     // own tile. Every other tile is reachable -- a free tile is a move, and a
@@ -167,6 +179,17 @@ namespace ToolKit
     // Bodies on their way under the ground: actors the game removed from play
     // whose root entity is still in the scene, sinking (see LayCorpse).
     std::vector<Corpse> m_corpses;
+
+    // The camera tagged "master" (when the scene has one) and the follow that
+    // rides the player with it. IsValid() stays false without such a camera, and
+    // then the game never touches the viewport's camera.
+    FollowUpCameraController m_followCamera;
+    // Where that camera was authored, put back on stop so the editor keeps its
+    // placement after a session that moved it.
+    Vec3 m_masterCameraHome = Vec3(0.0f);
+    // The viewport's own camera before the master camera took over, restored on
+    // stop (the editor gets its view back).
+    CameraPtr m_editorCamera = nullptr;
 
     EntityPtr m_target;      // Optional entity tagged "target".
 
