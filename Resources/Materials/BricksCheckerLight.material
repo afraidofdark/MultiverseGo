@@ -6,7 +6,7 @@
 				<ResourceRef Class="Shader" File="ToolKit/defaultVertex.shader"/>
 			</P>
 			<P t="21" name="FragmentShader">
-				<ResourceRef Class="Shader" File="ToolKit/unlitFrag.shader"/>
+				<ResourceRef Class="Shader" File="ToolKit/defaultFragment.shader"/>
 			</P>
 			<P t="20" name="DiffuseTexture"/>
 			<P t="20" name="EmissiveTexture"/>

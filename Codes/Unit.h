@@ -126,6 +126,17 @@ namespace ToolKit
     // attacker only has to wait for its own strike.
     virtual float PlayExecutionReaction(const String& signal, float scale) { return 0.0f; }
 
+    // REAL seconds left in the animation this unit is playing right now -- its
+    // DEATH animation, while this unit is dying. 0 when there is nothing to wait
+    // for: no animation support, no active clip, or a LOOPING clip (an idle loop
+    // never settles, so it is not a death animation).
+    //
+    // The game reads it the moment a kill resolves and waits that long before the
+    // body starts sinking into the ground (Game::LayCorpse): the death animation
+    // lays the victim down first, and a body that started sinking while it was
+    // still falling would slide through the floor mid-airs.
+    virtual float ActiveAnimRemaining() const { return 0.0f; }
+
     // Turns in place to face a grid direction. The base implementation snaps
     // instantly (RotationTo on the top root); AnimatedUnit overrides it with
     // the shared in-place turn animation (turn clip + fold) when the unit has
@@ -291,6 +302,12 @@ namespace ToolKit
     // Plays the victim side of an execution and returns its length (see
     // Unit::PlayExecutionReaction).
     float PlayExecutionReaction(const String& signal, float scale) override;
+
+    // Real seconds left in the clip this unit is playing, measured from the
+    // animation controller's active record (see Unit::ActiveAnimRemaining). The
+    // record's own time multiplier is divided out, so the caller gets wall clock
+    // seconds whatever tempo the scene ran at.
+    float ActiveAnimRemaining() const override;
 
     // Turns in place to face dir with the shared in-place turn animation
     // (turn clip + fold), or snaps instantly when no turn clips exist.

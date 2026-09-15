@@ -101,6 +101,14 @@
 				<define name="KernelSize" val="7"/>
 				<define name="TextureArray" val="0"/>
 			</shader>
+			<shader file="C:/Users/Cihan/Desktop/GDTK/Resources/Engine/Shaders/defaultFragment.shader">
+				<define name="highlightCascades" val="0"/>
+				<define name="ShadowPCF" val="4"/>
+			</shader>
+			<shader file="C:/Users/Cihan/Desktop/GDTK/Resources/Engine/Shaders/gaussBlur7x1Frag.shader">
+				<define name="KernelSize" val="7"/>
+				<define name="TextureArray" val="0"/>
+			</shader>
 		</ShaderSettings>
 	</Object>
 	<Plugins/>

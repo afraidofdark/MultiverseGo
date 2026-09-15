@@ -32,6 +32,13 @@ apply to all code in both repositories.
   Unix Makefiles -- the older `build/` ninja directory no longer exists).
   Output: `Codes/Bin/MultiverseGod.so` (Debug postfix adds the `d`). The engine
   path is resolved from `~/.config/ToolKit/Config/Path.txt` at configure time.
+- On a Windows checkout the same binary dir is generated for Visual Studio, so
+  the build line becomes `cmake --build Intermediate/Plugin --config Debug -j 4`
+  and the plugin lands in `Codes/Bin/MultiverseGod.dll` (the whole `**/Bin/`
+  tree is gitignored, so the built plugin is never part of a commit -- a fresh
+  checkout has to be built once). The engine path the configure step used is
+  `TOOLKIT_DIR` in `Intermediate/Plugin/CMakeCache.txt` -- do not assume the
+  `~/.config/ToolKit/Config/Path.txt` of the Linux notes.
 - Engine: `cmake --build <GDTK>/build --target ToolKit -j 4` (Debug config).
   Debug engine library: `<GDTK>/BinDebug/libToolKitd.so`.
 - The editor and plugins load shared libraries from their bin directories at
@@ -456,9 +463,10 @@ apply to all code in both repositories.
 - WHAT THE PLAYER'S TURN WAITS FOR: its own ACTION, never the victim's death
   animation. The player's execution is resolved the frame its WALK MACHINE ends
   -- that machine IS the action (approach + strike) -- so its victim leaves the
-  grid, a win waiting on that tile is declared and the input comes back in that
-  same frame, while a reaction clip that still had a second left simply dies with
-  the body. `AnimatedUnit::SettleExecutionScene` closes the player's scene state
+  GRID, a win waiting on that tile is declared and the input comes back in that
+  same frame, while a reaction clip that still had a second left plays on over
+  the body (which is already out of the game, see "Removing an actor (corpse
+  sink)"). `AnimatedUnit::SettleExecutionScene` closes the player's scene state
   right there (drops `m_execAction`/`m_execActive`, restores 1x and crossfades
   into idle -- the settle `FinishWalk` skipped because a scene was running), so a
   move committed immediately after can never be clobbered by a scene clock that
@@ -487,16 +495,60 @@ apply to all code in both repositories.
   frozen for the turn like any patrol standing on the destination, but it is
   NOT removed at arrival: it stays on the grid until the player's own action is
   over (`Game::FinishPlayerExecution`, called the frame the player's walk
-  machine ends), which then removes it exactly like a captured patrol, settles
-  the player back into idle (`SettleExecutionScene`) and declares a win that was
-  waiting on that tile (`Game::TryWin`). `Game::UpdateActing` drives the player's
-  `Frame` while it executes, and the turn's settle condition (`!m_player.
-  IsExecuting()`) is satisfied by that settle -- so the input comes back in the
-  very frame the player finished its kill.
+  machine ends), which then drops it from the enemy list exactly like a captured
+  patrol -- its BODY is laid to rest instead of deleted, see "Removing an actor
+  (corpse sink)" -- settles the player back into idle (`SettleExecutionScene`)
+  and declares a win that was waiting on that tile (`Game::TryWin`).
+  `Game::UpdateActing` drives the player's `Frame` while it executes, and the
+  turn's settle condition (`!m_player.IsExecuting()`) is satisfied by that
+  settle -- so the input comes back in the very frame the player finished its
+  kill.
 - `AnimatedUnit::IsExecuting()` covers the WHOLE action -- approach, strike and
   the victim's reaction -- not just the scene (`m_execAction`), so callers can
   never resolve a turn on top of a half-played kill. `m_execActive` is the
   narrower "the strike scene is running now" flag the scene clock uses.
+
+## Removing an actor (corpse sink, in Game.cpp)
+
+- Nobody is deleted mid-scene anymore: an actor the game takes out of play (the
+  victim of the player's execution, a CAPTURED patrol, the EATEN player) leaves
+  the GAME at once -- it is dropped from `m_enemies` / reset, so no turn ever
+  waits on a body and nothing reacts to a corpse -- but its ROOT ENTITY is not
+  removed from the scene. `Game::LayCorpse(root, waitBeforeSink)` puts it in
+  `Game::m_corpses` instead, which is what makes a kill read as a body sinking
+  into the ground rather than an actor popping out of existence the frame the
+  kill resolves.
+- THE BODY LIES DOWN FIRST. `waitBeforeSink` is
+  `Unit::ActiveAnimRemaining()` read at the moment of the kill: the wall clock
+  seconds left in the DEATH animation the unit is playing (the reaction clip of
+  an execution, at the tempo it was played with). `AdvanceCorpses` leaves the
+  corpse untouched for that long, because a body that started sinking while it
+  was still falling would slide through the floor mid-airs. A unit with no
+  animation support, no active clip, or only a LOOPING clip (an idle loop never
+  settles) reports 0 and its body sinks right away -- which is also the case for
+  the eaten player, since the loss already waited for the whole strike scene.
+- THEN IT SINKS: `gCorpseSinkDepth` world units (default 1.0) straight down over
+  `gCorpseSinkDuration` seconds (default 2.0), both GLOBAL floats declared in
+  `Game.h` / defined in `Game.cpp` and tunable at runtime like
+  `gWalkBlendDuration`. One unit is enough to hide a body that is lying flat on
+  the tile surface under the tile geometry. The motion is a straight world-space
+  translation of the root (`laidAt - Vec3(0, depth * progress, 0)`), so a corpse
+  never fights the walk/root-motion code; when it reaches the bottom the entity
+  is removed from the scene with the same `Scene::RemoveEntity` the game used to
+  call immediately.
+- `Game::AdvanceCorpses` is the FIRST thing `Game::Frame` does, before the
+  `m_won || m_lost` early return, so bodies keep sinking whatever the phase --
+  a run that just ended must not freeze a corpse half way under the floor.
+  Pausing still holds them, because `Frame` is not called while the simulation is
+  not running.
+- `Game::OnStop` removes the entities of the bodies still on their way down: a
+  corpse must never survive into the next play session, where its (still tagged)
+  root entity would be picked up as a living patrol, half buried.
+- The corpse is deliberately an ENTITY, not a unit: the unit object is gone (the
+  `unique_ptr` is erased, the player is reset) while the ENTITY keeps its
+  `AnimControllerComponent` registered with the global `AnimationPlayer`, which
+  is what lets the death animation keep playing over a body that is already out
+  of the game.
 
 ## Uniform turn duration (time scaling)
 
@@ -609,15 +661,25 @@ apply to all code in both repositories.
   a landing turn queued -- it bites and stops. An ambush (execution) instead
   holds the loss until its whole strike + reaction scene has played.
 - `Game: the player executed a patrol on (...).`: the player's own walk machine
-  ended, so the kill resolved: the patrol left the grid and, if a win was waiting
+  ended, so the kill resolved: the patrol left the game and, if a win was waiting
   on that tile, it was declared right after. Its death animation does not have to
-  have finished -- it is already out of the game (`Exec: the attacker's action is
-  over; it settles into idle while the body plays on.` is the player settling at
-  the same moment).
+  have finished -- it is already out of the game and its body sinks on its own
+  from here (`Exec: the attacker's action is over; it settles into idle while the
+  body plays on.` is the player settling at the same moment).
 - `Game: player captured a patrol.`: the plain-step capture, i.e. a step the
   execution system could not play as a scene (no animation support on the
   player, or no playable variant for the relation) -- every animated player that
   steps onto a patrol now kills it with a scene instead.
+- `Game: a body is laid to rest; it sinks X.XX u down in Y.YY s once its death
+  animation has settled (Z.ZZ s to go).`: an actor left play and its entity was
+  kept to sink (see "Removing an actor (corpse sink)"). One per kill / capture,
+  plus `Game: the devoured player is out of the game; its body sinks.` for the
+  loss. A `Z` that never counts down to 0 means `Unit::ActiveAnimRemaining`
+  keeps reporting time left for the body that was just killed -- check that the
+  death record is a one-shot (a looping clip reports 0 by design).
+- `Game: a body sank into the ground and left the scene.`: the corpse reached the
+  bottom and its entity was removed. A body that never logs this either never
+  finished its wait or its root entity lost its node.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor

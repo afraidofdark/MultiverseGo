@@ -12,7 +12,7 @@
 		</PB>
 		<Window version="v0.4.9" name="Grid Editor" id="19" visible="1" shown="1">
 			<Size x="640" y="480"/>
-			<Location x="0" y="48"/>
+			<Location x="0" y="43"/>
 		</Window>
 	</Object>
 	<PlacementSlots>

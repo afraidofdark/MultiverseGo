@@ -22,6 +22,12 @@ extern "C" TK_PLUGIN_API ToolKit::Game* TK_STDCAL GetInstance() { return &Self; 
 
 namespace ToolKit
 {
+  // See Game.h. A body that has finished dying sinks one unit down over two
+  // seconds, which is enough to hide it under the tile surface, and is then
+  // removed from the scene. Tunables like the walk's own globals.
+  float gCorpseSinkDepth    = 1.0f;
+  float gCorpseSinkDuration = 2.0f;
+
   namespace
   {
     // Debug helper: readable name for a grid direction (same table as Unit.cpp).
@@ -43,6 +49,12 @@ namespace ToolKit
 
   void Game::Frame(float deltaTime)
   {
+    // Bodies of actors the game took out of play keep leaving it on their own:
+    // they sink into the ground and are removed from the scene. This runs before
+    // everything else -- and whatever the phase -- so a run that just ended (a
+    // win or a loss) can never freeze a body half way under the floor.
+    AdvanceCorpses(deltaTime);
+
     if (m_won || m_lost)
     {
       return;
@@ -91,6 +103,7 @@ namespace ToolKit
     m_won      = false;
     m_lost     = false;
     m_enemies.clear();
+    m_corpses.clear();
     m_grid.Clear();
     m_target = nullptr;
     m_player.Reset();
@@ -198,6 +211,22 @@ namespace ToolKit
     m_capturedEnemies.clear();
     m_stepBites.clear();
     m_activeBites.clear();
+
+    // Bodies still on their way down belong to the session that just ended: their
+    // entities leave the scene with it, so a corpse can never be picked up as a
+    // living patrol (same tag, half buried) by the next play session.
+    if (ScenePtr scene = GetSceneManager()->GetCurrentScene())
+    {
+      for (const Corpse& body : m_corpses)
+      {
+        if (body.root != nullptr)
+        {
+          scene->RemoveEntity(body.root);
+        }
+      }
+    }
+    m_corpses.clear();
+
     m_executedEnemy    = nullptr;
     m_arrivalProcessed = false;
     m_grid.Clear();
@@ -324,7 +353,6 @@ namespace ToolKit
     //    is over (FinishPlayerExecution) instead of popping out mid-animation.
     if (!m_capturedEnemies.empty())
     {
-      ScenePtr scene = GetSceneManager()->GetCurrentScene();
       for (auto it = m_enemies.begin(); it != m_enemies.end();)
       {
         bool captured = std::find(m_capturedEnemies.begin(),
@@ -336,13 +364,11 @@ namespace ToolKit
           continue;
         }
 
-        if (EntityPtr root = (*it)->GetRoot())
-        {
-          if (scene != nullptr)
-          {
-            scene->RemoveEntity(root);
-          }
-        }
+        // The captured patrol leaves the game now -- it is out of m_enemies, so
+        // nothing reacts to it anymore -- but its entity is not deleted: it is
+        // laid to rest and sinks into the ground like any other body the game
+        // takes out of play (see LayCorpse).
+        LayCorpse((*it)->GetRoot(), (*it)->ActiveAnimRemaining());
         TK_LOG("Game: player captured a patrol.");
         it = m_enemies.erase(it);
       }
@@ -427,14 +453,17 @@ namespace ToolKit
       return;
     }
 
-    // The player's strike has played out: the patrol it hit leaves the grid
-    // exactly the way a captured one does -- its root entity is removed and the
-    // unit is dropped from the enemy list -- so the kill reads as the action it
-    // just performed instead of a body standing on the tile afterwards. It is
-    // already out of the game at this point: whether its death animation would
-    // have had time to finish does not matter, and nothing waits for it.
+    // The player's strike has played out: the patrol it hit leaves the GAME
+    // exactly the way a captured one does -- it is dropped from the enemy list,
+    // so it is already out of the game whether its death animation had time to
+    // finish or not. What is different is its BODY: instead of being deleted the
+    // frame the turn ends, it is laid to rest -- it stays in the scene while its
+    // death animation settles (a strike kills mid-fall, so the body still owes
+    // the scene a moment) and then sinks into the ground and is removed by
+    // AdvanceCorpses.
     GridNode* tile = victim->GetNode();
-    ScenePtr scene = GetSceneManager()->GetCurrentScene();
+    LayCorpse(victim->GetRoot(), victim->ActiveAnimRemaining());
+
     for (auto it = m_enemies.begin(); it != m_enemies.end(); ++it)
     {
       if (it->get() != victim)
@@ -442,13 +471,6 @@ namespace ToolKit
         continue;
       }
 
-      if (EntityPtr root = (*it)->GetRoot())
-      {
-        if (scene != nullptr)
-        {
-          scene->RemoveEntity(root);
-        }
-      }
       m_enemies.erase(it);
       break;
     }
@@ -677,20 +699,100 @@ namespace ToolKit
       enemy->LandMove();
     }
 
-    // The devoured player leaves the scene exactly like a patrol the player
-    // captures: the root entity is removed and the unit forgets its tile, so
-    // nothing keeps drawing or driving a player that has been eaten.
+    // The devoured player leaves the game exactly like a patrol the player
+    // captures: the unit forgets its tile, so nothing keeps driving a player that
+    // has been eaten -- and its BODY is laid to rest like any other, sinking into
+    // the ground and leaving the scene (the loss has already waited for the whole
+    // strike scene, so it is lying down by now and sinks right away).
     EntityPtr playerRoot = m_player.GetRoot();
     if (playerRoot != nullptr)
     {
-      ScenePtr scene = GetSceneManager()->GetCurrentScene();
-      if (scene != nullptr)
-      {
-        scene->RemoveEntity(playerRoot);
-        TK_LOG("Game: the player has been removed from the scene.");
-      }
+      LayCorpse(playerRoot, m_player.ActiveAnimRemaining());
+      TK_LOG("Game: the devoured player is out of the game; its body sinks.");
     }
     m_player.Reset();
+  }
+
+  void Game::LayCorpse(EntityPtr root, float waitBeforeSink)
+  {
+    if (root == nullptr || root->m_node == nullptr)
+    {
+      // Nothing to sink: an actor without a root entity leaves no body behind.
+      return;
+    }
+
+    Corpse body;
+    body.root     = root;
+    body.laidAt   = root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+    body.waitLeft = (waitBeforeSink > 0.0f) ? waitBeforeSink : 0.0f;
+    m_corpses.push_back(body);
+
+    TK_LOG("Game: a body is laid to rest; it sinks %.2f u down in %.2f s once its "
+           "death animation has settled (%.2f s to go).",
+           gCorpseSinkDepth,
+           gCorpseSinkDuration,
+           body.waitLeft);
+  }
+
+  void Game::AdvanceCorpses(float deltaTime)
+  {
+    if (m_corpses.empty())
+    {
+      return;
+    }
+
+    ScenePtr scene = GetSceneManager()->GetCurrentScene();
+
+    // Engine frame deltas arrive in milliseconds; the sink runs in seconds.
+    const float dt = deltaTime * 0.001f;
+
+    for (auto it = m_corpses.begin(); it != m_corpses.end();)
+    {
+      Corpse& body = *it;
+      if (body.root == nullptr || body.root->m_node == nullptr)
+      {
+        it = m_corpses.erase(it);
+        continue;
+      }
+
+      // The body lies down FIRST: while its death animation still has time left
+      // (a one-shot holds its final frame at its end) the corpse is left exactly
+      // as the animation put it. Sinking now would slide it through the floor
+      // while it is still falling.
+      if (body.waitLeft > 0.0f)
+      {
+        body.waitLeft -= dt;
+        ++it;
+        continue;
+      }
+
+      body.sinkT += dt;
+      float progress =
+          (gCorpseSinkDuration > 0.0f) ? body.sinkT / gCorpseSinkDuration : 1.0f;
+      if (progress > 1.0f)
+      {
+        progress = 1.0f;
+      }
+
+      // Straight down from where the body died: at 1.0 it sits a full
+      // gCorpseSinkDepth under the tile surface, which is what hides it.
+      body.root->m_node->SetTranslation(
+          body.laidAt - Vec3(0.0f, gCorpseSinkDepth * progress, 0.0f),
+          TransformationSpace::TS_WORLD);
+
+      if (progress < 1.0f)
+      {
+        ++it;
+        continue;
+      }
+
+      if (scene != nullptr)
+      {
+        scene->RemoveEntity(body.root);
+      }
+      TK_LOG("Game: a body sank into the ground and left the scene.");
+      it = m_corpses.erase(it);
+    }
   }
 
   bool Game::IsTargetNode(GridNode* node) const

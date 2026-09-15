@@ -1637,6 +1637,34 @@ namespace ToolKit
     return rec->m_animation->m_duration;
   }
 
+  float AnimatedUnit::ActiveAnimRemaining() const
+  {
+    if (m_walkAnim == nullptr)
+    {
+      return 0.0f;
+    }
+
+    AnimRecordPtr rec = m_walkAnim->GetActiveRecord();
+    if (rec == nullptr || rec->m_animation == nullptr || rec->m_loop)
+    {
+      // Nothing playing, or a LOOPING clip: an idle loop never settles, so there
+      // is no death animation to wait for.
+      return 0.0f;
+    }
+
+    float left = rec->m_animation->m_duration - rec->m_currentTime;
+    if (left <= 0.0f)
+    {
+      return 0.0f; // A one-shot that reached its end holds its final frame.
+    }
+
+    // Clip time advances at the record's own multiplier -- the action tempo the
+    // scene was played at -- so the left over CLIP time is divided by it to get
+    // the wall clock seconds the caller has to wait.
+    const float rate = rec->m_timeMultiplier;
+    return (rate > 0.0001f) ? left / rate : left;
+  }
+
   bool AnimatedUnit::StartAction(GridNode* node,
                                  float targetDuration,
                                  const ExecutionPlan& plan,

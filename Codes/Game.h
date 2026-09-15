@@ -18,6 +18,16 @@
 namespace ToolKit
 {
 
+  // How a body the game took out of play leaves the scene: once its death
+  // animation has settled it slides straight down gCorpseSinkDepth world units
+  // over gCorpseSinkDuration seconds and is then removed. About one unit is
+  // enough to bury a body lying on the tile surface, so a killed actor reads as
+  // sinking into the ground instead of popping out of existence the frame the
+  // kill resolves. Tunable at runtime like gWalkBlendDuration / gTurnDuration;
+  // defined in Game.cpp.
+  extern float gCorpseSinkDepth;
+  extern float gCorpseSinkDuration;
+
   class Game : public GamePlugin
   {
    public:
@@ -68,10 +78,38 @@ namespace ToolKit
     Unit* EnemyOnTile(GridNode* node) const;
 
     // Ends the player's own execution: the strike scene has played out, so the
-    // patrol the player hit leaves the grid (its root entity is removed and the
-    // unit is dropped) exactly the way a captured one does, and a win that was
-    // waiting on that very tile is declared now.
+    // patrol the player hit leaves the game (it is dropped from m_enemies and a
+    // win that was waiting on that very tile is declared now) while its BODY is
+    // laid to rest -- it stays in the scene and sinks into the ground (see
+    // LayCorpse) exactly the way a captured one does.
     void FinishPlayerExecution();
+
+    // A body the game has taken out of play and is still removing. The actor's
+    // root entity STAYS in the scene, so the death animation it is playing keeps
+    // playing, but the unit itself is already gone from m_enemies: nothing reacts
+    // to a corpse and no turn may resolve on top of one.
+    struct Corpse
+    {
+      EntityPtr root;    // Root entity of the removed actor.
+      Vec3 laidAt;       // World position the body was left at.
+      float waitLeft = 0.0f; // Wall clock seconds it still owes its death animation.
+      float sinkT    = 0.0f; // Sink time so far (seconds).
+    };
+
+    // Turns a removed actor into a CORPSE instead of deleting it. The entity
+    // stays where it died and sinks into the ground once its death animation has
+    // settled; AdvanceCorpses then drops it from the scene. waitBeforeSink is how
+    // long the body still owes that animation, i.e. typically
+    // Unit::ActiveAnimRemaining() read at the moment of the kill, so a body lies
+    // down first instead of sliding through the floor while it is still falling.
+    void LayCorpse(EntityPtr root, float waitBeforeSink);
+
+    // Advances every corpse: waits out the rest of its death animation, sinks the
+    // body gCorpseSinkDepth units straight down over gCorpseSinkDuration seconds
+    // and removes its entity from the scene once it is under the ground. Runs in
+    // EVERY phase -- a win or a loss must not freeze a body half way under the
+    // floor -- so it is the first thing Frame does.
+    void AdvanceCorpses(float deltaTime);
 
     // Declares the win when the player stands on the target tile. Returns true
     // when the run was won; the caller returns immediately, because nothing
@@ -125,6 +163,10 @@ namespace ToolKit
     // null. It is never removed at arrival like a captured patrol: it stays
     // until the scene has played out, then FinishPlayerExecution drops it.
     Unit* m_executedEnemy = nullptr;
+
+    // Bodies on their way under the ground: actors the game removed from play
+    // whose root entity is still in the scene, sinking (see LayCorpse).
+    std::vector<Corpse> m_corpses;
 
     EntityPtr m_target;      // Optional entity tagged "target".
 
