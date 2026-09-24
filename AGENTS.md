@@ -823,15 +823,29 @@ apply to all code in both repositories.
   camera was authored with) and holds that offset while the target moves, so the
   placement is preserved (rotation is never touched) and the first update wants
   the camera precisely where it already is -- no start-up jump, no look-at roll
-  guessing. Convergence is exponential and frame rate independent
-  (`1 - exp(-rate * dt)`, `SetSmoothing`, default 4/s), not a per frame lerp.
+  guessing. DAMPING is a critically damped SPRING (the classic SmoothDamp: the camera
+  keeps a velocity of its own and the spring is solved per call, so it is frame rate
+  independent and never overshoots), not a per frame mix: the camera accelerates into a
+  move -- so it trails BEHIND while the character gets going -- and its velocity decays
+  into the framing when the move ends, which is the ease in / ease out a camera on rails
+  has. `SetSmoothTime` (default 0.5 s) is roughly the time it takes to close the gap.
   Height is NOT ridden by default (`SetFollowHeight`): the walk cycle's bob and a
   body sinking into the ground must not move the view.
-- The follow target is the PLAYER's actor entity, via
-  `Unit::GetFollowTarget()` -- `AnimatedUnit` overrides it to return `m_actor`, the
-  skinned child that root motion actually moves during a walk, because the prefab
-  top root only jumps onto the destination tile when the walk lands. Following the
-  root would smear that jump across the whole move.
+- WHAT THE CAMERA RIDES IS THE MOVE, NOT THE CHARACTER (`Unit::GetFollowPosition`). The
+  animated actor is the obvious target -- it is what root motion actually moves -- but a
+  camera on it inherits every wobble the animation carries: a turn in flight, the stride's
+  bob, the lateral sway, the landing dip, and the offset the walk piles up on the actor
+  node. A TILE is rock steady but only changes when the move LANDS, so the camera would sit
+  still and then hop. So the point is the actor's progress ACROSS THE GRID: grid moves are
+  axis aligned, so the leg is the line through both tile centers at the tile's height, and
+  the point keeps the actor's coordinate ALONG that line and takes the other two from the
+  destination tile. The camera therefore knows where the move is going from its first frame,
+  glides there with the move at the move's own speed (a transit re-points the point at the
+  next tile, continuously), and a hurried turn carries it quicker because the move does
+  (`Game::Frame` scales the follow's delta by `gTurnSpeed` too). The framing is captured
+  against that point (`SetupMasterCamera`), the damping smooths the result (see above), and
+  the entity target (`Unit::GetFollowTarget`, the unit's root) stays as the controller's
+  fallback.
 - `Game::Frame` updates the follow right after the `m_won || m_lost` early return,
   i.e. only while the run is live: once the run is over the PLAYER's own body sinks
   into the ground (see "Removing an actor (corpse sink)") and a live follow would

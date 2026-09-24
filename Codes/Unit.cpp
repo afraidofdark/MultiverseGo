@@ -1424,6 +1424,47 @@ namespace ToolKit
     return m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
   }
 
+  Vec3 Unit::GetFollowPosition() const
+  {
+    // A unit that does not animate simply stands on a tile: its node IS the point.
+    return (m_node != nullptr) ? m_node->center : GetWorldPosition();
+  }
+
+  Vec3 AnimatedUnit::GetFollowPosition() const
+  {
+    if (m_walkCtx == nullptr || m_walkCtx->inPlace || m_walkCtx->actorNode == nullptr)
+    {
+      // Nothing travelling (or a turn in place, which goes nowhere): the tile center.
+      return Unit::GetFollowPosition();
+    }
+
+    // THE PROGRESS ACROSS THE GRID, not the animation. The actor is somewhere on the leg
+    // it is walking, and its own position carries everything the animation does to it --
+    // the stride's bob, the lateral sway, the dip of a landing, and the offset the walk
+    // piled up on the actor node. A grid move is AXIS ALIGNED, so the leg the actor is on
+    // is the line through both tile centers at the tile's own height: keeping the actor's
+    // coordinate ALONG that line and taking the other two from the destination tile leaves
+    // exactly its progress across the grid. A camera on this point glides from tile to tile
+    // WITH the move, at the move's own speed, and already knows the destination on the
+    // move's first frame (the point starts on the tile it is leaving).
+    const Vec3 actor = m_walkCtx->actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+    const Vec3 goal  = m_walkCtx->targetPos;
+
+    Vec3 point = actor;
+    point.y    = goal.y; // The grid is flat: no bob off the tile surface.
+
+    if (std::fabs(goal.x - actor.x) >= std::fabs(goal.z - actor.z))
+    {
+      point.z = goal.z; // Travelling along X: the leg's line holds Z.
+    }
+    else
+    {
+      point.x = goal.x; // Travelling along Z: the leg's line holds X.
+    }
+
+    return point;
+  }
+
   GridDir Unit::GetFacingDir() const
   {
     if (m_root == nullptr)

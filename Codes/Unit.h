@@ -291,15 +291,27 @@ namespace ToolKit
     // free step nobody reacts to.
     virtual bool ConsumeWalkChain(GridNode** passed, GridNode** dest) { return false; }
 
-    // The entity a follow camera should watch (Game::SetupMasterCamera). Animated
-    // units return their ACTOR -- the skinned child that root motion actually
-    // MOVES while the unit walks -- because the prefab top root only jumps to the
-    // destination tile when the walk lands. Units without an actor fall back to
-    // the root entity.
+    // The entity a follow camera should watch (Game::SetupMasterCamera): the unit's
+    // ROOT, i.e. the TILE it stands on. The camera is meant to ride the grid, not the
+    // animated character: root motion, blends and the turns of a walk all move the
+    // actor smoothly but with the small wobbles an animation carries (a turn in flight,
+    // a landing dip, the blend back into the stride), and a camera on the actor inherits
+    // every one of them. The tile center is a fixed point the unit only ever jumps
+    // between, which the follow then glides to -- so a fast transit reads as the camera
+    // hopping from tile to tile, which is exactly the behaviour wanted here.
     virtual EntityPtr GetFollowTarget() const { return m_root; }
 
     // World position of the root entity.
     Vec3 GetWorldPosition() const;
+
+    // The point a FOLLOW CAMERA should ride (Game::SetupMasterCamera). AnimatedUnit
+    // overrides it with the character's progress ACROSS THE GRID: the straight line
+    // between the tile it left and the tile it is heading for, at the distance it has
+    // actually covered. Root motion, the stride's bob, the small lateral sway of a walk
+    // and the dip of a landing are all left out, so the camera glides from tile to tile
+    // with the move itself -- and it knows the destination from the first frame of the
+    // move. Standing still (or turning in place) it is simply the tile center.
+    virtual Vec3 GetFollowPosition() const;
 
     // The grid-axis direction the unit faces: its world forward (local -Z)
     // snapped to the nearest axis. Grid movement is axis-aligned, so a unit
@@ -372,16 +384,14 @@ namespace ToolKit
     // for that when a double click hurries the turn).
     void ReapplyTimeScale() override;
 
-    // The ACTOR entity when this unit has one, so a follow camera rides the
-    // character root motion moves instead of the tile the top root stands on
-    // (see Unit::GetFollowTarget).
-    EntityPtr GetFollowTarget() const override
-    {
-      return (m_actor != nullptr) ? m_actor : m_root;
-    }
-
     // True while any move (animated walk or glide) is running.
     bool IsMoving() const override { return m_walkSM != nullptr || Unit::IsMoving(); }
+
+    // The point a follow camera rides: the actor's progress along the leg it is walking,
+    // PROJECTED onto the straight line between the tile it left and the tile it is heading
+    // for (see Unit::GetFollowPosition). A turning in-place action goes nowhere, so it is
+    // the tile center as usual.
+    Vec3 GetFollowPosition() const override;
 
     // The tile the running walk is heading to (see Unit::GetMoveDestination); the
     // glide fallback answers through the base implementation.

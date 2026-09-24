@@ -81,10 +81,14 @@ namespace ToolKit
       return;
     }
 
-    // A camera tagged "master" (see SetupMasterCamera) rides the player while the
-    // run is live. It is deliberately NOT updated once the run ended: a body
-    // sinking into the ground must not drag the view down with it. A hurried turn
-    // speeds the follow up as well, so the framing keeps up with the character.
+    // A camera tagged "master" (see SetupMasterCamera) rides the point the player's move
+    // is on (see Unit::GetFollowPosition): its progress across the grid, animation wobble
+    // removed, so the framing glides from tile to tile with the move -- the destination is
+    // known from the move's first frame, a transit re-points it at the next tile, and a
+    // hurried turn carries it there quicker because the move itself does. It is
+    // deliberately NOT updated once the run ended: a body sinking into the ground must not
+    // drag the view down with it.
+    m_followCamera.SetFollowPoint(m_player.GetFollowPosition());
     m_followCamera.Update(deltaTime * gTurnSpeed);
 
     // A committed turn plays out over the coming frames: the player's walk and
@@ -360,16 +364,18 @@ namespace ToolKit
     m_editorCamera = m_viewport->GetCamera();
     m_viewport->SetCamera(camera);
 
-    // Follow the player with the framing this camera was AUTHORED with: the
-    // offset it starts at is the framing that is kept (see the controller), so the
-    // first frame does not move it at all.
+    // Follow the POINT the player's move is on, not the animated character and not a tile
+    // that only changes when the move lands (see Unit::GetFollowPosition): the point
+    // travels across the grid with the walk -- its destination is known from the first
+    // frame -- so the framing glides along instead of waiting for the landing.
     m_masterCameraHome = master->m_node->GetTranslation(TransformationSpace::TS_WORLD);
     m_followCamera.Init(camera, m_player.GetFollowTarget());
+    m_followCamera.SetFollowPoint(m_player.GetFollowPosition(), true);
 
-    TK_LOG("Game: rendering with the camera tagged 'master'; it follows the player "
-           "from %.2f u away (smoothing %.2f/s).",
+    TK_LOG("Game: rendering with the camera tagged 'master'; it follows the player's "
+           "move from %.2f u away (damping %.2f s).",
            glm::length(m_followCamera.GetOffset()),
-           m_followCamera.GetSmoothing());
+           m_followCamera.GetSmoothTime());
   }
 
   void Game::RestoreViewportCamera()

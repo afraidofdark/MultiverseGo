@@ -38,14 +38,31 @@ namespace ToolKit
 
   void FollowUpCameraController::SetTarget(EntityPtr target) { m_target = target; }
 
+  void FollowUpCameraController::SetFollowPoint(const Vec3& point, bool captureFraming)
+  {
+    m_followPoint    = point;
+    m_hasFollowPoint = true;
+
+    if (captureFraming && IsValid())
+    {
+      // Re-capture the framing against the point the camera is going to ride, so the
+      // authored view is preserved exactly (the first update then wants the camera where
+      // it already is).
+      const Vec3 cameraPos =
+          m_camera->m_node->GetTranslation(TransformationSpace::TS_WORLD);
+      m_position = cameraPos;
+      m_offset   = cameraPos - point;
+    }
+  }
+
   void FollowUpCameraController::SetOffset(const Vec3& offset)
   {
     m_offset = offset;
   }
 
-  void FollowUpCameraController::SetSmoothing(float rate)
+  void FollowUpCameraController::SetSmoothTime(float seconds)
   {
-    m_smoothing = (rate > 0.0f) ? rate : 0.0f;
+    m_smoothTime = (seconds > 0.001f) ? seconds : 0.001f;
   }
 
   void FollowUpCameraController::SetFollowHeight(bool follow)
@@ -67,7 +84,9 @@ namespace ToolKit
       return;
     }
 
-    Vec3 desired = TargetPosition() + m_offset;
+    // What the camera rides: the follow POINT when the game gave one (the TILE the
+    // followed unit stands on), otherwise the target entity's own world position.
+    Vec3 desired = (m_hasFollowPoint ? m_followPoint : TargetPosition()) + m_offset;
     if (!m_followHeight)
     {
       // Keep the authored height: the target's own vertical motion (the walk
@@ -75,12 +94,28 @@ namespace ToolKit
       desired.y = m_position.y;
     }
 
-    // Frame rate independent exponential convergence: the same fraction of the
-    // remaining gap is closed per second whatever the frame time is. A huge delta
-    // (a hitch) converges almost fully instead of overshooting.
-    const float k = 1.0f - std::exp(-m_smoothing * dt);
-    m_position    = glm::mix(m_position, desired, k);
+    // CRITICALLY DAMPED SPRING, solved for this frame (the classic SmoothDamp): the camera
+    // has a VELOCITY of its own, so a move that starts does not yank it -- it accelerates
+    // into the move and therefore trails BEHIND while the character gets going -- and a
+    // move that ends does not stop it dead: the velocity decays and it eases onto the
+    // framing. It is solved per call, so any frame rate behaves the same, and a target
+    // that jumps past the camera is never overshot (result == desired).
+    const float omega = 2.0f / m_smoothTime;
+    const float x     = omega * dt;
+    const float expo  = 1.0f / (1.0f + x + 0.48f * x * x + 0.235f * x * x * x);
 
+    const Vec3 change = m_position - desired;
+    const Vec3 temp   = (m_velocity + omega * change) * dt;
+    m_velocity        = (m_velocity - omega * temp) * expo;
+
+    Vec3 result = desired + (change + temp) * expo;
+    if (glm::dot(desired - m_position, result - desired) > 0.0f)
+    {
+      result     = desired; // Never pass the target: a snap would read as a bounce.
+      m_velocity = Vec3(0.0f);
+    }
+
+    m_position = result;
     m_camera->m_node->SetTranslation(m_position, TransformationSpace::TS_WORLD);
   }
 

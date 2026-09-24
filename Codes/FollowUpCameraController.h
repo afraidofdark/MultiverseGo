@@ -43,18 +43,32 @@ namespace ToolKit
     // the camera glides over to it at the smoothing rate).
     void SetTarget(EntityPtr target);
 
+    // Follows a POINT instead of the target entity's world position, and captures the
+    // framing against it. The game feeds the TILE the followed unit stands on, and that is
+    // the whole point: the animated actor moves with root motion, so a camera riding it
+    // inherits every wobble the animation has -- a turn in flight, the landing dip, the
+    // blend back into the stride. A tile is a fixed point a unit only ever jumps BETWEEN,
+    // so the follow glides from tile to tile and a fast transit reads as the camera
+    // hopping the grid with the character. The entity target stays as the fallback until
+    // this is called, and the point may be re-set every frame (the game does).
+    void SetFollowPoint(const Vec3& point, bool captureFraming = false);
+    Vec3 GetFollowPoint() const { return m_followPoint; }
+    bool HasFollowPoint() const { return m_hasFollowPoint; }
+
     // Replaces the captured offset: the world position the camera trails the
     // target by. The camera converges on the new framing smoothly.
     void SetOffset(const Vec3& offset);
     Vec3 GetOffset() const { return m_offset; }
 
-    // Convergence rate (1 / second): how fast the camera closes the remaining gap
-    // to the desired position. 0 freezes it where it is, larger is snappier; the
-    // default trails a walking character closely without ever snapping. The
-    // convergence is frame rate independent (exponential, not a per frame lerp),
-    // so the follow looks the same at 30 and at 240 fps.
-    void SetSmoothing(float rate);
-    float GetSmoothing() const { return m_smoothing; }
+    // DAMPING: roughly how long (seconds) the camera takes to close the gap to where the
+    // framing wants it. It is a CRITICALLY DAMPED SPRING, not a per frame mix: the camera
+    // starts from its own velocity, so it accelerates into a move (it stays BEHIND while
+    // the move starts) and decays into the stop when the move ends (it slows down onto the
+    // framing instead of arriving at full speed), and it never overshoots. A larger value
+    // means a heavier, lazier camera. The follow is frame rate independent: the spring is
+    // solved per call, so a 30 fps and a 240 fps session behave the same.
+    void SetSmoothTime(float seconds);
+    float GetSmoothTime() const { return m_smoothTime; }
 
     // True when the target's own VERTICAL motion is followed too. False (the
     // default) keeps the height the camera was authored at: the walk cycle's bob
@@ -78,15 +92,24 @@ namespace ToolKit
     Vec3 TargetPosition() const;
 
     CameraPtr m_camera; // The camera whose node is driven.
-    EntityPtr m_target; // The entity being followed.
+    EntityPtr m_target; // The entity being followed (fallback for the follow point).
+
+    // The TILE (or any fixed point) the camera actually rides while HasFollowPoint:
+    // set by the game from the followed unit's current grid node.
+    Vec3 m_followPoint    = Vec3(0.0f);
+    bool m_hasFollowPoint = false;
 
     // Camera -> target offset captured from the authored placement.
     Vec3 m_offset = Vec3(0.0f);
     // Smoothed camera position: the value actually written into the camera node.
     // Init seeds it with the authored position.
     Vec3 m_position = Vec3(0.0f);
+    // Velocity of the damping spring (world units / second). Carried between frames so the
+    // camera has its own momentum: it eases in when a move starts and eases out when it
+    // ends, which is what a camera on rails does and a per frame mix never does.
+    Vec3 m_velocity = Vec3(0.0f);
 
-    float m_smoothing    = 4.0f;  // Convergence rate (1 / second).
+    float m_smoothTime   = 0.5f;  // Gap closing time of the damping (seconds).
     bool m_followHeight  = false; // Ride the target's Y instead of the authored one.
   };
 
