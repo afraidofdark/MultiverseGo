@@ -327,10 +327,16 @@ apply to all code in both repositories.
   instantly (Unit::StartTurn fallback). Any in-place turn also raises
   `IsTurning()` until its action ends, which is what the side strike's hold
   gates on.
-  The line patrol checks, while taking its step, whether the step lands on the
-  LAST tile of its line (the tile beyond is missing or blocked) and about-faces
-  on arrival, so the turn shares the turn with the final step instead of
-  costing a turn of its own. AND ONCE IT IS AT THE LINE END IT DOES NOT STAND
+  Reaching the END of its line is NOT special while stepping any more: the about-face
+  that used to be queued for that arrival cost the patrol the tail of the turn (it
+  turned on the spot, the transit turn that arrived meanwhile found it mid-turn and
+  skipped it -- `Game: transit turn -- (A) is mid-turn; its decision waits.` -- and it
+  only walked back the turn after that). The U-turn below covers the same case BETTER
+  and in ONE turn whichever way it comes: while the patrol is still walking into the
+  end, a transit turn syncs it onto that tile and the else branch CHAINS the 180 into
+  the walk it is already doing (`turning on the way`), and once it has landed there the
+  else branch turns it with the step's own leading turn. Either way it turns AND walks
+  inside one turn. AND ONCE IT IS AT THE LINE END IT DOES NOT STAND
   THERE: its `OnTurn` else branch decides the step BACK (`Linear: line end at +X;
   U-turn step back to (x, z).`) and lets the walk take the 180 WITH it -- a turn on
   the way when the patrol is still walking into the end (the chain turn curves it

@@ -3083,25 +3083,21 @@ namespace ToolKit
     // The step itself is recorded (m_intendedMove) and started by the game, so
     // this patrol moves at the same time as everyone else this turn.
     //
-    // The about-face does NOT cost a turn of its own: when the step being taken
-    // already reaches the end of the line (the tile beyond the step target is
-    // missing or blocked), the patrol turns as it lands -- the turn plays right
-    // after that move, inside the same turn.
+    // A STEP ALONG THE LINE. Reaching the end of it is NOT special here any more: the
+    // about-face this used to queue for that arrival cost the patrol the tail of the
+    // turn -- it turned on the spot, the transit turn that arrived meanwhile found it
+    // mid-turn and skipped it ("its decision waits"), and it only walked back the turn
+    // after that. The U-turn below covers the same case better and in ONE turn whichever
+    // way it comes: while the patrol is still walking into the end, a transit turn syncs
+    // it onto that tile and the else branch chains the 180 into the walk it is already
+    // doing; once it has landed there, the else branch turns it with the step's own
+    // leading turn. Either way it turns AND walks inside one turn.
     GridDir facing = GetFacingDir();
     GridNode* next  = m_grid->Neighbor(*m_node, facing);
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
       m_intendedMove = next;
       TK_LOG("Linear: line step to (%d, %d). [%s]", next->ix, next->iz, DescribeState().c_str());
-
-      GridNode* beyond = m_grid->Neighbor(*next, facing);
-      if (beyond == nullptr || !m_grid->Connected(*next, *beyond))
-      {
-        // This step lands on the last tile of the line: about-face on arrival.
-        TurnOnArrival(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(OppositeDir(facing))));
-        TK_LOG("Linear: step reaches the line end; about-face queued for the arrival. [%s]",
-               DescribeState().c_str());
-      }
     }
     else
     {
