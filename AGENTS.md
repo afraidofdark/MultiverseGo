@@ -330,7 +330,14 @@ apply to all code in both repositories.
   The line patrol checks, while taking its step, whether the step lands on the
   LAST tile of its line (the tile beyond is missing or blocked) and about-faces
   on arrival, so the turn shares the turn with the final step instead of
-  costing a turn of its own.
+  costing a turn of its own. AND ONCE IT IS AT THE LINE END IT DOES NOT STAND
+  THERE: its `OnTurn` else branch decides the step BACK (`Linear: line end at +X;
+  U-turn step back to (x, z).`) and lets the walk take the 180 WITH it -- a turn on
+  the way when the patrol is still walking into the end (the chain turn curves it
+  around just before the last tile), a turn in place before the step when it is
+  already standing there. Only a true dead end (nothing behind it either) falls back
+  to a bare `StartTurn`. An about-face-only decision cost a whole turn of standing at
+  the line end with nothing to do, and that read as "it turns one turn late".
 - `SeekerPatrol` decides at click time against the destination. Its arrival
   look is taken from the tile it WILL land on along the held heading
   (`SeesAlong(origin, dir, player)`); the actual turn to that heading runs
@@ -550,6 +557,159 @@ apply to all code in both repositories.
   is what lets the death animation keep playing over a body that is already out
   of the game.
 
+## Transit walking -- chaining steps without stopping (Game.cpp / Unit.cpp)
+
+- Clicking a tile while the player is STILL WALKING chains the walk into it: the
+  character strides THROUGH the tile it was landing on and carries on, so walking
+  ahead reads as one continuous walk instead of a stop sequence (`walk_f_end` +
+  the idle settle + waiting for the next turn) on every tile. Input is otherwise
+  still locked while a turn plays out -- the transit is the one thing a click
+  during `TurnPhase::Acting` can do (`Game::Frame` -> `Game::TryTransit`; the click
+  itself is resolved through `Game::ClickedTile`, which both paths share).
+- THE TRANSIT IS A REAL TURN for everyone. The frame the player's walk chains
+  (`Game::UpdateActing` -> `Player::ConsumeWalkChain`) `Game::BeginTransitTurn`
+  restarts the turn state for the chained tile: every enemy decides its reaction
+  against it exactly like a clicked move, and ACTS AGAIN. A chained step is
+  therefore never a free step nobody reacts to -- the enemies keep moving while the
+  player does. Nothing of the tile walked through has to be settled, because the
+  conditions below guarantee it was a plain step.
+- A UNIT THAT IS STILL MID-STEP DECIDES FROM THE TILE IT IS WALKING TO:
+  `BeginTransitTurn` calls `Unit::SyncTileToMoveDestination()` before `OnTurn`, so
+  a patrol that is halfway through its own step answers with its NEXT tile instead
+  of re-deciding the step it is already walking (which used to make it stand still
+  once it arrived -- the log symptom was a redundant
+  `Move: (A) is taken right after the running action.` for the tile it was already
+  heading to, followed by a `StartMove` to the tile it had just landed on).
+- A UNIT WHOSE FACING IS STILL MOVING IS NOT ASKED AT ALL: a chained step happens at
+  the same moment the other units reach their own landing phase, so a line patrol
+  that hits the end of its line is usually MID ABOUT-FACE when the transit turn
+  arrives. `GetFacingDir` snaps a half turned root to whichever axis it is nearer,
+  so asking it then made the patrol answer with a step or a turn ACROSS its own line
+  -- and it re-pointed the very arrival turn that was already playing, leaving the
+  patrol facing the wrong way until the next turn. `Unit::IsFacingSettling`
+  (`AnimatedUnit`: `m_turningInPlace`, or the walk context's `turning`) reports an
+  in-place turn or the turn phase of a walk, and `BeginTransitTurn` skips those units
+  -- their action is in flight and they decide again next turn (logged:
+  `Game: transit turn -- (A) is mid-turn; its decision waits.`). Together with the
+  deferral in `StartInPlaceTurn` this is what makes a line patrol arrive, turn around
+  and be DONE inside the turn it reaches its last tile.
+- EVERY UNIT CHAINS, NOT JUST THE PLAYER: `AnimatedUnit::StartMove` on a unit that
+  is already walking no longer starts a second walk (that used to leak the running
+  state machine and snap the actor) -- it arms a chain on the walk in flight, so
+  the stride never breaks, landing phase included (see WalkEndState above). Only an
+  in-place turn has nothing to chain onto: there the step waits in
+  `m_moveAfterLanding` and `FinishWalk` takes it the moment the turn is over, so a
+  unit handed one step after another never stands still between them.
+- A DEFERRED STEP TAKES THE QUEUED ARRIVAL TURN WITH IT. The turn a decision queues
+  (`TurnOnArrival` / a deferred `StartTurn`) was decided from the tile the current
+  walk is heading to, so when that decision ALSO carries a step it belongs to the
+  landing of THAT step. `FinishWalk` therefore SKIPS the deferred-turn block while a
+  step is waiting (`m_moveAfterLanding != nullptr`) and leaves the turn queued; the
+  walk taking the step lands and plays it there (its own budget already counts it in,
+  see StartAction). The two ways of getting this wrong both showed up in play:
+  CLEARING the flag dropped the about-face (a line patrol arrived at the end of its
+  line, stood facing the old way and only turned on the next turn, walking back the
+  turn after that), and CONSUMING it played the about-face on the wrong tile and then
+  walked the unit back the way it had just turned.
+- A CHAINED LEG IS RE-TIMED, because a chained step IS a new action: the units
+  re-tasked with it were given a fresh `gTurnDuration` window the moment it was taken
+  (`Game::BeginTransitTurn` -> `StartMove`), so the walk takes one too
+  (`Move: chained leg retimed: natural X.XX s -> Y.YY s (xS.SS) to (A).`). The natural
+  length of the new leg is measured from what the context already knows -- the turn it
+  starts with, the stride's own rate over the distance the landing clip will not cover,
+  and the landing clip -- and the unit is re-scaled to it (`WalkContext::targetDur` /
+  `applyTimeScale`, set by StartAction). Without the re-timing the leg ran on the tempo
+  of the PREVIOUS action and whoever chained late came out behind everybody else: a
+  line patrol taking its U-turn at the end of its line, halfway through a window it had
+  almost used up, was still walking when the player's next leg was already over, so the
+  turn could not close until it caught up. Early finishers just wait -- the rule is that
+  nobody overruns the turn.
+- A TURN TAKEN ON THE WAY IS PLAYED FASTER than the action's own tempo
+  (`gChainTurnSpeedUp`, default 1.5) and moves the actor by
+  `gChainTurnAdvance` (default 0) times the stride. Both exist because the turn clips
+  are authored as full IN-PLACE turns: their bones step where the character stands, so
+  travel under them is the body sliding with its feet planted (at full stride it slid
+  ~1.4 u through a 180), while the clip itself costs a second or more of the action. The
+  clip's multiplier and the FSM's turn timer are scaled together, so the fold still
+  lands exactly when the turn finishes. Defaults: turn on the spot, played at 1.5x.
+- FOLDING A TURN KEEPS THE ACTOR'S WORLD POSITION, AND READS IT FIRST. The actor's
+  local translation lives in the ROOT's frame, so re-aiming the root (a 180 above all)
+  turns that offset with it: the actor is thrown to the mirror point of its own offset
+  -- the further the walk has already carried it, the further the jump (a chain turn on
+  a long leg moved it double digit units and the stall watchdog snapped it onto the
+  tile). `FoldTurnIntoRoot` therefore reads the world position BEFORE it re-aims the
+  root, then puts the actor back on that exact point. Reading it after the re-aim
+  (which is how the first version of the fix was written) returns the mirrored point and
+  "keeping" it teleports the actor. The fold is a no-op for an actor sitting on the root
+  (the leading turn of a walk, an in-place turn), which is why the problem only showed up
+  once a turn was taken MID-walk, with the offset the root motion had piled up.
+- IN-PLACE TURNS ARE GUARDED: an in-place turn runs through the same walk context
+  and state machine but goes nowhere (`WalkContext::inPlace`), so it is never a
+  chain target and never a move destination. `AnimatedUnit::StartInPlaceTurn` on a
+  unit that is MID-STEP defers to its landing (`m_deferredTurn`) instead of
+  clobbering the running walk, and an EXECUTION is never chainable at all (its
+  landing phase IS the strike clip: chaining would walk the attacker past its
+  victim). Those three guards are what make it safe to hand a unit a new step or a
+  turn while it is still finishing the previous one -- which is exactly what a
+  transit turn does.
+- ONLY A PLAIN STEP CHAINS. `Game::TryTransit` refuses -- and the click is then
+  QUEUED instead (see below) -- when anything would have to be settled on the way:
+  a patrol standing on the tile walked through or on the clicked tile, a patrol on
+  its way onto either of them, a bite in flight or inbound (a guard's
+  `ThreatTile()` on either tile, a step bite, an active bite), the player's own
+  execution scene (`m_executedEnemy` / `IsExecuting`), or the tile walked through
+  being the goal (`IsTargetNode`: the win has to resolve there).
+- `GridGraph::Connected` IS NOT AN ADJACENCY TEST: it only asks whether a passage
+  exists between the two tiles it is given (the facing flags), and it happily
+  answers true for two tiles five units apart on the same line. A chain is ONE
+  step, so `TryTransit` validates adjacency with the neighbour lookup
+  (`m_grid.Neighbor(*through, dir) == node` for one of the four dirs, then
+  `Connected`) exactly like `Player::TryMove` does. Skipping that check let a click
+  two tiles ahead chain the walk straight across the tile between them -- which is
+  also how a "player moved (4,3) -> (6,3)" line turned up in the logs.
+- ONE CHAIN AT A TIME: `ArmWalkChain` refuses to re-point an armed chain, so a
+  second click while one is pending cannot replace the tile the walk is about to
+  chain into (the game queues that click for the next turn instead). It also refuses
+  the tile the walk is already heading to, an in-place turn and any execution. It
+  does NOT refuse a walk that is already landing any more -- `WalkEndState` takes an
+  armed chain itself and hands back to the stride loop (a turn that hands a unit its
+  next step a moment too late used to leave the walk stopping there and running a
+  second action for the step, which put the whole turn a beat behind) -- and it does
+  not refuse a U-turn HOME either: a line patrol at the end of its line steps back
+  the way it came, and the 180 rides along with that step. The player can never ask
+  for a reversal (its own click path refuses the tile it came from) and for a unit
+  whose action the game decides a reversal is a real decision, not a typo.
+- A REFUSED CLICK IS NEVER DROPPED: it is kept in `Game::m_pendingMove` and made as
+  the very first move of the next turn (`StartPlayerTurn` -> `CommitPlayerMove`),
+  so a click that cannot transit simply costs the normal stop it was refused a
+  transit for. The queued tile is re-validated when it is played (`Player::TryMove`
+  is the only path that starts a move) and dropped with a log if it is no longer a
+  legal step. A win or a loss clears the queue.
+- HOW THE WALK CHAINS (nothing is duplicated): `Unit::ArmWalkChain(node)` stores
+  the tile in the walk context (`WalkContext::chainTo`; `GetArmedWalkChain` reads
+  it back, so the same click read on a later frame cannot arm twice), and the FSM
+  TAKES it at the exact moment it would hand over to its landing phase --
+  `WalkLoopState` and `WalkStartState`, plus the "arrived inside the loop" branch,
+  all call `TakeChainedStep` BEFORE returning `WalkEnd`. That helper retargets the
+  context (`to` / `targetPos` / `totalDist`, measured from where the actor actually
+  is) and re-bases the stall watchdog; the state then keeps striding, so the stride
+  clip (`walk_f`) is never replayed or even blended -- the chain is invisible in
+  the animation, which is the entire point. A walk that is ALREADY in its landing
+  phase takes an armed chain in `WalkEndState` instead (it hands back to the stride
+  loop); that is the case a transit turn lands on when the unit it is asking reaches
+  its own landing at the same moment, and waiting for the walk to end would have made
+  it stop and run a second action for the new step.
+- The actor is NEVER snapped onto the tile it walks through: `TakeChainedStep`
+  measures the new leg from the actor's own position (it is one landing reach --
+  `endReach`, ~0.39 u -- short of the tile center when the chain is taken) and
+  `FinishWalk` only anchors it on the FINAL tile. `WalkContext::onChained` moves the
+  unit's own tile bookkeeping (`m_node`) along with the walk, so the game's idea of
+  "the tile the player stands on" matches the tile the walk passed through, and the
+  next transit is validated from there.
+- `Game::CommitPlayerMove` is the single "start the player's move" path (extracted
+  from the click handler), so a queued move is committed exactly like a clicked
+  one: with a victim it is the authored execution, otherwise a plain walk.
+
 ## Uniform turn duration (time scaling)
 
 - Rule: EVERY action of a turn closes in exactly `gTurnDuration` seconds
@@ -732,6 +892,33 @@ apply to all code in both repositories.
   fallbacks, `Game: no entity tagged 'master'; keeping the viewport's own camera.`
   and `... the entity tagged 'master' is not a camera; ...`, mean the scene has
   nothing to play through and the editor's camera is untouched.
+- `Move: walk chains through (A) -> (B), N.NN u to go.` (plus `, turning on the
+  way` when the new leg points elsewhere): a TRANSIT was taken (see "Transit
+  walking"): the walk passed through the tile it was landing on and strides on into
+  the clicked one, with the stride clip never interrupted and the landing phase
+  skipped. One line per chained step, from the walk machine itself.
+  `Game: transit armed -- the walk through (A) goes on to (B).` is the click being
+  accepted (before the walk gets there); `Game: transit turn -- the walk goes on to
+  (B) heading +X; everyone acts again.` is the chained step opening a REAL turn for
+  the enemies; `WalkState: transit turn done (...), N.NN u to (B) left.` closes the
+  walk -> turn phase; `Move: (A) chains into the walk in flight instead of
+  stopping.` / `Move: (A) is taken right after the running action.` are another
+  unit's step joining a walk that is still running (the second one means it had to
+  wait for the landing, i.e. that unit stops for at most one action). And
+  `Game: (A) is not a transit; queued as the next move.` / `Game: playing the move
+  queued during the last turn.` are the refused click being kept and then made as
+  the next turn's move instead.
+- `Move: in-place turn deferred to the landing (the unit is mid-step).`: a turn was
+  asked of a unit that is walking; it is taken when that step lands (the guard that
+  keeps a unit handed a new step mid-move from clobbering -- and leaking -- its own
+  walk). The deferral has to run BEFORE `StartInPlaceTurn`'s "a state machine is
+  already running" early return: walking means `m_walkSM != nullptr`, so checking
+  that first made the turn vanish instead of being queued -- a line patrol that
+  reached the end of its line during a transit turn just stood there facing the old
+  way and only turned on the following turn. `Move: dropping the step queued during
+  an execution -> (A).`: the opposite guard, for a step that waited behind a walk
+  whose scene is still holding its strike pose -- it is dropped, together with the
+  turn that went with it, rather than clobbered by that scene's settle.
 - All game logs go through `TK_LOG`.
 
 ## Scene files may be dirty from the live editor

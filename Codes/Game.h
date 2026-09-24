@@ -57,6 +57,45 @@ namespace ToolKit
     void StartPlayerTurn();
     void HandlePlayerClick();
 
+    // The grid tile under the cursor, or null when the cursor is not on the grid
+    // (or there is no viewport / grid to unproject through). Both the player's
+    // move and the transit read the click through this.
+    GridNode* ClickedTile();
+
+    // True when this frame's event pool holds a fresh left click. The pool is per
+    // frame, so a click belongs to the frame it arrived in -- which is what makes
+    // a click DURING a turn (a transit request) possible at all.
+    bool HasLeftClick() const;
+
+    // Commits the player's step onto node through the normal path: a patrol
+    // standing there is struck (the authored execution carries the last stretch),
+    // anything else is a plain walk. Returns true when the move was accepted.
+    bool CommitPlayerMove(GridNode* node);
+
+    // A click that arrived while the player was still walking: offers it to the
+    // running walk as a TRANSIT -- the player keeps walking THROUGH the tile it
+    // was landing on and strides on into the clicked one, with no stop sequence in
+    // between (see AnimatedUnit::ArmWalkChain). A step into another direction turns
+    // ON THE WAY (walk -> turn) instead of stopping first, so turns chain too.
+    // Anything the turn would have to resolve on the way keeps the normal
+    // stop-and-act instead:
+    //   * a patrol standing on the tile walked through, or on the clicked tile,
+    //   * a patrol on its way onto either of them,
+    //   * a bite inbound or in flight (a guard's threat tile, a step bite),
+    //   * the player's own execution scene,
+    //   * the tile walked through being the goal (the win has to resolve there).
+    // A refused click is never dropped: it is queued (m_pendingMove) and made as
+    // the first move of the next turn.
+    bool TryTransit(GridNode* node);
+
+    // Runs the turn a TRANSIT opens: the chained step is a real turn, not a free
+    // step nobody reacts to. Every enemy decides its reaction against the tile the
+    // walk now chains into and acts again -- and a unit still finishing its previous
+    // step chains its own walk into the new one instead of stopping (see
+    // AnimatedUnit::StartMove), so the whole board keeps moving. Called the frame
+    // the player's walk chains (Game::UpdateActing -> ConsumeWalkChain).
+    void BeginTransitTurn(GridNode* dest);
+
     // Takes over the render when the scene carries a camera tagged "master": that
     // camera is set on the viewport (the game then renders through it) and made to
     // follow the player smoothly. A scene without one -- or with a "master" entity
@@ -175,6 +214,12 @@ namespace ToolKit
     // null. It is never removed at arrival like a captured patrol: it stays
     // until the scene has played out, then FinishPlayerExecution drops it.
     Unit* m_executedEnemy = nullptr;
+
+    // The tile the player clicked while a turn was still playing out and could not
+    // be transited into. It is made as the first move of the next turn (see
+    // StartPlayerTurn), so a click is never silently dropped -- it just costs the
+    // normal stop sequence it was refused a transit for.
+    GridNode* m_pendingMove = nullptr;
 
     // Bodies on their way under the ground: actors the game removed from play
     // whose root entity is still in the scene, sinking (see LayCorpse).

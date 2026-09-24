@@ -41,6 +41,24 @@ namespace ToolKit
   // Defined in Unit.cpp.
   extern float gTurnDuration;
 
+  // How much of its stride a unit KEEPS while a chained step turns on the way (the
+  // transit turn: walk -> turn -> walk instead of walk -> stop -> turn -> walk). 1
+  // keeps the full stride and the character glides through the corner; 0 turns it on
+  // the spot, which is what the turn clips are AUTHORED for -- their bones step where
+  // the character stands, so any travel under them reads as the body sliding with its
+  // feet planted. A small value gives a slight drift into the turn. Tunable at runtime
+  // like gWalkBlendDuration; defined in Unit.cpp, defaults to 0.
+  extern float gChainTurnAdvance;
+
+  // How much FASTER a chained step plays the turn it takes on the way (1 = the
+  // action's own tempo). The turn clips are authored as full in-place turns -- a
+  // second or more for a 180 -- and spending that inside a chained step both delays
+  // the stride and eats the action's window, so a turn taken on the way runs at this
+  // multiple of the tempo (the clip and the state machine's turn timer are kept in
+  // step, so the fold still lands exactly when the turn finishes). Tunable at runtime
+  // like gWalkBlendDuration; defined in Unit.cpp, defaults to 1.5.
+  extern float gChainTurnSpeedUp;
+
   // Base class for every actor placed on the grid (player, enemies).
   //
   // Wraps the root entity of a placed prefab instance. The root node sits at
@@ -160,6 +178,14 @@ namespace ToolKit
     // clip never cuts a half finished turn.
     virtual bool IsTurning() const { return false; }
 
+    // True while the unit's FACING is still moving -- an in-place turn, or the turn
+    // phase of a walk. Between two grid axes there is no heading to decide from:
+    // `GetFacingDir` would snap a half turned root to whichever axis it happens to
+    // be closer to, which is how a line patrol asked for its turn mid-rotation
+    // ended up facing across its own line. The game asks this before it lets a unit
+    // decide a turn (see Game::BeginTransitTurn).
+    virtual bool IsFacingSettling() const { return false; }
+
     // Lands a running move immediately (snaps the unit onto its destination
     // tile). Used when the run ends mid-move so no unit stays frozen between
     // two tiles. No-op when the unit is not moving.
@@ -196,9 +222,68 @@ namespace ToolKit
     // The tag that identifies this unit's type on its root entity.
     String GetTypeTag() const;
 
+    // One line of internal state, for the logs: where the unit stands, where it
+    // faces, and everything it has in flight (the walk it is playing and its phase,
+    // an armed chain, a queued arrival turn, a step waiting for a landing). The turn
+    // logs print it so a whole turn can be read back from the log alone -- "it did
+    // not turn around" is only diagnosable if the log says what the unit was doing.
+    virtual String DescribeState() const;
+
     // Grid node the unit occupies, or null when it is not on the grid.
     GridNode* GetNode() { return m_node; }
     GridNode* GetNode() const { return m_node; }
+
+    // The tile a running move is heading to, or null when the unit is standing. A
+    // moving unit's own node is still the DEPARTURE tile until the move lands, so
+    // this is the only way to ask where it is going. The game reads it for the
+    // transit: the tile a walk is walking to is the tile it will be walked THROUGH
+    // when the next click chains into the one beyond it.
+    virtual GridNode* GetMoveDestination() const
+    {
+      return m_gliding ? m_glideNode : nullptr;
+    }
+
+    // Moves the unit's own tile bookkeeping onto the tile its running move is
+    // heading to (no-op when it is standing, or when the action is an in-place turn
+    // that goes nowhere).
+    //
+    // A unit handed a new turn while it is STILL MOVING has to decide from the tile
+    // it will be standing on when that step lands -- not from the tile it is
+    // leaving, which would make it decide the very step it is already walking
+    // (Game::BeginTransitTurn does this before asking, so a patrol mid-step picks
+    // its NEXT tile and chains into it instead of standing still on arrival).
+    virtual void SyncTileToMoveDestination()
+    {
+      if (GridNode* dest = GetMoveDestination())
+      {
+        m_node = dest;
+      }
+    }
+
+    // TRANSIT (see Game::TryTransit). Arms the WALK this unit is playing so that,
+    // instead of landing on the tile it is walking to, it strides straight on into
+    // node: the stride clip keeps playing across the boundary and the whole landing
+    // phase -- the stop clip and the idle settle after it -- is skipped, so a chain
+    // of straight steps reads as ONE continuous walk instead of a stop on every
+    // tile. Returns false when there is nothing to chain (no walk in flight: a
+    // glide, an actor without animation, a walk already in its landing phase) or
+    // when node is already the tile being walked to. The CALLER owns the
+    // conditions -- that the chained step is plain, straight and uninterrupted --
+    // and the walk only carries it out.
+    virtual bool ArmWalkChain(GridNode* node) { return false; }
+
+    // The tile an armed chain will stride into instead of landing (see
+    // ArmWalkChain), or null when nothing is armed. The walk clears it itself the
+    // moment the chain is taken, so the game can read it to tell whether a chain
+    // is still pending.
+    virtual GridNode* GetArmedWalkChain() const { return nullptr; }
+
+    // True when the walk in flight just CHAINED (see ArmWalkChain) since the last
+    // call, reporting the tile it walked through (passed) and the tile it now
+    // heads for (dest). The game consumes it to turn the chained step into a REAL
+    // turn for everyone else (Game::BeginTransitTurn): a chained step is not a
+    // free step nobody reacts to.
+    virtual bool ConsumeWalkChain(GridNode** passed, GridNode** dest) { return false; }
 
     // The entity a follow camera should watch (Game::SetupMasterCamera). Animated
     // units return their ACTOR -- the skinned child that root motion actually
@@ -285,6 +370,19 @@ namespace ToolKit
     // True while any move (animated walk or glide) is running.
     bool IsMoving() const override { return m_walkSM != nullptr || Unit::IsMoving(); }
 
+    // The tile the running walk is heading to (see Unit::GetMoveDestination); the
+    // glide fallback answers through the base implementation.
+    GridNode* GetMoveDestination() const override;
+
+    // Arms a TRANSIT for the walk in flight (see Unit::ArmWalkChain): the walk
+    // strides into node instead of landing on the tile it is walking to, skipping
+    // the stop clip and the idle settle, so the two steps read as one walk. A
+    // chained step into another direction turns on the way (walk -> turn) instead
+    // of stopping first.
+    bool ArmWalkChain(GridNode* node) override;
+    GridNode* GetArmedWalkChain() const override;
+    bool ConsumeWalkChain(GridNode** passed, GridNode** dest) override;
+
     // Drives a running walk state machine; advances the glide fallback when no
     // walk is running.
     void Frame(float deltaTime) override;
@@ -339,6 +437,14 @@ namespace ToolKit
     // Unit::IsTurning): the strike that waits for this unit's front gates on it.
     bool IsTurning() const override { return m_turningInPlace; }
 
+    // True while this unit's facing is still moving: an in-place turn of its own, or
+    // the turn phase of the walk it is playing (see Unit::IsFacingSettling).
+    bool IsFacingSettling() const override;
+
+    // State line for the logs (see Unit::DescribeState): adds the walk in flight and
+    // its phase, the armed chain, the queued arrival turn and the queued step.
+    String DescribeState() const override;
+
     // True when turn clips are loaded on this unit's animation controller, so
     // in-place turns (and the arrival turn of a landing patrol) can animate.
     bool HasAnimatedTurn() const;
@@ -373,6 +479,11 @@ namespace ToolKit
     // usable animation support (the caller picks the glide/instant fallback).
     // targetDuration < 0 means gTurnDuration.
     bool StartWalk(GridNode* node, float targetDuration);
+
+    // True while the walk machine is in its LANDING phase (the stop clip is
+    // playing): the walk ends on the tile it is on, so a chain armed now could
+    // never be taken -- ArmWalkChain refuses and the caller queues the step.
+    bool IsLanding() const;
 
     // The single implementation behind StartWalk and StartExecution: the shared
     // walk state machine, where the landing phase is either the walk's own stop
@@ -455,6 +566,17 @@ namespace ToolKit
     // lands (see TurnOnArrival). Consumed by FinishWalk.
     Quaternion m_deferredTurn;
     bool m_hasDeferredTurn = false;
+
+    // A step handed to this unit while its walk was LANDING (so it was too late to
+    // chain, see StartMove): taken by FinishWalk the moment the walk is over, so a
+    // unit that is given one step after another never stands still between them.
+    GridNode* m_moveAfterLanding = nullptr;
+
+    // The last chained step of the walk in flight, waiting to be consumed by the
+    // game (see ConsumeWalkChain): set by the walk context's chain callback.
+    bool m_chainEvent     = false;
+    GridNode* m_chainPassed = nullptr;
+    GridNode* m_chainDest   = nullptr;
 
     // True while an in-place turn this unit started (a stand-alone about-face, a
     // seeker's stare, or the pre-strike turn of a side strike) is still playing.

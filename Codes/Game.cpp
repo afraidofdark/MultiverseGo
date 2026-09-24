@@ -42,6 +42,16 @@ namespace ToolKit
         default: return "+Z";
       }
     }
+
+    // Debug helper: "(x, z)" for a tile, "(none)" for a null one.
+    String NodeText(const GridNode* n)
+    {
+      if (n == nullptr)
+      {
+        return "(none)";
+      }
+      return "(" + std::to_string(n->ix) + ", " + std::to_string(n->iz) + ")";
+    }
   } // namespace
 
   void Game::Init(Main* master) { Main::SetProxy(master); }
@@ -68,9 +78,25 @@ namespace ToolKit
 
     // A committed turn plays out over the coming frames: the player's walk and
     // every enemy glide advance together, and the turn settles (or resolves a
-    // bite) once everything has moved. Input stays locked while acting.
+    // bite) once everything has moved. Input stays locked while acting -- except
+    // for the TRANSIT: a click on the tile beyond the one the player is walking to
+    // keeps the walk going instead of letting it stop there (see TryTransit).
     if (m_phase == TurnPhase::Acting)
     {
+      if (HasLeftClick())
+      {
+        if (GridNode* node = ClickedTile())
+        {
+          if (!TryTransit(node))
+          {
+            m_pendingMove = node;
+            TK_LOG("Game: (%d, %d) is not a transit; queued as the next move.",
+                   node->ix,
+                   node->iz);
+          }
+        }
+      }
+
       UpdateActing(deltaTime);
       return;
     }
@@ -81,21 +107,9 @@ namespace ToolKit
     }
 
     // A left click on a connected neighbour tile moves the player one tile.
-    for (Event* e : Main::GetInstance()->m_eventPool)
+    if (HasLeftClick())
     {
-      if (e->m_type != Event::EventType::Mouse)
-      {
-        continue;
-      }
-
-      MouseEvent* me = static_cast<MouseEvent*>(e);
-      if (me->m_action != EventAction::LeftClick || me->m_release)
-      {
-        continue;
-      }
-
       HandlePlayerClick();
-      break;
     }
   }
 
@@ -113,6 +127,7 @@ namespace ToolKit
     m_grid.Clear();
     m_target = nullptr;
     m_player.Reset();
+    m_pendingMove = nullptr;
 
     // Execution clips are measured per loaded resource, so a fresh session
     // measures them again and the variant cycle starts over.
@@ -239,6 +254,7 @@ namespace ToolKit
 
     m_executedEnemy    = nullptr;
     m_arrivalProcessed = false;
+    m_pendingMove      = nullptr;
     m_grid.Clear();
     m_target = nullptr;
     m_prevPlayerNode = nullptr;
@@ -335,6 +351,16 @@ namespace ToolKit
     // print the actual move ("from -> to heading") for the seeker logs.
     m_prevPlayerNode = m_player.GetNode();
     TK_LOG("Game: player turn.");
+
+    // A click that arrived while the last turn was still playing out and could not
+    // transit into its tile is made now, as this turn's move: the player asked for
+    // that tile, it just costs the stop sequence the transit would have skipped.
+    if (GridNode* pending = m_pendingMove)
+    {
+      m_pendingMove = nullptr;
+      TK_LOG("Game: playing the move queued during the last turn.");
+      CommitPlayerMove(pending);
+    }
   }
 
   void Game::BeginPlayerMove(GridNode* dest)
@@ -376,6 +402,14 @@ namespace ToolKit
 
       u->OnTurn(dest, facing);
       GridNode* target = u->GetIntendedMove();
+
+      TK_LOG("Game: turn decision -- %s against (%d, %d) heading %s: intended %s -- [%s]",
+             u->GetTypeTag().c_str(),
+             dest->ix,
+             dest->iz,
+             GridDirName(facing),
+             target != nullptr ? NodeText(target).c_str() : "stay",
+             u->DescribeState().c_str());
 
       // A step onto the player's destination is a bite: like a guard's lunge it
       // waits for the player to actually arrive before it starts, so an enemy
@@ -525,7 +559,9 @@ namespace ToolKit
     m_won = true;
     TK_LOG("Game: player reached the target. You win!");
 
-    // Nothing may stay frozen mid-glide when the run ends.
+    // Nothing may stay frozen mid-glide when the run ends -- and no queued step
+    // may be played in a turn that will never come.
+    m_pendingMove = nullptr;
     for (auto& enemy : m_enemies)
     {
       enemy->LandMove();
@@ -587,6 +623,20 @@ namespace ToolKit
     {
       m_player.Frame(deltaTime);
     }
+    // The walk CHAINED (a click kept it going through the tile it was landing on):
+    // that chained step is a REAL turn, so every enemy reacts to it and moves
+    // again. A unit still finishing its own step chains its walk into the new one
+    // instead of stopping (AnimatedUnit::StartMove), so nobody stands still while
+    // the player keeps walking.
+    {
+      GridNode* passed = nullptr;
+      GridNode* dest   = nullptr;
+      if (m_player.ConsumeWalkChain(&passed, &dest))
+      {
+        BeginTransitTurn(dest);
+      }
+    }
+
     for (auto& enemy : m_enemies)
     {
       enemy->Frame(deltaTime);
@@ -687,37 +737,54 @@ namespace ToolKit
     return false;
   }
 
-  void Game::HandlePlayerClick()
+  GridNode* Game::ClickedTile()
   {
-    if (m_won || m_lost)
+    if (m_viewport == nullptr || m_grid.Nodes().empty())
     {
-      return;
+      return nullptr;
     }
 
     // Unproject the click into a ray and intersect it with the tile-top plane.
     // RayFromMousePosition uses the viewport's own tracked mouse position, so
     // the click stays in the viewport's coordinate space (no window/title-bar
-    // offset).
+    // offset) -- and the viewport's CAMERA, so it follows a master camera too.
     Ray ray             = m_viewport->RayFromMousePosition();
     PlaneEquation plane = PlaneFrom(Vec3(0.0f, m_grid.TopPlaneY(), 0.0f), Y_AXIS);
 
     Vec3 point(0.0f);
     float t = 0.0f;
-    bool onGrid = RayPlaneIntersection(ray, plane, t);
-    if (onGrid)
+    if (!RayPlaneIntersection(ray, plane, t))
     {
-      point = ray.position + ray.direction * t;
+      return nullptr;
     }
 
-    if (!onGrid)
-    {
-      return;
-    }
+    point = ray.position + ray.direction * t;
+    return m_grid.NodeAtPoint(point);
+  }
 
-    GridNode* node = m_grid.NodeAtPoint(point);
-    if (node == nullptr)
+  bool Game::HasLeftClick() const
+  {
+    for (Event* e : Main::GetInstance()->m_eventPool)
     {
-      return; // Clicked outside the grid.
+      if (e->m_type != Event::EventType::Mouse)
+      {
+        continue;
+      }
+
+      MouseEvent* me = static_cast<MouseEvent*>(e);
+      if (me->m_action == EventAction::LeftClick && !me->m_release)
+      {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool Game::CommitPlayerMove(GridNode* node)
+  {
+    if (m_won || m_lost || node == nullptr)
+    {
+      return false;
     }
 
     // A patrol standing on the clicked tile is the player's prey: the step is
@@ -726,19 +793,227 @@ namespace ToolKit
     // of the instant capture a plain step would give.
     Unit* victim = EnemyOnTile(node);
 
-    if (m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }, victim))
-    {
-      // The player's move is committed: enemies react to it right now and every
-      // move of the turn plays out in parallel. Arrival-based resolution runs
-      // when the walk finishes (or immediately for actors without animation).
-      // A player that came in striking keeps its victim until its scene is over.
-      m_executedEnemy = m_player.IsExecuting() ? victim : nullptr;
-      BeginPlayerMove(node);
-      return;
-    }
-    else
+    if (!m_player.TryMove(node, [this](GridNode* n) { return IsMoveBlocked(n); }, victim))
     {
       TK_LOG("Game: move to (%d, %d) rejected", node->ix, node->iz);
+      return false;
+    }
+
+    // The player's move is committed: enemies react to it right now and every
+    // move of the turn plays out in parallel. Arrival-based resolution runs
+    // when the walk finishes (or immediately for actors without animation).
+    // A player that came in striking keeps its victim until its scene is over.
+    m_executedEnemy = m_player.IsExecuting() ? victim : nullptr;
+    BeginPlayerMove(node);
+    return true;
+  }
+
+  bool Game::TryTransit(GridNode* node)
+  {
+    if (m_won || m_lost || node == nullptr)
+    {
+      return false;
+    }
+
+    // Only a walk in flight can chain, and the player may neither be playing its
+    // own strike scene nor be the victim of one.
+    GridNode* through = m_player.GetMoveDestination();
+    GridNode* from    = m_player.GetNode();
+    if (!m_player.IsWalking() || through == nullptr || from == nullptr ||
+        m_player.IsExecuting() || m_executedEnemy != nullptr)
+    {
+      return false;
+    }
+
+    // Already chained into this very tile (the same click read on a later frame):
+    // nothing to do, and nothing to log twice.
+    if (m_player.GetArmedWalkChain() == node)
+    {
+      return true;
+    }
+
+    // Clicking the tile the walk is already heading for, or the one it is leaving,
+    // is not a request for another step: nothing to chain and nothing to queue.
+    if (node == through || node == from)
+    {
+      return true;
+    }
+
+    // Nothing may be at stake on the tile the player is walking THROUGH: no
+    // patrol being captured there, no tooth waiting on it (a guard's threat tile
+    // or a step bite), no goal whose win has to be declared there.
+    if (!m_capturedEnemies.empty() || !m_activeBites.empty() ||
+        !m_stepBites.empty() || IsTargetNode(through))
+    {
+      return false;
+    }
+
+    // The clicked tile must be the tile NEXT to the one being walked through: a
+    // chain is ONE step, and `GridGraph::Connected` only asks whether a passage
+    // exists (it happily answers true for two tiles five units apart along the
+    // same line), so adjacency has to be checked with the neighbour lookup --
+    // exactly like Player::TryMove validates its step. Without this a click two
+    // tiles ahead was accepted and the walk cut straight across the tile between
+    // them.
+    GridNode* step = nullptr;
+    const GridDir dirs[4] = {GridDir::Xm, GridDir::Xp, GridDir::Zm, GridDir::Zp};
+    for (GridDir dir : dirs)
+    {
+      if (m_grid.Neighbor(*through, dir) == node)
+      {
+        step = node;
+        break;
+      }
+    }
+
+    if (step == nullptr || !m_grid.Connected(*through, *step))
+    {
+      return false;
+    }
+
+    for (const auto& enemy : m_enemies)
+    {
+      Unit* u = enemy.get();
+
+      // A guard watching the tile being walked through (or the clicked one)
+      // lunges the moment the player stands there: that is an attack, and an
+      // attack is not a transit.
+      if (u->ThreatTile() == through || u->ThreatTile() == node)
+      {
+        return false;
+      }
+
+      // A patrol standing on the clicked tile -- or already on its way onto it, or
+      // onto the tile being walked through -- makes this step a strike or a
+      // capture. Those resolve on arrival, so they keep the normal turn.
+      GridNode* occupied = u->GetNode();
+      GridNode* heading  = u->GetMoveDestination();
+      if (occupied == node || heading == node || heading == through)
+      {
+        return false;
+      }
+    }
+
+    if (!m_player.ArmWalkChain(node))
+    {
+      return false; // The walk is already landing, or gone: queue it instead.
+    }
+
+    TK_LOG("Game: transit armed -- the walk through (%d, %d) goes on to (%d, %d).",
+           through->ix,
+           through->iz,
+           node->ix,
+           node->iz);
+    return true;
+  }
+
+  void Game::BeginTransitTurn(GridNode* dest)
+  {
+    if (m_won || m_lost || dest == nullptr)
+    {
+      return;
+    }
+
+    // The chained step is a REAL turn: the enemies decide their reaction against
+    // the tile the walk now chains into, exactly as they do for a clicked move, and
+    // act again. Nothing from the tile walked through has to be settled -- the
+    // transit's conditions guaranteed that (see TryTransit) -- so the turn state
+    // simply restarts here.
+    m_capturedEnemies.clear();
+    m_stepBites.clear();
+    m_activeBites.clear();
+    m_arrivalProcessed = false;
+
+    // The heading the player walks the new leg with: the direction of the leg
+    // itself, since a chained step turns on the way to match it.
+    GridNode* from = m_player.GetNode();
+    GridDir facing = FacingToward(from, dest);
+
+    // The arrival log reads from where the LAST leg started, so the tile the walk
+    // passed through is the "from" of the move the turn will end on.
+    m_prevPlayerNode = from;
+
+    TK_LOG("Game: transit turn -- the walk goes on to (%d, %d) heading %s; everyone acts again.",
+           dest->ix,
+           dest->iz,
+           GridDirName(facing));
+
+    for (auto& enemy : m_enemies)
+    {
+      Unit* u = enemy.get();
+
+      // A patrol standing on the chained tile is captured the moment the player
+      // arrives there (defensive: TryTransit refuses a transit into one).
+      if (u->GetNode() == dest)
+      {
+        m_capturedEnemies.push_back(u);
+        continue;
+      }
+
+      // A unit whose FACING is still settling -- an in-place turn of its own, or the
+      // turn phase of the walk it is playing -- has no heading to decide from: its
+      // root sits between two grid axes, so GetFacingDir would snap it to whichever
+      // axis it happens to be nearer and the unit would answer with a turn across its
+      // own path. A line patrol that reaches the end of its line right here is
+      // already turning: asking it again re-pointed that very turn and it ended up
+      // facing the wrong way until the next turn. Its action is in flight and it
+      // decides again next turn.
+      if (u->IsFacingSettling())
+      {
+        TK_LOG("Game: transit turn -- %s is mid-turn; its decision waits. [%s]",
+               u->GetTypeTag().c_str(),
+               u->DescribeState().c_str());
+        continue;
+      }
+
+      // A unit that is still finishing its own step decides from the tile that
+      // step lands on, so its answer is the NEXT tile -- and that step chains into
+      // the walk in flight (AnimatedUnit::StartMove) instead of the unit standing
+      // still once it arrives.
+      u->SyncTileToMoveDestination();
+
+      u->OnTurn(dest, facing);
+      GridNode* target = u->GetIntendedMove();
+
+      TK_LOG("Game: transit turn decision -- %s against (%d, %d) heading %s: intended %s -- [%s]",
+             u->GetTypeTag().c_str(),
+             dest->ix,
+             dest->iz,
+             GridDirName(facing),
+             target != nullptr ? NodeText(target).c_str() : "stay",
+             u->DescribeState().c_str());
+
+      // A step onto the player's destination is a bite: held back until the player
+      // actually arrives, exactly like the first leg of the turn.
+      if (target == dest)
+      {
+        TK_LOG("Game: transit turn -- %s steps onto the player's tile: a held bite. [%s]",
+               u->GetTypeTag().c_str(),
+               u->DescribeState().c_str());
+        u->CancelArrivalTurn();
+        m_stepBites.push_back(u);
+      }
+      else if (target != nullptr)
+      {
+        // A unit still finishing its previous step CHAINS its walk into this new
+        // one (see AnimatedUnit::StartMove), so the whole board keeps moving
+        // instead of standing still through the player's extra step.
+        u->StartMove(target);
+      }
+    }
+  }
+
+  void Game::HandlePlayerClick()
+  {
+    if (m_won || m_lost)
+    {
+      return;
+    }
+
+    // Clicked outside the grid, or no grid at all: nothing to move onto.
+    if (GridNode* node = ClickedTile())
+    {
+      CommitPlayerMove(node);
     }
   }
 
@@ -778,8 +1053,10 @@ namespace ToolKit
     m_phase = TurnPhase::Idle;
 
     // The player died: whatever it was executing dies with it (the prey stays
-    // on the grid, since nothing resolves after a loss).
+    // on the grid, since nothing resolves after a loss), and so does the step it
+    // was queuing -- there is no turn left to play it in.
     m_executedEnemy = nullptr;
+    m_pendingMove   = nullptr;
 
     // The bite landed while other enemies may still be mid-glide: land them on
     // their tiles so nothing stays frozen between two tiles when the run ends.

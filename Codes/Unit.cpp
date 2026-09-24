@@ -35,6 +35,17 @@ namespace ToolKit
       }
     }
 
+    // Debug helper: "(x, z)" for a tile, "(none)" for a null one. Used by the state
+    // lines the turn logs print.
+    String NodeText(const GridNode* n)
+    {
+      if (n == nullptr)
+      {
+        return "(none)";
+      }
+      return "(" + std::to_string(n->ix) + ", " + std::to_string(n->iz) + ")";
+    }
+
     // Grid direction a horizontal offset points along. Moves are axis aligned,
     // so the dominant axis decides.
     GridDir DirectionOf(const Vec3& delta)
@@ -106,6 +117,57 @@ namespace ToolKit
     // the attacker is standing still ON PURPOSE.
     std::function<bool()> victimTurning;
     bool waitingForVictim = false;
+
+    // TRANSIT: the tile this walk strides into INSTEAD of landing on `to`, armed
+    // by the game while the player clicks ahead (see AnimatedUnit::ArmWalkChain).
+    // The loop takes it just before it would hand over to the landing clip: the
+    // walk is retargeted onto it and keeps striding, so the character walks
+    // THROUGH `to` as one continuous move -- no stop clip, no idle settle in
+    // between. Null when the walk should land normally.
+    GridNode* chainTo = nullptr;
+    // Called the moment a chain is taken, with the tile the walk passed through,
+    // so the unit can move its own tile bookkeeping (m_node) along with the walk
+    // and the game can turn the chained step into a real turn.
+    std::function<void(GridNode*)> onChained;
+
+    // TRANSIT TURN: the chained step above points in ANOTHER direction, so the
+    // turn is taken WHILE the walk keeps moving -- "walk -> turn" instead of
+    // "stop -> turn" (see ChainTurnState). Set by TakeChainedStep; the turn clip,
+    // its length and the target yaw ride the walk's own turn fields (turnSignal /
+    // turnDur / turnYawTo), exactly like the in-place turn phase does.
+    bool chainTurn      = false; // The leg just taken starts with a turn.
+    Vec3 chainTurnDir   = Vec3(0.0f); // World direction the actor keeps moving along.
+    float chainTurnSpeed = 0.0f;      // World units per machine second while turning.
+
+    // The stride's own rate (world units per machine second, at the clip's own
+    // speed): what a transit turn moves the actor with, so the character keeps
+    // its walking speed through the corner.
+    float strideSpeed = 0.0f;
+
+    // The action's tempo (the scale every clip and timer of this walk runs at,
+    // see ApplyMoveTimeScale). A turn taken on the way is played at
+    // gChainTurnSpeedUp TIMES this, so both the clip and the state's turn timer
+    // have to be derived from it (see TakeChainedStep).
+    float timeScale = 1.0f;
+
+    // The window this action was started with (seconds): gTurnDuration unless the
+    // caller asked for another length. A CHAINED step re-times the leg it just took
+    // against it (see TakeChainedStep): the chain is a new action -- every unit
+    // re-tasked with it got a fresh window the moment it was taken -- so the walk
+    // takes one too instead of running on the tempo of the previous action, which
+    // used to leave whoever chained late (a line patrol taking its U-turn) still
+    // walking when everybody else had finished the turn.
+    float targetDur = 0.0f;
+
+    // Applies a new action tempo to the unit playing this walk (see
+    // AnimatedUnit::ApplyMoveTimeScale). The FSM states only have the context, and
+    // re-timing a chained leg has to reach the clips as well as the machine.
+    std::function<void(float)> applyTimeScale;
+
+    // True for an IN-PLACE TURN: it runs through the same walk context and state
+    // machine, but it goes nowhere. A chain must never land on one (it could not be
+    // taken), and it is not a move destination either.
+    bool inPlace = false;
   };
 
   // Crossfade length (seconds) used whenever the walk state machine switches
@@ -119,6 +181,16 @@ namespace ToolKit
   // same length, so all units of a turn start and stop together. Tunable at
   // runtime like gWalkBlendDuration.
   float gTurnDuration = 2.5f;
+
+  // See the declaration in Unit.h: how much of the stride a unit keeps while a
+  // chained step turns on the way. 0 = the turn is a clean turn on the spot (what the
+  // turn clips are authored for), 1 = the full stride, which slides the character
+  // through the corner with its feet planted.
+  float gChainTurnAdvance = 0.0f;
+
+  // See the declaration in Unit.h: how much faster a chained step plays the turn it
+  // takes on the way.
+  float gChainTurnSpeedUp = 1.5f;
 
   namespace
   {
@@ -140,7 +212,8 @@ namespace ToolKit
     {
       WalkLoop = 1,     // Start clip finished; stride in the loop clip.
       WalkEnd  = 2,     // Close enough; play the end clip to the stop.
-      WalkToStart = 3   // Turn finished; start the wind-up.
+      WalkToStart = 3,  // Turn finished; start the wind-up.
+      WalkChainTurn = 4 // A chained step points elsewhere; turn WHILE walking.
     };
 
     // Horizontal distance between two world points.
@@ -161,6 +234,23 @@ namespace ToolKit
 
       Vec3 pos = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
       return HorizontalDistance(pos, ctx.targetPos);
+    }
+
+    // Re-measures the leg a running walk is on from where the actor actually is
+    // (the chain and a transit turn both move it), and re-bases the stall
+    // watchdog on that new leg.
+    void RebaseWalkLeg(AnimatedUnit::WalkContext& ctx)
+    {
+      if (ctx.actorNode == nullptr)
+      {
+        return;
+      }
+
+      Vec3 pos      = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+      ctx.totalDist = HorizontalDistance(pos, ctx.targetPos);
+
+      ctx.bestRemaining = ctx.totalDist;
+      ctx.sinceProgress = 0.0f;
     }
 
     // Net horizontal root travel a clip makes when played from its first to its
@@ -300,11 +390,256 @@ namespace ToolKit
 
       anim->SmoothTransition(signal, gWalkBlendDuration);
 
+      // The INCOMING clip needs its root motion back ON. Switching the outgoing
+      // record's flag off (just above) STICKS on that record, so a clip that comes
+      // back later in the SAME action -- the stride loop after the landing phase, or
+      // after a turn taken on the way -- would come back frozen: the clip plays, but
+      // the actor no longer moves and the stall watchdog snaps it onto the tile a
+      // second later (`Move: walk stalled (gap ... not shrinking); snapping to the
+      // tile.`). Only the clips that CARRY the actor get the flag: idle and rest are
+      // poses, they must never drive it.
+      if (AnimRecordPtr next = anim->GetActiveRecord())
+      {
+        if (signal != "idle" && signal != "rest")
+        {
+          next->m_applyRootMotion = true;
+        }
+      }
+
       TK_LOG("WalkBlend: '%s' -> '%s', fade %.2f s (outgoing root motion %s).",
              from.c_str(),
              signal.c_str(),
              gWalkBlendDuration,
              prevRootMotion ? "on, now off" : "off");
+    }
+
+    // FOLDS a finished turn into the persistent facing: the top root takes the exact
+    // target yaw and the actor goes back to its clean local pose -- WHILE KEEPING ITS
+    // WORLD POSITION.
+    //
+    // That last part is not cosmetic. The actor's local translation lives in the ROOT's
+    // frame, so re-aiming the root rotates the offset the walk's root motion has piled
+    // up on the actor: a 180 (a U-turn) mirrors it and the actor is thrown to the far
+    // side of its own root -- the further the leg has already carried it, the further
+    // the jump (a chain turn taken late in a leg moved the actor more than ten units,
+    // and the stall watchdog snapped it onto the tile right after:
+    // `Move: walk stalled (gap ... not shrinking); snapping to the tile.`). The fold is
+    // a no-op for an actor that sits on the root (the in-place turn at the start of a
+    // walk, where this never showed), which is exactly why it went unnoticed.
+    void FoldTurnIntoRoot(const AnimatedUnit::WalkContext& ctx, float targetYaw)
+    {
+      // THE ACTOR'S WORLD POSITION IS READ FIRST, while the root still holds the frame
+      // the offset was built in. Reading it after re-aiming the root returns the
+      // MIRRORED point (the offset is already turned with the new frame), and keeping
+      // that value is what made the actor jump to the far side of its own root.
+      Vec3 worldPos = (ctx.actorNode != nullptr)
+                          ? ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD)
+                          : Vec3(0.0f);
+      Vec3 localBefore = (ctx.actorNode != nullptr)
+                             ? ctx.actorNode->GetTranslation(TransformationSpace::TS_LOCAL)
+                             : Vec3(0.0f);
+
+      if (ctx.rootNode != nullptr)
+      {
+        ctx.rootNode->SetOrientation(YawRotation(targetYaw), TransformationSpace::TS_WORLD);
+      }
+
+      if (ctx.actorNode == nullptr)
+      {
+        return;
+      }
+
+      if (!ctx.turnSignal.empty())
+      {
+        // The clip path: the engine yawed the actor through root motion, so put the
+        // actor back to its pre-turn pose -- its facing comes from the root now.
+        ctx.actorNode->SetOrientation(ctx.actorBaseOrient, TransformationSpace::TS_LOCAL);
+      }
+      ctx.actorNode->SetTranslation(worldPos, TransformationSpace::TS_WORLD);
+
+      // TEMP DIAG (kept while the transit/U-turn work continues): the local offset
+      // before and after the fold, and the world position it is kept at.
+      Vec3 localAfter = ctx.actorNode->GetTranslation(TransformationSpace::TS_LOCAL);
+      Vec3 worldAfter = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+      Vec3 rootW      = (ctx.rootNode != nullptr)
+                            ? ctx.rootNode->GetTranslation(TransformationSpace::TS_WORLD)
+                            : Vec3(0.0f);
+      TK_LOG("Diag fold: local (%.2f, %.2f, %.2f) -> (%.2f, %.2f, %.2f); world kept "
+             "(%.2f, %.2f, %.2f) -> (%.2f, %.2f, %.2f); rootW (%.2f, %.2f, %.2f)",
+             localBefore.x, localBefore.y, localBefore.z,
+             localAfter.x, localAfter.y, localAfter.z,
+             worldPos.x, worldPos.y, worldPos.z,
+             worldAfter.x, worldAfter.y, worldAfter.z,
+             rootW.x, rootW.y, rootW.z);
+    }
+
+    // TAKES a chained step: retargets a running walk onto the tile it was chained
+    // into, so it strides THROUGH the tile it was landing on instead of stopping
+    // there (see AnimatedUnit::ArmWalkChain). Returns false when nothing is
+    // chained, and the caller lands normally.
+    //
+    // The actor is deliberately NOT snapped onto the tile it passes through: the
+    // distance to the new target is measured from wherever the actor actually is,
+    // and the same stride clip keeps playing across the boundary. That continuity
+    // is the whole point -- the two steps read as one walk.
+    //
+    // A chained step into ANOTHER direction turns on the way instead of stopping
+    // first: the turn clip is picked here (by the measured yaw delta, exactly like
+    // the walk's own turn phase) and ChainTurnState plays it WHILE the actor keeps
+    // moving, so "stop -> turn" becomes "walk -> turn".
+    bool TakeChainedStep(AnimatedUnit::WalkContext& ctx)
+    {
+      if (ctx.chainTo == nullptr || ctx.to == ctx.chainTo || ctx.actorNode == nullptr)
+      {
+        return false;
+      }
+
+      GridNode* passed = ctx.to; // The tile being walked through.
+      ctx.to           = ctx.chainTo;
+      ctx.targetPos    = ctx.chainTo->center;
+      ctx.chainTo      = nullptr;
+      ctx.chainTurn    = false;
+
+      Vec3 pos = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+
+      // WHICH WAY THE NEW LEG GOES, and whether that needs a turn. The heading the
+      // walk currently has is the top root's forward (local -Z); the leg's own
+      // direction is the straight line to the new tile.
+      Vec3 toTarget = ctx.targetPos - pos;
+      toTarget.y    = 0.0f;
+      float dist    = glm::length(toTarget);
+      if (dist > 0.0001f && ctx.rootNode != nullptr)
+      {
+        Vec3 dir = toTarget / dist;
+        Vec3 fwd = glm::normalize(glm::vec3(
+            ctx.rootNode->GetOrientation(TransformationSpace::TS_WORLD) *
+            Vec3(0.0f, 0.0f, -1.0f)));
+        fwd.y = 0.0f;
+        if (glm::length(fwd) > 0.0001f)
+        {
+          fwd = glm::normalize(fwd);
+        }
+
+        float dYaw = YawDeltaTo(fwd, dir);
+        if (std::fabs(dYaw) > 0.02f)
+        {
+          // The turn is taken on the way. Its clip (turn_l/r_90/180) rotates the
+          // actor through ROOT MOTION exactly as it does in the in-place phase, so
+          // nothing new is needed here beyond picking it and remembering where the
+          // actor is heading while it plays.
+          ctx.chainTurn       = true;
+          ctx.chainTurnDir    = dir;
+          // The turn clips rotate the actor IN PLACE (their bones step where it
+          // stands), so travel under them is a slide: the body moves while the feet
+          // do not. gChainTurnAdvance decides how much of the stride survives the
+          // turn (default: none -- the character turns on the spot and the stride
+          // takes the whole leg afterwards).
+          ctx.chainTurnSpeed  = ctx.strideSpeed * gChainTurnAdvance;
+          ctx.turnYawFrom     = YawOf(ctx.rootNode->GetOrientation(TransformationSpace::TS_WORLD));
+          ctx.turnYawTo       = ctx.turnYawFrom + dYaw;
+          ctx.turning         = true;
+          ctx.actorBaseOrient = ctx.actorNode->GetOrientation(TransformationSpace::TS_LOCAL);
+
+          AnimRecordPtr turnRec =
+              (ctx.anim != nullptr) ? ctx.anim->GetAnimRecord(TurnClipFor(glm::degrees(dYaw)))
+                                    : nullptr;
+          if (turnRec != nullptr && turnRec->m_animation != nullptr &&
+              turnRec->m_animation->m_duration > 0.0f)
+          {
+            turnRec->m_loop            = false; // One-shot: it holds its last frame.
+            turnRec->m_applyRootMotion = true;  // Its rotation IS root motion.
+            ctx.turnSignal             = TurnClipFor(glm::degrees(dYaw));
+            ctx.turnDur                = turnRec->m_animation->m_duration / gChainTurnSpeedUp;
+          }
+          else
+          {
+            // No usable clip: the actor is yawed directly over the fallback length
+            // while it keeps moving (see ChainTurnState).
+            ctx.turnSignal.clear();
+            ctx.turnDur = kWalkTurnDuration / gChainTurnSpeedUp;
+          }
+        }
+      }
+
+      RebaseWalkLeg(ctx);
+
+      // RE-TIME THE LEG THE CHAIN JUST TOOK. Every action of a turn closes in
+      // gTurnDuration (see AnimatedUnit::StartAction), and a chained step IS a new
+      // action: the units that were re-tasked with it started a fresh window the moment
+      // it was taken, which is exactly what the game gives them (`Game::BeginTransitTurn`
+      // -> StartMove, one gTurnDuration window from that frame). The walk takes one too,
+      // so the whole board finishes together -- an early finisher just waits, but nobody
+      // may overrun the turn. Without this the leg kept the tempo of the PREVIOUS action
+      // and a unit that chained late (a line patrol taking its U-turn at the end of its
+      // line, halfway through a window it had almost used up) came out behind everyone:
+      // it was still walking when the player's next leg was already over, so the turn
+      // could not close until it caught up.
+      {
+        float natural = ctx.chainTurn ? ctx.turnDur : 0.0f;
+        const float loopDist = ctx.totalDist - ctx.endReach;
+        if (loopDist > 0.0f && ctx.strideSpeed > 0.0001f)
+        {
+          natural += loopDist / ctx.strideSpeed; // The stride covers all but the landing.
+        }
+        natural += ctx.endDur; // The landing clip closes the leg.
+
+        if (ctx.targetDur > 0.01f && natural > 0.01f && ctx.applyTimeScale)
+        {
+          float scale = glm::clamp(natural / ctx.targetDur, 0.05f, 20.0f);
+          ctx.applyTimeScale(scale);
+          ctx.timeScale = scale;
+
+          TK_LOG("Move: chained leg retimed: natural %.2f s -> %.2f s (x%.2f) to (%d, %d).",
+                 natural,
+                 ctx.targetDur,
+                 scale,
+                 ctx.to != nullptr ? ctx.to->ix : -1,
+                 ctx.to != nullptr ? ctx.to->iz : -1);
+        }
+      }
+
+      // A turn taken ON THE WAY runs faster than the action's own tempo (the clips are
+      // authored as full in-place turns, a second or more for a 180, and spending that
+      // inside a chained step both delays the stride and eats the window). The clip's
+      // multiplier and the state's turn timer are scaled together -- and the multiplier
+      // is set AFTER the retime above, which rewrites every turn clip's own.
+      if (ctx.chainTurn && !ctx.turnSignal.empty() && ctx.anim != nullptr)
+      {
+        if (AnimRecordPtr turnRec = ctx.anim->GetAnimRecord(ctx.turnSignal))
+        {
+          turnRec->m_timeMultiplier = ctx.timeScale * gChainTurnSpeedUp;
+        }
+      }
+
+      {
+        // TEMP DIAG (remove once the U-turn path is verified): where the actor, its
+        // root and the leg's target actually are, in world AND local terms, when a
+        // chain is taken.
+        Vec3 aw = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+        Vec3 al = ctx.actorNode->GetTranslation(TransformationSpace::TS_LOCAL);
+        Vec3 rw = (ctx.rootNode != nullptr)
+                      ? ctx.rootNode->GetTranslation(TransformationSpace::TS_WORLD)
+                      : Vec3(0.0f);
+        TK_LOG("Diag chain@take: actorW (%.2f, %.2f, %.2f) actorL (%.2f, %.2f, %.2f) "
+               "rootW (%.2f, %.2f, %.2f) targetW (%.2f, %.2f, %.2f) left %.2f turn %s",
+               aw.x, aw.y, aw.z, al.x, al.y, al.z, rw.x, rw.y, rw.z,
+               ctx.targetPos.x, ctx.targetPos.y, ctx.targetPos.z,
+               ctx.totalDist, ctx.chainTurn ? "yes" : "no");
+      }
+
+      TK_LOG("Move: walk chains through (%d, %d) -> (%d, %d), %.2f u to go%s.",
+             passed->ix,
+             passed->iz,
+             ctx.to->ix,
+             ctx.to->iz,
+             ctx.totalDist,
+             ctx.chainTurn ? ", turning on the way" : "");
+
+      if (ctx.onChained)
+      {
+        ctx.onChained(passed);
+      }
+      return true;
     }
 
     // Leading phase: turns the player toward the destination.
@@ -373,15 +708,7 @@ namespace ToolKit
         // top root directly in the fallback); orient the top root at the exact
         // target yaw and put the actor back to its pre-turn local pose so the
         // front-authored walk clips start clean.
-        if (m_ctx->rootNode != nullptr)
-        {
-          m_ctx->rootNode->SetOrientation(YawRotation(m_ctx->turnYawTo),
-                                          TransformationSpace::TS_WORLD);
-        }
-        if (m_ctx->actorNode != nullptr && !m_ctx->turnSignal.empty())
-        {
-          m_ctx->actorNode->SetOrientation(m_ctx->actorBaseOrient, TransformationSpace::TS_LOCAL);
-        }
+        FoldTurnIntoRoot(*m_ctx, m_ctx->turnYawTo);
 
         m_ctx->turning = false;
         TK_LOG("WalkState: turn done (elapsed %.2f/%.2f%s).",
@@ -437,9 +764,17 @@ namespace ToolKit
         float remaining = WalkRemaining(*m_ctx);
 
         // A gap shorter than the wind-up clip: finish the moment the actor
-        // reaches the node (the final snap closes the leftover distance).
+        // reaches the node (the final snap closes the leftover distance). A
+        // chained step turns that landing into a continuation instead.
         if (remaining <= kWalkArriveEps)
         {
+          if (TakeChainedStep(*m_ctx))
+          {
+            // Striding on: the loop phase takes the new leg (turning on the way
+            // when the new leg points elsewhere).
+            return m_ctx->chainTurn ? WalkChainTurn : WalkLoop;
+          }
+
           TK_LOG("WalkState: start -> arrived inside wind-up (elapsed %.2f, remaining %.3f).",
                  m_elapsed,
                  remaining);
@@ -455,6 +790,14 @@ namespace ToolKit
         {
           if (remaining <= m_ctx->endReach)
           {
+            // TRANSIT first: a chained step turns this landing into a
+            // continuation -- the walk strides on into the next tile and the stop
+            // clip never plays (see AnimatedUnit::ArmWalkChain).
+            if (TakeChainedStep(*m_ctx))
+            {
+              return m_ctx->chainTurn ? WalkChainTurn : WalkLoop;
+            }
+
             TK_LOG("WalkState: start -> end (elapsed %.2f/%.2f, remaining %.2f <= end reach %.2f).",
                    m_elapsed,
                    m_ctx->startDur,
@@ -479,6 +822,7 @@ namespace ToolKit
         {
           case WalkLoop: return "WalkLoop";
           case WalkEnd: return "WalkEnd";
+          case WalkChainTurn: return "WalkChainTurn";
           default: return "";
         }
       }
@@ -522,6 +866,14 @@ namespace ToolKit
         float remaining = WalkRemaining(*m_ctx);
         if (remaining <= kWalkArriveEps)
         {
+          // A chain armed while the stride was already closing in on the tile is
+          // taken here too: the walk must not land on a tile it was told to walk
+          // through.
+          if (TakeChainedStep(*m_ctx))
+          {
+            return m_ctx->chainTurn ? WalkChainTurn : State::NullSignal;
+          }
+
           // No end-clip data or a gap closed by a loop boundary: stop here and
           // let the final snap take over.
           TK_LOG("WalkState: loop -> arrived (remaining %.3f).", remaining);
@@ -531,6 +883,16 @@ namespace ToolKit
 
         if (m_ctx->endReach > kWalkArriveEps && remaining <= m_ctx->endReach)
         {
+          // TRANSIT first: a chained step turns this landing into a continuation
+          // -- the walk strides on into the next tile, skipping the stop clip
+          // entirely, so walking ahead reads as one continuous walk instead of a
+          // stop on every tile (see AnimatedUnit::ArmWalkChain). A chain into
+          // another direction turns on the way instead of stopping first.
+          if (TakeChainedStep(*m_ctx))
+          {
+            return m_ctx->chainTurn ? WalkChainTurn : State::NullSignal;
+          }
+
           TK_LOG("WalkState: loop -> end (remaining %.2f <= end reach %.2f).",
                  remaining,
                  m_ctx->endReach);
@@ -545,6 +907,7 @@ namespace ToolKit
         switch (signal)
         {
           case WalkEnd: return "WalkEnd";
+          case WalkChainTurn: return "WalkChainTurn";
           default: return "";
         }
       }
@@ -554,6 +917,138 @@ namespace ToolKit
      private:
       AnimatedUnit::WalkContext* m_ctx;
       float m_elapsed = 0.0f;
+    };
+
+    // TRANSIT TURN: the phase a chained step takes when its new leg points in
+    // another direction. The walk does NOT stop for the turn -- that is the whole
+    // point: the turn clip (its rotation is root motion, exactly as in the in-place
+    // phase) rotates the actor while this state advances its position along the new
+    // leg at the stride's own speed, so the character curves into the new heading
+    // and strides on. "Stop -> turn" has become "walk -> turn".
+    //
+    // Registered under a type name of its own; the walk hands over to it where it
+    // would have kept striding and hands back to the loop when the turn is over.
+    class ChainTurnState : public State
+    {
+     public:
+      explicit ChainTurnState(AnimatedUnit::WalkContext* ctx) : m_ctx(ctx) {}
+
+      void TransitionIn(State* prevState) override
+      {
+        m_elapsed = 0.0f;
+        if (m_ctx != nullptr && m_ctx->anim != nullptr && !m_ctx->turnSignal.empty())
+        {
+          // Straight from the stride into the turn: no stop clip in between.
+          BlendTo(m_ctx->anim, m_ctx->turnSignal);
+        }
+      }
+
+      void TransitionOut(State* nextState) override {}
+
+      SignalId Update(float deltaTime) override
+      {
+        if (m_ctx == nullptr)
+        {
+          return State::NullSignal;
+        }
+
+        m_elapsed += deltaTime;
+
+        // TEMP DIAG (remove once the U-turn path is verified): the actor's world and
+        // local position through the turn, so a displacement can be attributed to the
+        // clip, to the root, or to the advance below.
+        {
+          int quarter = int(m_elapsed / 0.25f);
+          if (quarter != m_lastQuarter)
+          {
+            m_lastQuarter = quarter;
+            Vec3 aw = (m_ctx->actorNode != nullptr)
+                          ? m_ctx->actorNode->GetTranslation(TransformationSpace::TS_WORLD)
+                          : Vec3(0.0f);
+            Vec3 al = (m_ctx->actorNode != nullptr)
+                          ? m_ctx->actorNode->GetTranslation(TransformationSpace::TS_LOCAL)
+                          : Vec3(0.0f);
+            Vec3 rw = (m_ctx->rootNode != nullptr)
+                          ? m_ctx->rootNode->GetTranslation(TransformationSpace::TS_WORLD)
+                          : Vec3(0.0f);
+            TK_LOG("Diag chain turn %.2fs: actorW (%.2f, %.2f, %.2f) actorL (%.2f, %.2f, %.2f) "
+                   "rootW (%.2f, %.2f, %.2f) left %.2f",
+                   m_elapsed, aw.x, aw.y, aw.z, al.x, al.y, al.z, rw.x, rw.y, rw.z,
+                   WalkRemaining(*m_ctx));
+          }
+        }
+
+        // KEEP MOVING while the clip turns the actor. The turn clip only rotates
+        // (its bones step in place), so the travel of the leg is driven here, at
+        // the stride's own rate: the character walks a curved corner instead of
+        // pausing in it.
+        if (m_ctx->actorNode != nullptr && m_ctx->chainTurnSpeed > 0.0f)
+        {
+          Vec3 pos      = m_ctx->actorNode->GetTranslation(TransformationSpace::TS_WORLD);
+          Vec3 toTarget = m_ctx->targetPos - pos;
+          toTarget.y    = 0.0f; // Horizontal: the grid is flat.
+
+          float left = glm::length(toTarget);
+          if (left > 0.0001f)
+          {
+            float step = glm::min(m_ctx->chainTurnSpeed * deltaTime, left);
+            pos += (toTarget / left) * step;
+            m_ctx->actorNode->SetTranslation(pos, TransformationSpace::TS_WORLD);
+          }
+        }
+
+        // Node-only fallback (no usable turn clip): yaw the top root across the
+        // turn duration, exactly like the walk's own turn phase does.
+        if (m_ctx->turnSignal.empty() && m_ctx->rootNode != nullptr)
+        {
+          float t = (m_ctx->turnDur > 0.0f) ? glm::min(m_elapsed / m_ctx->turnDur, 1.0f)
+                                            : 1.0f;
+          float yaw = m_ctx->turnYawFrom + (m_ctx->turnYawTo - m_ctx->turnYawFrom) * t;
+          m_ctx->rootNode->SetOrientation(YawRotation(yaw), TransformationSpace::TS_WORLD);
+        }
+
+        if (m_elapsed < m_ctx->turnDur)
+        {
+          return State::NullSignal;
+        }
+
+        // Turn over: fold it into the persistent facing (the top root takes the
+        // exact target yaw and the actor goes back to its clean local pose, keeping
+        // its world position -- see FoldTurnIntoRoot), then hand back to the stride
+        // loop, which covers whatever is left of the leg from wherever the turn left
+        // the actor.
+        FoldTurnIntoRoot(*m_ctx, m_ctx->turnYawTo);
+
+        m_ctx->turning   = false;
+        m_ctx->chainTurn = false;
+        RebaseWalkLeg(*m_ctx);
+
+        TK_LOG("WalkState: transit turn done (elapsed %.2f/%.2f%s), %.2f u to (%d, %d) left.",
+               m_elapsed,
+               m_ctx->turnDur,
+               m_ctx->turnSignal.empty() ? " node" : " clip",
+               m_ctx->totalDist,
+               m_ctx->to != nullptr ? m_ctx->to->ix : -1,
+               m_ctx->to != nullptr ? m_ctx->to->iz : -1);
+
+        return WalkLoop; // Striding on in the new direction.
+      }
+
+      String Signaled(SignalId signal) override
+      {
+        switch (signal)
+        {
+          case WalkLoop: return "WalkLoop";
+          default: return "";
+        }
+      }
+
+      String GetType() override { return "WalkChainTurn"; }
+
+     private:
+      AnimatedUnit::WalkContext* m_ctx;
+      float m_elapsed = 0.0f;
+      int m_lastQuarter = -1; // TEMP DIAG
     };
 
     // Final phase: plays the landing clip (walk_f_end) with root motion. The
@@ -583,6 +1078,16 @@ namespace ToolKit
           return State::NullSignal;
         }
 
+        // A chain armed while this walk was ALREADY landing -- a turn handed the unit
+        // its next step a moment too late for the stride loop to take it -- is taken
+        // right here: the walk hands back to the loop and strides on instead of
+        // stopping on this tile. Stopping and starting a second action for the new
+        // step is what put a whole turn a beat behind the player's next step.
+        if (m_ctx->chainTo != nullptr && TakeChainedStep(*m_ctx))
+        {
+          return m_ctx->chainTurn ? WalkChainTurn : WalkLoop;
+        }
+
         m_elapsed += deltaTime;
         float remaining = WalkRemaining(*m_ctx);
 
@@ -604,7 +1109,15 @@ namespace ToolKit
         return State::NullSignal;
       }
 
-      String Signaled(SignalId signal) override { return ""; }
+      String Signaled(SignalId signal) override
+      {
+        switch (signal)
+        {
+          case WalkLoop: return "WalkLoop";
+          case WalkChainTurn: return "WalkChainTurn";
+          default: return "";
+        }
+      }
 
       String GetType() override { return "WalkEnd"; }
 
@@ -829,6 +1342,21 @@ namespace ToolKit
     }
 
     return m_root->GetTagVal();
+  }
+
+  String Unit::DescribeState() const
+  {
+    String s = "on " + NodeText(m_node) + ", facing " + GridDirName(GetFacingDir());
+
+    if (m_gliding)
+    {
+      s += ", gliding -> " + NodeText(m_glideNode);
+    }
+    else
+    {
+      s += ", standing";
+    }
+    return s;
   }
 
   Vec3 Unit::GetWorldPosition() const
@@ -1241,10 +1769,230 @@ namespace ToolKit
     }
   }
 
+  GridNode* AnimatedUnit::GetMoveDestination() const
+  {
+    // An in-place turn runs through the same machinery but goes nowhere: it is not
+    // a move destination (and must never be chained onto).
+    if (m_walkCtx != nullptr && !m_walkCtx->inPlace)
+    {
+      return m_walkCtx->to;
+    }
+
+    return Unit::GetMoveDestination(); // The glide fallback.
+  }
+
+  bool AnimatedUnit::ArmWalkChain(GridNode* node)
+  {
+    if (node == nullptr)
+    {
+      return false;
+    }
+
+    if (m_walkCtx == nullptr)
+    {
+      TK_LOG("Move: chain to (%d, %d) refused: no walk in flight. [%s]",
+             node->ix,
+             node->iz,
+             DescribeState().c_str());
+      return false;
+    }
+
+    if (m_walkCtx->inPlace)
+    {
+      TK_LOG("Move: chain to (%d, %d) refused: turning in place. [%s]",
+             node->ix,
+             node->iz,
+             DescribeState().c_str());
+      return false;
+    }
+
+    if (m_walkCtx->to == node)
+    {
+      // Already heading there: not a refusal worth logging (StartMove treats that
+      // as a deliberate no-op).
+      return false;
+    }
+
+    // ONE chain at a time: a step already armed is not re-pointed. The caller sees
+    // this as "refused" and queues its tile for the next turn instead, so a second
+    // click can never make the walk skip the tile the first one chained into.
+    if (m_walkCtx->chainTo != nullptr)
+    {
+      TK_LOG("Move: chain to (%d, %d) refused: (%d, %d) is already armed. [%s]",
+             node->ix,
+             node->iz,
+             m_walkCtx->chainTo->ix,
+             m_walkCtx->chainTo->iz,
+             DescribeState().c_str());
+      return false;
+    }
+
+    // A step straight BACK onto the tile this walk left is a U-TURN, and that one IS
+    // allowed: a line patrol that reaches the end of its line steps back the way it
+    // came and takes the 180 on the way (see LinearPatrol::OnTurn). The player never
+    // triggers this -- a click on the tile it came from is refused by TryTransit --
+    // and for a unit whose action was decided by the game a reversal is a real
+    // decision, not a typo.
+
+    // An EXECUTION's landing phase IS the strike clip: chaining it would walk the
+    // attacker straight past the victim it is killing. Never chain one.
+    if (!m_walkCtx->execSignal.empty())
+    {
+      TK_LOG("Move: chain to (%d, %d) refused: the walk is an execution strike. [%s]",
+             node->ix,
+             node->iz,
+             DescribeState().c_str());
+      return false;
+    }
+
+    // A walk that is already landing CAN still chain: WalkEndState takes an armed
+    // chain itself and hands back to the stride loop (it is the landing phase that
+    // would otherwise stop on this tile and start a second action for the new step --
+    // which is what put a whole turn a beat behind the player's next step).
+
+    m_walkCtx->chainTo = node;
+    return true;
+  }
+
+  GridNode* AnimatedUnit::GetArmedWalkChain() const
+  {
+    return (m_walkCtx != nullptr) ? m_walkCtx->chainTo : nullptr;
+  }
+
+  bool AnimatedUnit::ConsumeWalkChain(GridNode** passed, GridNode** dest)
+  {
+    if (!m_chainEvent)
+    {
+      return false;
+    }
+
+    m_chainEvent = false;
+    if (passed != nullptr)
+    {
+      *passed = m_chainPassed;
+    }
+    if (dest != nullptr)
+    {
+      *dest = m_chainDest;
+    }
+    return true;
+  }
+
+  bool AnimatedUnit::IsLanding() const
+  {
+    if (m_walkSM == nullptr || m_walkSM->m_currentState == nullptr)
+    {
+      return false;
+    }
+
+    // The landing phase registers as "WalkEnd" -- for an execution too, but an
+    // execution never chains (the game refuses a transit for one).
+    return m_walkSM->m_currentState->GetType() == "WalkEnd";
+  }
+
+  bool AnimatedUnit::IsFacingSettling() const
+  {
+    // A stand-alone in-place turn of its own...
+    if (m_turningInPlace)
+    {
+      return true;
+    }
+
+    // ... or the turn phase of the walk in flight (the leading turn before a step,
+    // or a transit turn taken on the way). The walk context holds that in `turning`
+    // -- the same flag the stall watchdog is exempted on.
+    return m_walkCtx != nullptr && m_walkCtx->turning;
+  }
+
+  String AnimatedUnit::DescribeState() const
+  {
+    String s = "on " + NodeText(m_node) + ", facing " + GridDirName(GetFacingDir());
+
+    if (m_walkCtx != nullptr)
+    {
+      if (m_walkCtx->inPlace)
+      {
+        s += ", turning in place";
+      }
+      else
+      {
+        s += ", walk -> " + NodeText(m_walkCtx->to);
+        s += IsLanding() ? " (landing)" : " (striding)";
+        if (m_walkCtx->turning)
+        {
+          s += " turning-on-the-way";
+        }
+        if (m_walkCtx->chainTo != nullptr)
+        {
+          s += ", chain armed -> " + NodeText(m_walkCtx->chainTo);
+        }
+      }
+    }
+    else if (Unit::IsMoving())
+    {
+      s += ", gliding -> " + NodeText(m_glideNode);
+    }
+    else
+    {
+      s += ", standing";
+    }
+
+    if (m_hasDeferredTurn)
+    {
+      s += ", arrival turn queued";
+    }
+    if (m_moveAfterLanding != nullptr)
+    {
+      s += ", step queued -> " + NodeText(m_moveAfterLanding);
+    }
+    if (m_execAction)
+    {
+      s += ", executing";
+    }
+    return s;
+  }
+
   void AnimatedUnit::StartMove(GridNode* node, float targetDuration)
   {
     if (node == nullptr || node == m_node)
     {
+      return;
+    }
+
+    // ALREADY MOVING: the new step CHAINS into the walk in flight instead of
+    // clobbering it (starting a second walk would leak the running state machine
+    // and snap the actor). The stride never breaks: the walk is retargeted onto the
+    // new tile -- turning on the way when the new leg points elsewhere -- which is
+    // what lets a unit that is handed a new step while it is still finishing the
+    // old one keep moving (see Game::BeginTransitTurn).
+    if (m_walkCtx != nullptr)
+    {
+      // Already on its way there: nothing to chain, nothing to queue, nothing to
+      // log. (A transit turn re-asks a unit that is mid-step for its next step;
+      // that step must be the one BEYOND the tile it is walking to, see
+      // SyncTileToMoveDestination.)
+      if (!m_walkCtx->inPlace && m_walkCtx->to == node)
+      {
+        return;
+      }
+
+      if (!m_walkCtx->inPlace && ArmWalkChain(node))
+      {
+        TK_LOG("Move: (%d, %d) chains into the walk in flight instead of stopping. [%s]",
+               node->ix,
+               node->iz,
+               DescribeState().c_str());
+        return;
+      }
+
+      // The walk is already landing (its stop clip is playing), or the unit is
+      // turning in place: the step is taken the moment that action is over, which
+      // is at most one action away.
+      m_moveAfterLanding = node;
+      TK_LOG("Move: (%d, %d) is taken right after the running action. [%s]",
+             node->ix,
+             node->iz,
+             DescribeState().c_str());
       return;
     }
 
@@ -1338,18 +2086,48 @@ namespace ToolKit
       // Animate the turn once the current move lands.
       m_deferredTurn      = worldOrient;
       m_hasDeferredTurn   = true;
+      TK_LOG("Move: about-face queued for the landing. [%s]", DescribeState().c_str());
     }
     else
     {
       // No turn clips: apply the orientation instantly when the move lands.
       SetArrivalOrientation(worldOrient);
+      TK_LOG("Move: arrival orientation set (no turn clips). [%s]", DescribeState().c_str());
     }
   }
 
   void AnimatedUnit::StartInPlaceTurn(float targetYaw, float explicitScale)
   {
-    if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr || m_walkSM != nullptr)
+    if (m_walkAnim == nullptr || m_actor == nullptr || m_root == nullptr)
     {
+      return;
+    }
+
+    // A unit that is MID-STEP cannot turn in place: starting a second machine here
+    // would clobber the running walk (and leak it). The turn is deferred to the
+    // landing instead -- a unit walking its step turns when it arrives, which is
+    // what its own arrival turn does anyway. This keeps a unit that is handed a
+    // turn WHILE it is still finishing a step (a transit turn, see
+    // Game::BeginTransitTurn) from breaking its own walk.
+    //
+    // IMPORTANT: this has to run BEFORE the "a state machine is already running"
+    // guard below. Walking means m_walkSM != nullptr, so checking that first made
+    // the turn silently vanish instead of being queued for the landing -- a line
+    // patrol that reached the end of its line during a transit turn simply stood
+    // there facing the old way and only turned on the following turn.
+    if (m_walkCtx != nullptr)
+    {
+      m_deferredTurn    = YawRotation(targetYaw);
+      m_hasDeferredTurn = true;
+      TK_LOG("Move: in-place turn deferred to the landing (the unit is mid-step). [%s]",
+             DescribeState().c_str());
+      return;
+    }
+
+    if (m_walkSM != nullptr)
+    {
+      // Some other action of its own owns the machine (an in-place turn already
+      // running): leave it alone.
       return;
     }
 
@@ -1369,6 +2147,7 @@ namespace ToolKit
     ctx->sinceProgress = 0.0f;
     ctx->arrived       = false;
     ctx->rootNode      = m_root->m_node;
+    ctx->inPlace       = true;
 
     // Shortest signed yaw from the current facing to the target.
     Vec3 fwd = glm::normalize(glm::vec3(m_root->m_node->GetOrientation(TransformationSpace::TS_WORLD) * Vec3(0.0f, 0.0f, -1.0f)));
@@ -1720,6 +2499,18 @@ namespace ToolKit
     ctx->arrived       = false;
     ctx->rootNode     = m_root->m_node;
 
+    // A chained step moves the unit's own tile along with the walk: the moment the
+    // walk passes THROUGH the tile it was landing on, that tile is where this unit
+    // stands (see TakeChainedStep / Game::TryTransit). The chained step is also
+    // reported to the game, which turns it into a real turn for everyone.
+    ctx->onChained = [this](GridNode* passed)
+    {
+      m_node        = passed;
+      m_chainEvent  = true;
+      m_chainPassed = passed;
+      m_chainDest   = (m_walkCtx != nullptr) ? m_walkCtx->to : nullptr;
+    };
+
     // Execution: the authored strike clip takes the landing phase's place, so
     // its measured reach is the distance the approach stops at and its length
     // is how long the final phase runs. The victim's side of the scene starts
@@ -1852,6 +2643,14 @@ namespace ToolKit
     // the gap exactly the way walk_f_end covers its own reach -- so it is
     // measured in its place. A gap already inside the strike's reach skips the
     // approach entirely: the wind-up plays and the strike follows.
+    //
+    // The stride's own rate (world units per machine second) rides along for the
+    // TRANSIT TURN: a chained step into another direction keeps the actor moving at
+    // exactly this speed while the turn clip rotates it (see ChainTurnState).
+    ctx->strideSpeed = (strideMotion->duration > 0.0001f)
+                           ? (strideMotion->totalTravel / strideMotion->duration)
+                           : 0.0f;
+
     float naturalDur = 0.0f;
     if (exec != nullptr && ctx->totalDist <= exec->StartDistance())
     {
@@ -1877,6 +2676,12 @@ namespace ToolKit
     // countdowns) together, and the queued turn reuses the same value when it
     // plays after the landing, so the whole action closes in `target` seconds.
     ApplyMoveTimeScale(scale);
+
+    // The action's own tempo, so a turn taken on the way can be sped up RELATIVE to it
+    // and still land its fold exactly when the clip finishes (see TakeChainedStep).
+    ctx->timeScale = scale;
+    ctx->targetDur = (target > 0.01f) ? target : gTurnDuration;
+    ctx->applyTimeScale = [this](float s) { ApplyMoveTimeScale(s); };
 
     TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f, T %.2f), turn %s%s%s.",
            actionNatural,
@@ -1904,6 +2709,9 @@ namespace ToolKit
     m_walkSM->PushState(new WalkTurnState(ctx));
     m_walkSM->PushState(new WalkStartState(ctx));
     m_walkSM->PushState(new WalkLoopState(ctx));
+    // A chained step that points elsewhere turns WHILE walking (the loop hands
+    // over to it and it hands back to the loop).
+    m_walkSM->PushState(new ChainTurnState(ctx));
     // The landing phase: the walk's own stop clip, or the authored strike that
     // takes its place in an execution (same state machine type name, so the
     // walk hands over to it exactly where it would have played walk_f_end).
@@ -2043,7 +2851,15 @@ namespace ToolKit
     // the orientation without starting a new action. An execution drops it: the
     // strike ends the action, so the attacker holds its pose instead of turning
     // on the body.
-    if (m_hasDeferredTurn && !execScene)
+    //
+    // This runs even when a step is waiting to be taken (m_moveAfterLanding). That
+    // turn was decided from the tile this walk is heading to, so it belongs to the
+    // landing of THAT step -- the block is skipped for now instead of consuming it,
+    // and the turn is played when the walk taking the step lands. Clearing the flag
+    // here is what left a line patrol standing at the end of its line facing the old
+    // way until the next turn; playing it here instead would put the about-face on
+    // the wrong tile and then walk the unit back the way it had just turned.
+    if (m_hasDeferredTurn && !execScene && m_moveAfterLanding == nullptr)
     {
       Quaternion target = m_deferredTurn;
       m_hasDeferredTurn = false;
@@ -2051,17 +2867,62 @@ namespace ToolKit
       {
         // Reuse the finished walk's scale: this turn was budgeted inside the
         // same action, so it must keep the same tempo and close the action.
+        TK_LOG("Move: arrival turn PLAYED here. [%s]", DescribeState().c_str());
         StartInPlaceTurn(YawOf(target), actionScale);
       }
       else if (m_root != nullptr)
       {
+        TK_LOG("Move: arrival turn APPLIED instantly (%s). [%s]",
+               forceSnap ? "forced landing" : "no turn clips on this unit",
+               DescribeState().c_str());
         m_root->m_node->SetOrientation(target, TransformationSpace::TS_WORLD);
       }
+    }
+    else if (m_hasDeferredTurn)
+    {
+      TK_LOG("Move: arrival turn KEPT for a later landing (%s). [%s]",
+             execScene ? "execution scene running" : "a step is waiting",
+             DescribeState().c_str());
     }
 
     if (dest != nullptr)
     {
-      TK_LOG("Move: walk finished on (%d, %d).", dest->ix, dest->iz);
+      TK_LOG("Move: walk finished on (%d, %d). [%s]", dest->ix, dest->iz, DescribeState().c_str());
+    }
+
+    // A step that arrived while this walk was LANDING (see StartMove) is taken the
+    // moment it lands, so a unit that is handed one step after another never stands
+    // still between them. A queued arrival turn is KEPT: it was decided from the
+    // tile this walk is heading to (see Unit::SyncTileToMoveDestination), so it
+    // belongs to the landing of the step being taken now -- dropping it is what
+    // left a line patrol standing at the end of its line facing the old way.
+    if (m_moveAfterLanding != nullptr)
+    {
+      GridNode* next     = m_moveAfterLanding;
+      m_moveAfterLanding = nullptr;
+
+      if (execScene)
+      {
+        // The attacker is still holding the strike pose over the body it killed,
+        // and the scene clock settles this unit into idle when it is over. A step
+        // queued during that kind of walk would be clobbered by that settle, so it
+        // is dropped instead of half played -- and so is the turn that went with it.
+        m_hasDeferredTurn = false;
+        TK_LOG("Move: dropping the step queued during an execution -> (%d, %d). [%s]",
+               next->ix,
+               next->iz,
+               DescribeState().c_str());
+      }
+      else
+      {
+        TK_LOG("Move: taking the step that waited for the landing -> (%d, %d) "
+               "(arrival turn %s). [%s]",
+               next->ix,
+               next->iz,
+               m_hasDeferredTurn ? "comes with it" : "none queued",
+               DescribeState().c_str());
+        StartMove(next, gTurnDuration);
+      }
     }
   }
 
@@ -2132,6 +2993,13 @@ namespace ToolKit
     m_timedFightLoopRec = nullptr;
     m_hasDeferredTurn = false;
     m_turningInPlace  = false;
+
+    // A step waiting for a landing walk dies with the walk, and so does any chain
+    // the game has not consumed yet.
+    m_moveAfterLanding = nullptr;
+    m_chainEvent       = false;
+    m_chainPassed      = nullptr;
+    m_chainDest        = nullptr;
 
     // A running execution scene never outlives the session either.
     m_execAction = false;
@@ -2224,21 +3092,44 @@ namespace ToolKit
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
       m_intendedMove = next;
-      TK_LOG("Linear: line step to (%d, %d).", next->ix, next->iz);
+      TK_LOG("Linear: line step to (%d, %d). [%s]", next->ix, next->iz, DescribeState().c_str());
 
       GridNode* beyond = m_grid->Neighbor(*next, facing);
       if (beyond == nullptr || !m_grid->Connected(*next, *beyond))
       {
         // This step lands on the last tile of the line: about-face on arrival.
         TurnOnArrival(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(OppositeDir(facing))));
-        TK_LOG("Linear: step reaches the line end; turning around on arrival.");
+        TK_LOG("Linear: step reaches the line end; about-face queued for the arrival. [%s]",
+               DescribeState().c_str());
       }
     }
     else
     {
-      // Already at the line end (blocked straight away): turn in place now.
-      StartTurn(OppositeDir(facing));
-      TK_LOG("Linear: line ended; turning around in place.");
+      // The way on is the way BACK, and the about-face does not need a turn of its
+      // own: deciding the step back lets the walk take the 180 WITH it -- a turn on
+      // the way when the patrol is still walking into the end of its line, a turn in
+      // place before the step when it is already standing there. Standing at the line
+      // end for a whole turn with nothing to do (which is what a bare about-face
+      // costs) is exactly the turn the patrol should not lose.
+      GridDir back        = OppositeDir(facing);
+      GridNode* backNode  = m_grid->Neighbor(*m_node, back);
+      if (backNode != nullptr && m_grid->Connected(*m_node, *backNode))
+      {
+        m_intendedMove = backNode;
+        TK_LOG("Linear: line end at %s; U-turn step back to (%d, %d). [%s]",
+               GridDirName(facing),
+               backNode->ix,
+               backNode->iz,
+               DescribeState().c_str());
+      }
+      else
+      {
+        // Nowhere to step back onto either: nothing to do but turn around.
+        StartTurn(back);
+        TK_LOG("Linear: line ended (nothing at %s either); turning around in place. [%s]",
+               GridDirName(back),
+               DescribeState().c_str());
+      }
     }
   }
 
