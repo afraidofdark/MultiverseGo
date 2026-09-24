@@ -52,6 +52,11 @@ namespace ToolKit
       }
       return "(" + std::to_string(n->ix) + ", " + std::to_string(n->iz) + ")";
     }
+
+    // Two clicks inside this many seconds are a DOUBLE CLICK: the player asked for the
+    // turn to play at double speed (see Game::NoteClickSpeed). Measured in real seconds,
+    // so it does not change with the machine tempo.
+    constexpr float kFastClickSeconds = 0.45f;
   } // namespace
 
   void Game::Init(Main* master) { Main::SetProxy(master); }
@@ -60,11 +65,16 @@ namespace ToolKit
 
   void Game::Frame(float deltaTime)
   {
+    // The clock the double-click window is measured with (real seconds, whatever the
+    // machine tempo is at the moment).
+    m_clickClock += deltaTime * 0.001f;
+
     // Bodies of actors the game took out of play keep leaving it on their own:
     // they sink into the ground and are removed from the scene. This runs before
     // everything else -- and whatever the phase -- so a run that just ended (a
-    // win or a loss) can never freeze a body half way under the floor.
-    AdvanceCorpses(deltaTime);
+    // win or a loss) can never freeze a body half way under the floor. They sink at
+    // the game's current speed like everything else.
+    AdvanceCorpses(deltaTime * gTurnSpeed);
 
     if (m_won || m_lost)
     {
@@ -73,8 +83,9 @@ namespace ToolKit
 
     // A camera tagged "master" (see SetupMasterCamera) rides the player while the
     // run is live. It is deliberately NOT updated once the run ended: a body
-    // sinking into the ground must not drag the view down with it.
-    m_followCamera.Update(deltaTime);
+    // sinking into the ground must not drag the view down with it. A hurried turn
+    // speeds the follow up as well, so the framing keeps up with the character.
+    m_followCamera.Update(deltaTime * gTurnSpeed);
 
     // A committed turn plays out over the coming frames: the player's walk and
     // every enemy glide advance together, and the turn settles (or resolves a
@@ -85,6 +96,8 @@ namespace ToolKit
     {
       if (HasLeftClick())
       {
+        NoteClickSpeed();
+
         if (GridNode* node = ClickedTile())
         {
           if (!TryTransit(node))
@@ -109,8 +122,45 @@ namespace ToolKit
     // A left click on a connected neighbour tile moves the player one tile.
     if (HasLeftClick())
     {
+      NoteClickSpeed();
       HandlePlayerClick();
     }
+  }
+
+  void Game::NoteClickSpeed()
+  {
+    // Two clicks inside kFastClickSeconds of each other are a DOUBLE CLICK: the player
+    // asked for this turn to play at double speed. The tile does not matter -- the second
+    // click of a double click is usually the next step (which makes it a transit) or the
+    // very tile the walk is already heading to (which arms nothing) -- and the speed is
+    // set for the TURN, not for one move, so a chain taken during it runs fast too.
+    const bool fast = (m_clickClock - m_lastClickTime) <= kFastClickSeconds;
+    m_lastClickTime = m_clickClock;
+
+    if (fast)
+    {
+      SetTurnSpeed(2.0f);
+    }
+  }
+
+  void Game::SetTurnSpeed(float speed)
+  {
+    if (glm::abs(gTurnSpeed - speed) < 0.001f)
+    {
+      return;
+    }
+
+    gTurnSpeed = speed;
+
+    // Everything already in flight picks the new tempo up: the clips carry their own
+    // multipliers (the engine drives them), and the machines read the global every frame.
+    m_player.ReapplyTimeScale();
+    for (auto& enemy : m_enemies)
+    {
+      enemy->ReapplyTimeScale();
+    }
+
+    TK_LOG("Game: turn speed x%.1f.", gTurnSpeed);
   }
 
   void Game::OnLoad(XmlDocumentPtr state) {}
@@ -128,6 +178,12 @@ namespace ToolKit
     m_target = nullptr;
     m_player.Reset();
     m_pendingMove = nullptr;
+
+    // A fresh run starts at normal speed and with no click history: a double click from
+    // a previous session must not hurry its first turn.
+    gTurnSpeed      = 1.0f;
+    m_clickClock    = 0.0f;
+    m_lastClickTime = -100.0f;
 
     // Execution clips are measured per loaded resource, so a fresh session
     // measures them again and the variant cycle starts over.
@@ -343,6 +399,10 @@ namespace ToolKit
 
   void Game::StartPlayerTurn()
   {
+    // A new turn starts at NORMAL speed: the hurry a double click asked for belongs to
+    // the turn it was clicked in, and a click that starts this one may raise it again.
+    SetTurnSpeed(1.0f);
+
     m_phase = TurnPhase::Player;
     m_player.SetActive(true);
     m_player.OnTurn(nullptr, GridDir::Zm); // Clears the move flag.

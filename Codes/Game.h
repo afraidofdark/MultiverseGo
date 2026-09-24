@@ -221,6 +221,17 @@ namespace ToolKit
     // normal stop sequence it was refused a transit for.
     GridNode* m_pendingMove = nullptr;
 
+    // HURRY SPEED. A quick follow-up click (a double click) means "play this turn at
+    // double speed": everything -- the walk machines, every clip, the scene clocks, the
+    // corpse sink and the camera -- runs at gTurnSpeed, which NoteClickSpeed raises to 2
+    // for the turn in flight and StartPlayerTurn puts back to 1 for the next one. The
+    // click clock is fed by Game::Frame, so the window is measured in real seconds
+    // whatever the machine's tempo is.
+    void NoteClickSpeed();
+    void SetTurnSpeed(float speed);
+    float m_clickClock    = 0.0f;
+    float m_lastClickTime = -100.0f;
+
     // Bodies on their way under the ground: actors the game removed from play
     // whose root entity is still in the scene, sinking (see LayCorpse).
     std::vector<Corpse> m_corpses;

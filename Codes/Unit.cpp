@@ -192,6 +192,10 @@ namespace ToolKit
   // takes on the way.
   float gChainTurnSpeedUp = 1.5f;
 
+  // See the declaration in Unit.h: the global time scale of the whole game (1 = normal,
+  // 2 = the "hurry" speed the game sets for a turn a double click asked for).
+  float gTurnSpeed = 1.0f;
+
   namespace
   {
     // Tolerance (engine units) for "reached the node". Below this the actor is
@@ -1722,7 +1726,7 @@ namespace ToolKit
     // over. The scene clock runs at the action's tempo, like the clips.
     if (m_execActive)
     {
-      m_execT += deltaTime * 0.001f * m_timeScale;
+      m_execT += deltaTime * 0.001f * m_timeScale * gTurnSpeed;
       if (m_execT >= m_execDur)
       {
         m_execActive = false;
@@ -1755,7 +1759,7 @@ namespace ToolKit
     // with the same millisecond-to-second conversion. The whole walk (machine
     // timers AND clip playback) runs at m_timeScale so it finishes in exactly
     // the requested target length.
-    float dt = deltaTime * 0.001f * m_timeScale;
+    float dt = deltaTime * 0.001f * m_timeScale * gTurnSpeed;
 
     WalkContext* ctx = m_walkCtx;
     if (ctx->actorNode == nullptr)
@@ -2261,6 +2265,12 @@ namespace ToolKit
   {
     m_timeScale = scale;
 
+    // The clips run at the action's tempo TIMES the global time scale: the FSM timers
+    // are scaled by gTurnSpeed in Frame, and the engine drives the clips from their own
+    // multipliers, so both have to carry it or the animation would lag half a phase
+    // behind the machine gates that end it.
+    const float clipScale = scale * gTurnSpeed;
+
     // Every clip that can play during a move: idle may still be fading out when
     // the move starts, the walk clips follow, the stride an execution closes in
     // with (fight_walk_f) is the same loop phase under another clip, the turn
@@ -2282,7 +2292,7 @@ namespace ToolKit
       {
         if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(name))
         {
-          rec->m_timeMultiplier = scale;
+          rec->m_timeMultiplier = clipScale;
         }
       }
 
@@ -2290,10 +2300,20 @@ namespace ToolKit
       {
         if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(strike))
         {
-          rec->m_timeMultiplier = scale;
+          rec->m_timeMultiplier = clipScale;
         }
       }
     }
+  }
+
+  void AnimatedUnit::ReapplyTimeScale()
+  {
+    if (m_walkSM == nullptr && m_walkCtx == nullptr && !m_execActive)
+    {
+      return; // Nothing running: the next action sets its own multipliers.
+    }
+
+    ApplyMoveTimeScale(m_timeScale);
   }
 
   bool Player::TryMove(GridNode* node,
@@ -2444,7 +2464,7 @@ namespace ToolKit
     // the victim's tile: the reaction is the last thing this unit does.
     rec->m_loop            = false;
     rec->m_applyRootMotion = true;
-    rec->m_timeMultiplier  = scale;
+    rec->m_timeMultiplier  = scale * gTurnSpeed;
     BlendTo(m_walkAnim, signal);
 
     TK_LOG("Exec: victim reaction '%s' playing (%.2f s at x%.2f).",

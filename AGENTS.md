@@ -775,6 +775,19 @@ apply to all code in both repositories.
   seeker idle stare) fills the window on its own:
   `StartInPlaceTurn(yaw)` scales its clip to `gTurnDuration` through the same
   `ApplyMoveTimeScale`.
+- HURRY SPEED: `gTurnSpeed` (1 = normal, 2 = hurried) is the GLOBAL time scale of the
+  whole game, and it is set PER TURN. A double click -- two clicks inside
+  `kFastClickSeconds` (0.45 s) of each other, whatever tile they hit, so the second
+  click of a double click can be a transit and the same rule covers both -- raises it to
+  2 in `Game::NoteClickSpeed`; `Game::StartPlayerTurn` puts it back to 1 for the next
+  turn (a chain keeps the hurry, since a transit turn does not reset it). EVERYTHING is
+  scaled together, which is the point: the machines read it in `AnimatedUnit::Frame`
+  (`dt = deltaTime * m_timeScale * gTurnSpeed`) and the CLIPS carry it in their
+  `m_timeMultiplier` (`ApplyMoveTimeScale` and `PlayExecutionReaction` fold it in; a
+  speed change mid-action goes through `ReapplyTimeScale`), so an action that targets
+  `gTurnDuration` simply closes in half the real time with its animation in step. The
+  game also scales what IT advances -- the corpse sink and the master camera follow --
+  with the same factor (`Game::Frame`).
 
 ## Master camera (Codes/FollowUpCameraController.h/cpp)
 

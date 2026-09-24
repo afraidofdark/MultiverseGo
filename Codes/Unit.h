@@ -59,6 +59,16 @@ namespace ToolKit
   // like gWalkBlendDuration; defined in Unit.cpp, defaults to 1.5.
   extern float gChainTurnSpeedUp;
 
+  // GLOBAL time scale for the whole game: 1 is normal play, 2 plays EVERYTHING at
+  // double speed -- the walk machines and their scene clocks (AnimatedUnit::Frame),
+  // every clip's playback (folded into the multipliers ApplyMoveTimeScale writes) and
+  // whatever the game itself advances with the frame delta (the corpse sink, the camera
+  // follow). ANIMATIONS AND TURN FLOW STAY IN STEP because both sides are scaled: a move
+  // that targets gTurnDuration simply closes in half the real time. The game sets it per
+  // TURN (a quick follow-up click means "hurry": see Game::NoteClickSpeed) and puts it
+  // back to 1 when the turn ends.
+  extern float gTurnSpeed;
+
   // Base class for every actor placed on the grid (player, enemies).
   //
   // Wraps the root entity of a placed prefab instance. The root node sits at
@@ -154,6 +164,10 @@ namespace ToolKit
     // lays the victim down first, and a body that started sinking while it was
     // still falling would slide through the floor mid-airs.
     virtual float ActiveAnimRemaining() const { return 0.0f; }
+
+    // Picks up a change of the global time scale (gTurnSpeed) in the middle of an
+    // action. A unit with nothing running does not care.
+    virtual void ReapplyTimeScale() {}
 
     // Turns in place to face a grid direction. The base implementation snaps
     // instantly (RotationTo on the top root); AnimatedUnit overrides it with
@@ -359,6 +373,11 @@ namespace ToolKit
     // opposed to a glide.
     bool IsWalking() const { return m_walkSM != nullptr; }
 
+    // Re-writes the current action's clip multipliers from the scale it was started
+    // with, picking up a change of gTurnSpeed in the middle of a move (the game asks
+    // for that when a double click hurries the turn).
+    void ReapplyTimeScale() override;
+
     // The ACTOR entity when this unit has one, so a follow camera rides the
     // character root motion moves instead of the tile the top root stands on
     // (see Unit::GetFollowTarget).
@@ -525,7 +544,8 @@ namespace ToolKit
     // Applies a move time scale: stores it for the FSM timers and writes it into
     // the m_timeMultiplier of every clip that can play during a move (idle +
     // the three walk clips + the stride an execution closes in with + the four
-    // turn clips + the strike). 1.0 restores normal speed.
+    // turn clips + the strike). 1.0 restores normal speed. gTurnSpeed is folded in
+    // here, so the clips always run at the tempo the machine does.
     void ApplyMoveTimeScale(float scale);
 
     StateMachine* m_walkSM = nullptr;        // Walk FSM while a move animates.
