@@ -413,6 +413,31 @@ namespace ToolKit
              prevRootMotion ? "on, now off" : "off");
     }
 
+    // Re-aims the root at a yaw WITHOUT moving the actor. The actor's local translation
+    // lives in the ROOT's frame, so turning the root swings whatever offset the walk has
+    // piled up on the actor: the further the walk has carried it, the further the swing
+    // (a node-only turn taken mid-leg threw the actor ~0.9 u sideways on a ~5 degree
+    // heading correction). Every turn path that has no clip to rotate through root motion
+    // goes through here.
+    void SetRootYawKeepActor(AnimatedUnit::WalkContext& ctx, float yaw)
+    {
+      if (ctx.rootNode == nullptr)
+      {
+        return;
+      }
+
+      Vec3 keep = (ctx.actorNode != nullptr)
+                      ? ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD)
+                      : Vec3(0.0f);
+
+      ctx.rootNode->SetOrientation(YawRotation(yaw), TransformationSpace::TS_WORLD);
+
+      if (ctx.actorNode != nullptr)
+      {
+        ctx.actorNode->SetTranslation(keep, TransformationSpace::TS_WORLD);
+      }
+    }
+
     // FOLDS a finished turn into the persistent facing: the top root takes the exact
     // target yaw and the actor goes back to its clean local pose -- WHILE KEEPING ITS
     // WORLD POSITION.
@@ -499,6 +524,7 @@ namespace ToolKit
       ctx.targetPos    = ctx.chainTo->center;
       ctx.chainTo      = nullptr;
       ctx.chainTurn    = false;
+      ctx.turnSignal.clear(); // A fresh leg: the previous leg's turn is over.
 
       Vec3 pos = ctx.actorNode->GetTranslation(TransformationSpace::TS_WORLD);
 
@@ -521,7 +547,8 @@ namespace ToolKit
         }
 
         float dYaw = YawDeltaTo(fwd, dir);
-        if (std::fabs(dYaw) > 0.02f)
+        const String turnClip = TurnClipFor(glm::degrees(dYaw));
+        if (std::fabs(dYaw) > 0.02f && !turnClip.empty())
         {
           // The turn is taken on the way. Its clip (turn_l/r_90/180) rotates the
           // actor through ROOT MOTION exactly as it does in the in-place phase, so
@@ -541,14 +568,13 @@ namespace ToolKit
           ctx.actorBaseOrient = ctx.actorNode->GetOrientation(TransformationSpace::TS_LOCAL);
 
           AnimRecordPtr turnRec =
-              (ctx.anim != nullptr) ? ctx.anim->GetAnimRecord(TurnClipFor(glm::degrees(dYaw)))
-                                    : nullptr;
+              (ctx.anim != nullptr) ? ctx.anim->GetAnimRecord(turnClip) : nullptr;
           if (turnRec != nullptr && turnRec->m_animation != nullptr &&
               turnRec->m_animation->m_duration > 0.0f)
           {
             turnRec->m_loop            = false; // One-shot: it holds its last frame.
             turnRec->m_applyRootMotion = true;  // Its rotation IS root motion.
-            ctx.turnSignal             = TurnClipFor(glm::degrees(dYaw));
+            ctx.turnSignal             = turnClip;
             ctx.turnDur                = turnRec->m_animation->m_duration / gChainTurnSpeedUp;
           }
           else
@@ -558,6 +584,18 @@ namespace ToolKit
             ctx.turnSignal.clear();
             ctx.turnDur = kWalkTurnDuration / gChainTurnSpeedUp;
           }
+        }
+        else if (std::fabs(dYaw) > 0.02f)
+        {
+          // A heading correction the turn clips cannot express: `TurnClipFor` rounds the
+          // delta to the 90/180 steps it has, so anything under 45 degrees (in practice
+          // the small residual the walk's own fold leaves behind) comes back empty. That
+          // is a SNAP, not a turn -- and it has to keep the actor where it is, or the root
+          // would swing the offset the walk piled up on it (see SetRootYawKeepActor).
+          SetRootYawKeepActor(ctx,
+                              YawOf(ctx.rootNode->GetOrientation(TransformationSpace::TS_WORLD)) + dYaw);
+          TK_LOG("Move: heading corrected by %.1f deg on the chained leg (no turn clip).",
+                 glm::degrees(dYaw));
         }
       }
 
@@ -689,7 +727,7 @@ namespace ToolKit
 
           float t = (m_ctx->turnDur > 0.0f) ? glm::min(m_elapsed / m_ctx->turnDur, 1.0f) : 1.0f;
           float yaw = m_ctx->turnYawFrom + (m_ctx->turnYawTo - m_ctx->turnYawFrom) * t;
-          m_ctx->rootNode->SetOrientation(YawRotation(yaw), TransformationSpace::TS_WORLD);
+          SetRootYawKeepActor(*m_ctx, yaw);
 
           if (m_elapsed < m_ctx->turnDur)
           {
@@ -998,13 +1036,14 @@ namespace ToolKit
         }
 
         // Node-only fallback (no usable turn clip): yaw the top root across the
-        // turn duration, exactly like the walk's own turn phase does.
+        // turn duration, exactly like the walk's own turn phase does -- without
+        // letting the actor swing around that root (see SetRootYawKeepActor).
         if (m_ctx->turnSignal.empty() && m_ctx->rootNode != nullptr)
         {
           float t = (m_ctx->turnDur > 0.0f) ? glm::min(m_elapsed / m_ctx->turnDur, 1.0f)
                                             : 1.0f;
           float yaw = m_ctx->turnYawFrom + (m_ctx->turnYawTo - m_ctx->turnYawFrom) * t;
-          m_ctx->rootNode->SetOrientation(YawRotation(yaw), TransformationSpace::TS_WORLD);
+          SetRootYawKeepActor(*m_ctx, yaw);
         }
 
         if (m_elapsed < m_ctx->turnDur)

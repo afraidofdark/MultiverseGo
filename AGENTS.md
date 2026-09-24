@@ -649,6 +649,15 @@ apply to all code in both repositories.
   "keeping" it teleports the actor. The fold is a no-op for an actor sitting on the root
   (the leading turn of a walk, an in-place turn), which is why the problem only showed up
   once a turn was taken MID-walk, with the offset the root motion had piled up.
+- RE-AIMING THE ROOT NEVER MOVES THE ACTOR (`SetRootYawKeepActor`). Every turn path
+  that has no clip to rotate through root motion goes through it: the node-only
+  fallback of `ChainTurnState`/`WalkTurnState`, and the small heading residual the
+  turn clips cannot express (`TurnClipFor` rounds the delta to its 90/180 steps, so
+  anything under 45 degrees comes back empty and is SNAPPED instead of turned). Both
+  yaw the root while keeping the actor's world position, read BEFORE the re-aim -- the
+  actor's local translation lives in the root's frame, so turning the root swings the
+  offset the walk piled up on it (a ~5 degree correction mid-leg threw the character
+  0.9 u sideways in 0.27 s, which reads as a jump).
 - IN-PLACE TURNS ARE GUARDED: an in-place turn runs through the same walk context
   and state machine but goes nowhere (`WalkContext::inPlace`), so it is never a
   chain target and never a move destination. `AnimatedUnit::StartInPlaceTurn` on a
