@@ -832,12 +832,21 @@ namespace ToolKit
       return true;
     }
 
-    // Clicking the tile the walk is already heading for, or the one it is leaving,
-    // is not a request for another step: nothing to chain and nothing to queue.
-    if (node == through || node == from)
+    // Clicking the tile the walk is already heading for is not a request for another
+    // step: nothing to chain and nothing to queue.
+    if (node == through)
     {
       return true;
     }
+
+    // Clicking the tile the walk LEFT is a U-TURN, and it chains exactly like any other
+    // step: at the landing threshold the walk turns on the spot (the turn clips are
+    // played with no travel under them, see gChainTurnAdvance) and strides back the way
+    // it came. The player therefore does not have to finish the step it is on before it
+    // can go back -- turning around IS a move it can chain, the same machinery a line
+    // patrol uses at the end of its line. The checks below still apply to both tiles: a
+    // patrol standing on (or heading to) the tile behind, a tooth waiting there or the
+    // goal itself all keep the normal turn.
 
     // Nothing may be at stake on the tile the player is walking THROUGH: no
     // patrol being captured there, no tooth waiting on it (a guard's threat tile

@@ -691,9 +691,11 @@ apply to all code in both repositories.
   next step a moment too late used to leave the walk stopping there and running a
   second action for the step, which put the whole turn a beat behind) -- and it does
   not refuse a U-turn HOME either: a line patrol at the end of its line steps back
-  the way it came, and the 180 rides along with that step. The player can never ask
-  for a reversal (its own click path refuses the tile it came from) and for a unit
-  whose action the game decides a reversal is a real decision, not a typo.
+  the way it came, and the 180 rides along with that step -- and neither does the
+  PLAYER's own click path: clicking the tile the walk LEFT is a U-turn that chains
+  like any other step (`TryTransit`), so the player does not have to finish the step
+  it is on before it can go back. Putting a chain on the tile the walk is already
+  heading for stays a no-op.
 - A REFUSED CLICK IS NEVER DROPPED: it is kept in `Game::m_pendingMove` and made as
   the very first move of the next turn (`StartPlayerTurn` -> `CommitPlayerMove`),
   so a click that cannot transit simply costs the normal stop it was refused a
