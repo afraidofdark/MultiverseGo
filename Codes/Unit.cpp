@@ -159,6 +159,13 @@ namespace ToolKit
     // walking when everybody else had finished the turn.
     float targetDur = 0.0f;
 
+    // Length (clip-level machine seconds, speed-up already divided out) of the arrival
+    // turn QUEUED for the end of this walk, when the unit has one (a line patrol's
+    // about-face). StartAction counts it into the action's budget; a CHAIN re-times the
+    // leg and has to count it too (see TakeChainedStep), or the walk takes the whole
+    // window and the turn runs past the end of the turn.
+    float pendingArrivalTurnDur = 0.0f;
+
     // Applies a new action tempo to the unit playing this walk (see
     // AnimatedUnit::ApplyMoveTimeScale). The FSM states only have the context, and
     // re-timing a chained leg has to reach the clips as well as the machine.
@@ -618,6 +625,11 @@ namespace ToolKit
       // could not close until it caught up.
       {
         float natural = ctx.chainTurn ? ctx.turnDur : 0.0f;
+        // A turn QUEUED for the end of this leg (a line patrol's about-face) rides the
+        // same window: leaving it out made the walk take the whole gTurnDuration and the
+        // about-face then ran on top of it, so the patrol finished after everybody else
+        // (and after the turn should have closed).
+        natural += ctx.pendingArrivalTurnDur;
         const float loopDist = ctx.totalDist - ctx.endReach;
         if (loopDist > 0.0f && ctx.strideSpeed > 0.0001f)
         {
@@ -1933,18 +1945,19 @@ namespace ToolKit
     return m_walkSM->m_currentState->GetType() == "WalkEnd";
   }
 
-  bool AnimatedUnit::IsFacingSettling() const
+  GridDir AnimatedUnit::GetFacingDir() const
   {
-    // A stand-alone in-place turn of its own...
-    if (m_turningInPlace)
+    // A TURN IN FLIGHT has the root somewhere between two grid axes, and snapping that
+    // half turned root to whichever axis it is nearer is what once made a line patrol
+    // decide ACROSS its own line. Report where the turn is TAKING the unit instead, so
+    // a decision taken mid-rotation is the one the finished turn would have produced.
+    if (m_walkCtx != nullptr && m_walkCtx->turning)
     {
-      return true;
+      Vec3 forward = glm::vec3(YawRotation(m_walkCtx->turnYawTo) * Vec3(0.0f, 0.0f, -1.0f));
+      return DirectionOf(forward);
     }
 
-    // ... or the turn phase of the walk in flight (the leading turn before a step,
-    // or a transit turn taken on the way). The walk context holds that in `turning`
-    // -- the same flag the stall watchdog is exempted on.
-    return m_walkCtx != nullptr && m_walkCtx->turning;
+    return Unit::GetFacingDir();
   }
 
   String AnimatedUnit::DescribeState() const
@@ -2059,7 +2072,15 @@ namespace ToolKit
     Unit::LandMove();
   }
 
-  void AnimatedUnit::CancelArrivalTurn() { m_hasDeferredTurn = false; }
+  void AnimatedUnit::CancelArrivalTurn()
+  {
+    m_hasDeferredTurn   = false;
+    m_deferredTurnDur   = 0.0f;
+    if (m_walkCtx != nullptr)
+    {
+      m_walkCtx->pendingArrivalTurnDur = 0.0f;
+    }
+  }
 
   void AnimatedUnit::StartTurn(GridDir dir)
   {
@@ -2122,14 +2143,50 @@ namespace ToolKit
     return false;
   }
 
-  void AnimatedUnit::TurnOnArrival(const Quaternion& worldOrient)
+  void AnimatedUnit::TurnOnArrival(const Quaternion& worldOrient, float speedUp)
   {
     if (HasAnimatedTurn())
     {
-      // Animate the turn once the current move lands.
-      m_deferredTurn      = worldOrient;
-      m_hasDeferredTurn   = true;
-      TK_LOG("Move: about-face queued for the landing. [%s]", DescribeState().c_str());
+      // Animate the turn once the current move lands. The speed-up rides along: it is
+      // applied when FinishWalk actually starts that turn (see StartInPlaceTurn), so a
+      // tour that has to share the arrival's window (the line patrol's about-face) can
+      // play faster than the action's own tempo.
+      m_deferredTurn          = worldOrient;
+      m_hasDeferredTurn       = true;
+      m_deferredTurnSpeedUp   = glm::clamp(speedUp, 0.05f, 20.0f);
+
+      // HOW LONG IT WILL TAKE, measured the way the walk measures its own phases: the
+      // clip the yaw delta picks (or the node-only fallback length) divided by the
+      // speed-up it plays at. Whoever re-times this leg then has to keep room for it
+      // (see WalkContext::pendingArrivalTurnDur and TakeChainedStep).
+      const Vec3 endFwd = glm::normalize(FacingVector(GetFacingDir()));
+      const Vec3 turnTo = glm::normalize(glm::vec3(worldOrient * Vec3(0.0f, 0.0f, -1.0f)));
+      const float dTurn = std::fabs(YawDeltaTo(endFwd, turnTo));
+
+      m_deferredTurnDur = kWalkTurnDuration;
+      if (m_walkAnim != nullptr && dTurn > 0.02f)
+      {
+        if (AnimRecordPtr rec = m_walkAnim->GetAnimRecord(TurnClipFor(glm::degrees(dTurn))))
+        {
+          if (rec->m_animation != nullptr && rec->m_animation->m_duration > 0.0f)
+          {
+            m_deferredTurnDur = rec->m_animation->m_duration;
+          }
+        }
+      }
+      m_deferredTurnDur /= m_deferredTurnSpeedUp;
+
+      // A walk already in flight (the unit decided mid-step) has to know about it NOW:
+      // the chain that takes this step re-times that very walk.
+      if (m_walkCtx != nullptr)
+      {
+        m_walkCtx->pendingArrivalTurnDur = m_deferredTurnDur;
+      }
+
+      TK_LOG("Move: about-face queued for the landing %.2fx (%.2f s of the window). [%s]",
+             m_deferredTurnSpeedUp,
+             m_deferredTurnDur,
+             DescribeState().c_str());
     }
     else
     {
@@ -2659,6 +2716,12 @@ namespace ToolKit
             arrivalTurnDur = turnRec->m_animation->m_duration;
           }
         }
+
+        // A turn that asked to be played FASTER than the action's tempo (the line
+        // patrol's about-face, see TurnOnArrival) takes that much less of the window,
+        // so the budget has to follow it -- otherwise the walk would be stretched to
+        // fill seconds the turn is never going to use.
+        arrivalTurnDur /= glm::clamp(m_deferredTurnSpeedUp, 0.05f, 20.0f);
       }
     }
 
@@ -2741,6 +2804,10 @@ namespace ToolKit
     ctx->timeScale = scale;
     ctx->targetDur = (target > 0.01f) ? target : gTurnDuration;
     ctx->applyTimeScale = [this](float s) { ApplyMoveTimeScale(s); };
+    // A turn queued BEFORE this walk started (a patrol that decided while standing)
+    // rides the end of this leg too: StartAction counts it in the budget above, and the
+    // context carries it so a later chain re-times the leg with room for it.
+    ctx->pendingArrivalTurnDur = m_deferredTurnDur;
 
     TK_LOG("Move: natural %.2f s -> %.2f s (x%.2f, T %.2f), turn %s%s%s.",
            actionNatural,
@@ -2926,8 +2993,11 @@ namespace ToolKit
       {
         // Reuse the finished walk's scale: this turn was budgeted inside the
         // same action, so it must keep the same tempo and close the action.
+        // A turn that asked to be played faster (the line patrol's about-face)
+        // multiplies that scale: the clip and the state's timer both follow it,
+        // so the turn still lands exactly when it finishes.
         TK_LOG("Move: arrival turn PLAYED here. [%s]", DescribeState().c_str());
-        StartInPlaceTurn(YawOf(target), actionScale);
+        StartInPlaceTurn(YawOf(target), actionScale * m_deferredTurnSpeedUp);
       }
       else if (m_root != nullptr)
       {
@@ -2936,6 +3006,8 @@ namespace ToolKit
                DescribeState().c_str());
         m_root->m_node->SetOrientation(target, TransformationSpace::TS_WORLD);
       }
+      m_deferredTurnSpeedUp = 1.0f;
+      m_deferredTurnDur     = 0.0f;
     }
     else if (m_hasDeferredTurn)
     {
@@ -3142,21 +3214,36 @@ namespace ToolKit
     // The step itself is recorded (m_intendedMove) and started by the game, so
     // this patrol moves at the same time as everyone else this turn.
     //
-    // A STEP ALONG THE LINE. Reaching the end of it is NOT special here any more: the
-    // about-face this used to queue for that arrival cost the patrol the tail of the
-    // turn -- it turned on the spot, the transit turn that arrived meanwhile found it
-    // mid-turn and skipped it ("its decision waits"), and it only walked back the turn
-    // after that. The U-turn below covers the same case better and in ONE turn whichever
-    // way it comes: while the patrol is still walking into the end, a transit turn syncs
-    // it onto that tile and the else branch chains the 180 into the walk it is already
-    // doing; once it has landed there, the else branch turns it with the step's own
-    // leading turn. Either way it turns AND walks inside one turn.
+    // A STEP ALONG THE LINE, and the last tile of it is special again: when the step
+    // lands there, the about-face is QUEUED for that arrival, so the patrol reaches the
+    // end of its line and turns around INSIDE the same turn (the turn's natural length
+    // is budgeted into the arrival's window, see StartAction). That is what makes the
+    // patrol's LOOK legible: standing at the line end it faces back down the line, which
+    // is the tile it threatens -- the rule "step where I am looking and I eat you" only
+    // reads if the turn has happened when the player plans their next move. It plays
+    // faster than the action's own tempo (gChainTurnSpeedUp) so it stays small next to
+    // the walk it rides.
+    //
+    // A transit turn that arrives while the patrol is still walking into the end does
+    // NOT use this: it syncs the patrol onto that tile and the else branch below chains
+    // the 180 into the walk in flight, so a player who keeps moving never makes the
+    // patrol spend a turn on the spot.
     GridDir facing = GetFacingDir();
     GridNode* next  = m_grid->Neighbor(*m_node, facing);
     if (next != nullptr && m_grid->Connected(*m_node, *next))
     {
       m_intendedMove = next;
       TK_LOG("Linear: line step to (%d, %d). [%s]", next->ix, next->iz, DescribeState().c_str());
+
+      GridNode* beyond = m_grid->Neighbor(*next, facing);
+      if (beyond == nullptr || !m_grid->Connected(*next, *beyond))
+      {
+        // This step lands on the last tile of the line: about-face on arrival.
+        TurnOnArrival(RotationTo(Vec3(0.0f, 0.0f, -1.0f), FacingVector(OppositeDir(facing))),
+                      gChainTurnSpeedUp);
+        TK_LOG("Linear: step reaches the line end; about-face queued for the arrival. [%s]",
+               DescribeState().c_str());
+      }
     }
     else
     {

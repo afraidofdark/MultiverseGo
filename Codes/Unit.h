@@ -192,14 +192,6 @@ namespace ToolKit
     // clip never cuts a half finished turn.
     virtual bool IsTurning() const { return false; }
 
-    // True while the unit's FACING is still moving -- an in-place turn, or the turn
-    // phase of a walk. Between two grid axes there is no heading to decide from:
-    // `GetFacingDir` would snap a half turned root to whichever axis it happens to
-    // be closer to, which is how a line patrol asked for its turn mid-rotation
-    // ended up facing across its own line. The game asks this before it lets a unit
-    // decide a turn (see Game::BeginTransitTurn).
-    virtual bool IsFacingSettling() const { return false; }
-
     // Lands a running move immediately (snaps the unit onto its destination
     // tile). Used when the run ends mid-move so no unit stays frozen between
     // two tiles. No-op when the unit is not moving.
@@ -311,8 +303,10 @@ namespace ToolKit
 
     // The grid-axis direction the unit faces: its world forward (local -Z)
     // snapped to the nearest axis. Grid movement is axis-aligned, so a unit
-    // faces either straight along X or straight along Z.
-    GridDir GetFacingDir() const;
+    // faces either straight along X or straight along Z. AnimatedUnit overrides
+    // it to report the direction a turn IN FLIGHT is taking the unit TO, so a
+    // decision made in the middle of a turn is not read off a half rotated root.
+    virtual GridDir GetFacingDir() const;
 
     // Clears the unit (used when a play session ends).
     virtual void Reset();
@@ -456,9 +450,11 @@ namespace ToolKit
     // Unit::IsTurning): the strike that waits for this unit's front gates on it.
     bool IsTurning() const override { return m_turningInPlace; }
 
-    // True while this unit's facing is still moving: an in-place turn of its own, or
-    // the turn phase of the walk it is playing (see Unit::IsFacingSettling).
-    bool IsFacingSettling() const override;
+    // While a turn is IN FLIGHT the root sits between two grid axes, so this reports
+    // the direction the turn is taking the unit TO (see Unit::GetFacingDir): a
+    // decision taken in the middle of a turn is then the one the finished turn
+    // produces, instead of a heading read off a half rotated root.
+    GridDir GetFacingDir() const override;
 
     // State line for the logs (see Unit::DescribeState): adds the walk in flight and
     // its phase, the armed chain, the queued arrival turn and the queued step.
@@ -472,7 +468,10 @@ namespace ToolKit
     // current move lands (used by patrols that must arrive and turn to their
     // held heading in one go). Falls back to the instant arrival orientation
     // (Unit::SetArrivalOrientation) when the unit cannot animate a turn.
-    void TurnOnArrival(const Quaternion& worldOrient);
+    // `speedUp` plays that turn faster than the action's own tempo (the line
+    // patrol's about-face uses it: it rides the arrival turn, so it has to be
+    // quick to stay inside the same window).
+    void TurnOnArrival(const Quaternion& worldOrient, float speedUp = 1.0f);
 
     // Lands whatever move is running (walk or glide) onto its destination tile.
     void LandMove() override;
@@ -586,6 +585,14 @@ namespace ToolKit
     // lands (see TurnOnArrival). Consumed by FinishWalk.
     Quaternion m_deferredTurn;
     bool m_hasDeferredTurn = false;
+    // How much faster than the action's own tempo that turn plays (1 = same tempo).
+    float m_deferredTurnSpeedUp = 1.0f;
+    // How long that turn takes at the clip level (the clip the yaw picks for the turn,
+    // or the node-only fallback length, divided by the speed-up). A CHAINED leg needs it
+    // to keep room for the queued turn inside its own window (see TakeChainedStep):
+    // without it the walk filled the whole window and the about-face ran on past the end
+    // of the turn, which is what made a line patrol finish after everybody else.
+    float m_deferredTurnDur = 0.0f;
 
     // A step handed to this unit while its walk was LANDING (so it was too late to
     // chain, see StartMove): taken by FinishWalk the moment the walk is over, so a

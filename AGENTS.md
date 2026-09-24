@@ -327,23 +327,26 @@ apply to all code in both repositories.
   instantly (Unit::StartTurn fallback). Any in-place turn also raises
   `IsTurning()` until its action ends, which is what the side strike's hold
   gates on.
-  Reaching the END of its line is NOT special while stepping any more: the about-face
-  that used to be queued for that arrival cost the patrol the tail of the turn (it
-  turned on the spot, the transit turn that arrived meanwhile found it mid-turn and
-  skipped it -- `Game: transit turn -- (A) is mid-turn; its decision waits.` -- and it
-  only walked back the turn after that). The U-turn below covers the same case BETTER
-  and in ONE turn whichever way it comes: while the patrol is still walking into the
-  end, a transit turn syncs it onto that tile and the else branch CHAINS the 180 into
-  the walk it is already doing (`turning on the way`), and once it has landed there the
-  else branch turns it with the step's own leading turn. Either way it turns AND walks
-  inside one turn. AND ONCE IT IS AT THE LINE END IT DOES NOT STAND
+  Reaching the END of its line IS special while stepping: when the step lands there, the
+  about-face is QUEUED for that arrival (`Linear: step reaches the line end; about-face
+  queued for the arrival.`), so the patrol reaches the end of its line and turns around
+  INSIDE the same turn -- the turn's natural length is budgeted into the arrival's window
+  (`, arrival turn included`) and it plays faster than the action's tempo
+  (`TurnOnArrival(orient, gChainTurnSpeedUp)`, log: `Move: about-face queued for the
+  landing 1.50x (0.71 s of the window).`). THAT IS WHAT MAKES THE PATROL'S LOOK LEGIBLE:
+  standing at the line end it faces back down the line -- the tile it threatens -- and the
+  rule "step where I am looking and I eat you" only reads if the turn has happened when
+  the player plans their next move. A TRANSIT turn that arrives while the patrol is still
+  walking into the end does not use it: it syncs the patrol onto that tile and the else
+  branch below CHAINS the 180 into the walk in flight (`turning on the way`), so a player
+  who keeps moving never makes the patrol spend a turn turning on the spot. AND ONCE IT IS
+  AT THE LINE END IT DOES NOT STAND
   THERE: its `OnTurn` else branch decides the step BACK (`Linear: line end at +X;
   U-turn step back to (x, z).`) and lets the walk take the 180 WITH it -- a turn on
   the way when the patrol is still walking into the end (the chain turn curves it
   around just before the last tile), a turn in place before the step when it is
   already standing there. Only a true dead end (nothing behind it either) falls back
-  to a bare `StartTurn`. An about-face-only decision cost a whole turn of standing at
-  the line end with nothing to do, and that read as "it turns one turn late".
+  to a bare `StartTurn`.
 - `SeekerPatrol` decides at click time against the destination. Its arrival
   look is taken from the tile it WILL land on along the held heading
   (`SeesAlong(origin, dir, player)`); the actual turn to that heading runs
@@ -586,19 +589,18 @@ apply to all code in both repositories.
   once it arrived -- the log symptom was a redundant
   `Move: (A) is taken right after the running action.` for the tile it was already
   heading to, followed by a `StartMove` to the tile it had just landed on).
-- A UNIT WHOSE FACING IS STILL MOVING IS NOT ASKED AT ALL: a chained step happens at
-  the same moment the other units reach their own landing phase, so a line patrol
-  that hits the end of its line is usually MID ABOUT-FACE when the transit turn
-  arrives. `GetFacingDir` snaps a half turned root to whichever axis it is nearer,
-  so asking it then made the patrol answer with a step or a turn ACROSS its own line
-  -- and it re-pointed the very arrival turn that was already playing, leaving the
-  patrol facing the wrong way until the next turn. `Unit::IsFacingSettling`
-  (`AnimatedUnit`: `m_turningInPlace`, or the walk context's `turning`) reports an
-  in-place turn or the turn phase of a walk, and `BeginTransitTurn` skips those units
-  -- their action is in flight and they decide again next turn (logged:
-  `Game: transit turn -- (A) is mid-turn; its decision waits.`). Together with the
-  deferral in `StartInPlaceTurn` this is what makes a line patrol arrive, turn around
-  and be DONE inside the turn it reaches its last tile.
+- A UNIT MID-TURN DECIDES FROM THE DIRECTION ITS TURN IS TAKING IT TO: a chained step
+  happens at the same moment the other units reach their own landing phase, so a line
+  patrol that hits the end of its line is usually MID ABOUT-FACE when the transit turn
+  arrives. `AnimatedUnit::GetFacingDir` therefore reports the turn's TARGET yaw while a
+  turn is in flight (the walk context's `turnYawTo`), instead of snapping a half turned
+  root to whichever axis it is nearer -- that snap is what once made the patrol answer
+  with a step ACROSS its own line and re-point the very turn that was already playing.
+  With the target heading the answer is the one the finished turn produces ("step back
+  down the line"), and when the unit cannot chain onto it (its context is an in-place
+  turn) the step waits for the landing and is taken then, so the patrol neither faces the
+  wrong way nor loses the whole turn to it. There is no "mid-turn, do not ask" rule any
+  more.
 - EVERY UNIT CHAINS, NOT JUST THE PLAYER: `AnimatedUnit::StartMove` on a unit that
   is already walking no longer starts a second walk (that used to leak the running
   state machine and snap the actor) -- it arms a chain on the walk in flight, so
@@ -623,7 +625,12 @@ apply to all code in both repositories.
   (`Move: chained leg retimed: natural X.XX s -> Y.YY s (xS.SS) to (A).`). The natural
   length of the new leg is measured from what the context already knows -- the turn it
   starts with, the stride's own rate over the distance the landing clip will not cover,
-  and the landing clip -- and the unit is re-scaled to it (`WalkContext::targetDur` /
+  the landing clip, AND the arrival turn queued for the end of that very leg
+  (`WalkContext::pendingArrivalTurnDur`, published by TurnOnArrival, unit member
+  `m_deferredTurnDur`): leaving that one out is how a line patrol's about-face came to run
+  on PAST the end of the turn -- the walk took the whole window first and the turn then
+  played on top of it, so the patrol finished after everybody else and the input came back
+  late. The unit is re-scaled to the sum (`WalkContext::targetDur` /
   `applyTimeScale`, set by StartAction). Without the re-timing the leg ran on the tempo
   of the PREVIOUS action and whoever chained late came out behind everybody else: a
   line patrol taking its U-turn at the end of its line, halfway through a window it had

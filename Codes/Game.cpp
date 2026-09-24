@@ -1019,21 +1019,13 @@ namespace ToolKit
         continue;
       }
 
-      // A unit whose FACING is still settling -- an in-place turn of its own, or the
-      // turn phase of the walk it is playing -- has no heading to decide from: its
-      // root sits between two grid axes, so GetFacingDir would snap it to whichever
-      // axis it happens to be nearer and the unit would answer with a turn across its
-      // own path. A line patrol that reaches the end of its line right here is
-      // already turning: asking it again re-pointed that very turn and it ended up
-      // facing the wrong way until the next turn. Its action is in flight and it
-      // decides again next turn.
-      if (u->IsFacingSettling())
-      {
-        TK_LOG("Game: transit turn -- %s is mid-turn; its decision waits. [%s]",
-               u->GetTypeTag().c_str(),
-               u->DescribeState().c_str());
-        continue;
-      }
+      // A unit in the middle of a TURN decides from the direction that turn is taking it
+      // TO (`Unit::GetFacingDir` reads the turn's target while one is in flight), so it
+      // is asked like any other here: a line patrol mid about-face at the end of its line
+      // answers "step back down the line" -- the step is then taken when the turn is over
+      // (see AnimatedUnit::StartMove) instead of the patrol losing the whole turn to it.
+      // The decision log below carries the unit's state, so a mid-turn answer is visible
+      // in it ("turning in place" / "turning-on-the-way").
 
       // A unit that is still finishing its own step decides from the tile that
       // step lands on, so its answer is the NEXT tile -- and that step chains into
