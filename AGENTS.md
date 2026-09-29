@@ -810,17 +810,26 @@ apply to all code in both repositories.
   so a mark hung from the root stands still while its unit walks away from it. The pop is a
   NODE animation -- its track names the entity and the engine applies it by that name, no
   skeleton involved -- and the clip lifts the mark ~1.9 u above the base itself.
-- `Unit::UpdateNotice()` ends the state, called by `Game::UpdateNotices` in EVERY phase (a
-  standing patrol's mark has to pop while the player is still thinking) and keeping the
-  pop at the game's speed (`gTurnSpeed`) like every other animation. The pop is a one-shot
-  that holds its last frame, so the state ends the frame its record reaches the clip
-  length: the mark leaves the scene (`Scene::RemoveEntity`, which also detaches its node
-  from the unit root) and the prefab instance with it. `Reset()` and the destructor do the
-  same, so no exclamation can survive into the next play session.
-- `Notify()` while a mark is already up does nothing: one pop per notice, so a patrol that
-  keeps seeing the player does not flicker. After the pop the next call pops a fresh mark.
-  The state is a pure SIGNAL -- it changes nothing about how the unit moves or decides.
-- Raised today by `SeekerPatrol::OnTurn` on its FIRST sighting of the player.
+- `Unit::UpdateNotice(float deltaTime)` runs the state, called by `Game::UpdateNotices` in
+  EVERY phase with the frame delta in MILLISECONDS. A notice can be ARMED WITH A DELAY
+  (`Notify(delaySeconds)`, counted in the same action seconds as `gTurnDuration`, so
+  `gTurnSpeed` carries it with the move): the mark then spawns when the delay is out, which
+  is how a reaction decided at the start of the player's turn avoids shouting before the
+  player has taken a step. It also keeps the pop at the game's current speed (`gTurnSpeed`)
+  like every other animation. The pop is a one-shot that holds its last frame, so the state
+  ends the frame its record reaches the clip length: the mark leaves the scene
+  (`Scene::RemoveEntity`, which also detaches its node from the anchor) and the prefab
+  instance with it. `Reset()` and the destructor do the same, so no exclamation can survive
+  into the next play session.
+- `Notify()` while a mark is already up (or still on its way) does nothing: one pop per
+  notice, so a patrol that keeps seeing the player does not flicker. After the pop the next
+  call pops a fresh mark. The state is a pure SIGNAL -- it changes nothing about how the
+  unit moves or decides.
+- Raised today by `SeekerPatrol::OnTurn`: the first sighting puts it in its own
+  `State::Noticed`, which is the NOTICE BEAT -- it is notified NOW and spends that whole
+  turn on it (no step), the chase starts next turn, and the mark is asked for with
+  `gTurnDuration * 0.5f` so the "!" lands half way through the player's move. The turn it
+  costs is the point: the player gets to see that it was seen before the pursuit moves.
   `IsNotified()` reads the state; `Notify()` is the hook for anywhere else.
 
 ## Master camera (Codes/FollowUpCameraController.h/cpp)

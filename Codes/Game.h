@@ -163,10 +163,10 @@ namespace ToolKit
     void AdvanceCorpses(float deltaTime);
 
     // Advances the NOTIFIED state of every unit (see Unit::Notify / UpdateNotice):
-    // the exclamation mark a unit spawns when it notices something pops and takes
-    // itself out again. Like the corpses this runs in EVERY phase, because a mark
-    // belongs to the unit that raised it, not to the turn that is being played out.
-    void UpdateNotices();
+    // a delayed notice counts its delay down and spawns its mark, and a mark that is up
+    // pops and takes itself out again. Like the corpses this runs in EVERY phase, because
+    // a mark belongs to the unit that raised it, not to the turn that is being played out.
+    void UpdateNotices(float deltaTime);
 
     // Declares the win when the player stands on the target tile. Returns true
     // when the run was won; the caller returns immediately, because nothing

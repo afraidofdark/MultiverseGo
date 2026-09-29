@@ -81,7 +81,7 @@ namespace ToolKit
     // phases, because a mark belongs to its unit and not to the turn being played out --
     // a patrol that noticed the player while it was standing still pops even though
     // nothing is acting.
-    UpdateNotices();
+    UpdateNotices(deltaTime);
 
     if (m_won || m_lost)
     {
@@ -1174,19 +1174,20 @@ namespace ToolKit
            body.waitLeft);
   }
 
-  void Game::UpdateNotices()
+  void Game::UpdateNotices(float deltaTime)
   {
-    // The NOTIFIED state (see Unit::Notify): an exclamation pops at the unit's base and
-    // the unit takes it out again when the pop is over. One tick per unit per frame, in
-    // every phase -- a mark raised by a standing patrol has to pop while the player is
-    // still planning their move.
-    m_player.UpdateNotice();
+    // The NOTIFIED state (see Unit::Notify): an exclamation pops at the unit's base -- not
+    // necessarily at once: a notice may be ARMED with a delay (the seeker pops half way
+    // through the player's turn) -- and the unit takes the mark out again when the pop is
+    // over. One tick per unit per frame, in every phase, because a mark raised by a
+    // standing patrol has to pop while the player is still planning their move.
+    m_player.UpdateNotice(deltaTime);
 
     for (auto& enemy : m_enemies)
     {
       if (enemy != nullptr)
       {
-        enemy->UpdateNotice();
+        enemy->UpdateNotice(deltaTime);
       }
     }
   }

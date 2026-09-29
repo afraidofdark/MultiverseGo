@@ -328,25 +328,35 @@ namespace ToolKit
     // once; when that clip has played the mark is removed and the state ends with it.
     // The state is a pure SIGNAL: it says something out loud instead of leaving it in
     // the unit's head, and it changes nothing about how the unit moves or decides.
-    // Calling it while the mark is already up does nothing (the unit is already
-    // notified); once the pop is over, the next call pops a fresh mark.
-    void Notify();
+    //
+    // `delaySeconds` postpones the mark: the unit is notified NOW (it has seen what it
+    // saw and acts on it), but the exclamation only pops that much ACTION time later --
+    // the same seconds gTurnDuration is counted in, so with gTurnSpeed it lands where it
+    // was aimed. A reaction decided at the start of the player's turn should not shout
+    // before the player has even taken a step, so the caller passes the part of the turn
+    // it wants the mark to land on (see SeekerPatrol: half of the turn).
+    //
+    // Calling it while a mark is already up (or still on its way) does nothing (the unit
+    // is already notified); once the pop is over, the next call pops a fresh mark.
+    void Notify(float delaySeconds = 0.0f);
 
-    // True while the unit is in the NOTIFIED state, i.e. its mark is popping.
-    bool IsNotified() const { return m_noticeMark != nullptr; }
+    // True while the unit is in the NOTIFIED state: a mark is popping, or one is on its
+    // way (Notify was called with a delay and it has not elapsed yet).
+    bool IsNotified() const { return m_noticeMark != nullptr || m_noticeArmed; }
 
-    // The spawned exclamation entity (null when not notified). Exposed so the game can
-    // log or hand it around; it is owned by the unit and removed by UpdateNotice.
+    // The spawned exclamation entity (null while the notice is still on its way or after
+    // it is over). Exposed so the game can log or hand it around; it is owned by the unit
+    // and removed by UpdateNotice.
     EntityPtr GetNoticeMark() const { return m_noticeMark; }
 
-    // Advances the NOTIFIED state: keeps the mark's clip at the game's current speed
-    // (gTurnSpeed, so a hurried turn hurries the pop too) and removes it once the pop
-    // has played. The game calls this EVERY frame -- whatever the turn phase -- so the
-    // mark of a patrol that is standing still pops and disappears while the player is
-    // still thinking about their move. It needs no frame delta of its own: the pop is an
-    // engine animation record, which the global AnimationPlayer advances (and the editor
-    // holds when the simulation is paused).
-    void UpdateNotice();
+    // Advances the NOTIFIED state: counts a delayed notice down and spawns the mark when
+    // its delay has elapsed, then keeps the pop at the game's current speed (gTurnSpeed,
+    // so a hurried turn hurries the pop too) and removes it once the pop has played. The
+    // game calls this EVERY frame -- whatever the turn phase -- with the frame delta in
+    // MILLISECONDS, like every other per frame call, so the mark of a patrol that is
+    // standing still pops and disappears while the player is still thinking about their
+    // move.
+    void UpdateNotice(float deltaTime);
 
     // The grid-axis direction the unit faces: its world forward (local -Z)
     // snapped to the nearest axis. Grid movement is axis-aligned, so a unit
@@ -408,6 +418,12 @@ namespace ToolKit
     // both have to leave the scene together when the pop is over.
     EntityPtr m_noticeMark;
     PrefabPtr m_noticeSpawn;
+
+    // A notice that was asked for with a delay (Notify): it is armed now and its mark
+    // spawns when m_noticeDelayLeft runs out. Counted in ACTION seconds, the same unit
+    // gTurnDuration is in, so gTurnSpeed carries it with the move it belongs to.
+    bool m_noticeArmed       = false;
+    float m_noticeDelayLeft  = 0.0f;
   };
 
   // A unit that moves its tile steps with the SHARED root-motion animation
@@ -796,6 +812,7 @@ namespace ToolKit
     enum class State
     {
       Idle,          // Staring at its fixed point.
+      Noticed,       // Spotted the player: spends THIS turn on the notice, then chases.
       Chasing,       // Walking to the freshest tile where it sees the player.
       Watching,      // Standing on the arrival tile, staring down its held heading. Still watching.
       Returning      // One homeward step per turn; each step arrives facing the next step. Still watching.

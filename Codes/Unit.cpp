@@ -33,6 +33,11 @@ namespace ToolKit
     constexpr const char* kNoticeNode   = "ExclamationNode";
     constexpr const char* kNoticeClip   = "ExclamationPop";
 
+    // Where the mark sits relative to its anchor before the pop clip takes over: the clip's
+    // own first key, i.e. just over the character's head. Only used to place the mark when
+    // the clip cannot play, so a broken record still shows something.
+    constexpr float kNoticeHeight = 1.94f;
+
     // Debug helper: readable name for a grid direction.
     const char* GridDirName(GridDir d)
     {
@@ -1441,17 +1446,32 @@ namespace ToolKit
     RemoveNotice();
   }
 
-  void Unit::Notify()
+  void Unit::Notify(float delaySeconds)
   {
     if (m_root == nullptr)
     {
       return;
     }
 
-    if (m_noticeMark != nullptr)
+    if (m_noticeMark != nullptr || m_noticeArmed)
     {
-      // Already in the NOTIFIED state: the pop that is playing IS the notice. Restarting
-      // it here would make a patrol that keeps seeing the player flicker every turn.
+      // Already in the NOTIFIED state: the pop that is playing (or on its way) IS the
+      // notice. Restarting it here would make a patrol that keeps seeing the player
+      // flicker every turn.
+      return;
+    }
+
+    if (delaySeconds > 0.0f)
+    {
+      // Notified NOW, shouting LATER: the unit acts on what it saw from this turn on, the
+      // mark waits out the delay. A reaction that is decided the moment the player commits
+      // to a move would otherwise pop while the player is still standing on the tile it is
+      // about to leave.
+      m_noticeArmed      = true;
+      m_noticeDelayLeft  = delaySeconds;
+      TK_LOG("Notice: (%s) is notified; the mark waits %.2f s of action time.",
+             NodeText(m_node).c_str(),
+             delaySeconds);
       return;
     }
 
@@ -1511,40 +1531,73 @@ namespace ToolKit
 
     mark->m_node->OrphanSelf();
     anchor->m_node->AddChild(mark->m_node);
-    mark->m_node->SetTranslation(Vec3(0.0f), TransformationSpace::TS_LOCAL);
     mark->m_node->SetOrientation(Quaternion(1.0f, 0.0f, 0.0f, 0.0f),
                                  TransformationSpace::TS_LOCAL);
     mark->m_node->SetScale(Vec3(1.0f));
 
+    // ABOVE THE BASE, not IN it: the pop clip's first key is what lifts the mark over the
+    // character's head, so this is the authored height it starts from. Setting it here as
+    // well means the mark is visible where it belongs even if the clip cannot be played at
+    // all -- a mark left at the anchor's origin would sit inside the body and read as
+    // "nothing happened".
+    mark->m_node->SetTranslation(Vec3(0.0f, kNoticeHeight, 0.0f),
+                                 TransformationSpace::TS_LOCAL);
+
     // The pop: a one-shot node animation (it holds its last frame, and UpdateNotice
-    // removes the mark when it gets there). No root motion -- the clip moves the mark's
-    // own node, there is no skeleton under it.
-    if (AnimControllerComponentPtr anim = mark->GetComponent<AnimControllerComponent>())
+    // removes the mark when it gets there). No root motion -- the clip poses the mark's own
+    // node, and the engine's node-animation path is exactly for a clip whose track is named
+    // after the entity (no skeleton anywhere under it).
+    const AnimControllerComponentPtr anim =
+        mark->GetComponent<AnimControllerComponent>();
+
+    AnimRecordPtr record = (anim != nullptr) ? anim->GetAnimRecord(kNoticeClip) : nullptr;
+    if (record != nullptr)
     {
-      if (AnimRecordPtr record = anim->GetAnimRecord(kNoticeClip))
-      {
-        record->m_loop            = false;
-        record->m_applyRootMotion = false;
-        record->m_timeMultiplier  = gTurnSpeed;
-        anim->Play(kNoticeClip);
-      }
-      else
-      {
-        TK_WRN("Notice: the '%s' prefab carries no '%s' clip.", kNoticePrefab, kNoticeClip);
-      }
+      record->m_loop            = false;
+      record->m_applyRootMotion = false;
+      record->m_timeMultiplier  = gTurnSpeed;
+      anim->Play(kNoticeClip);
+    }
+    else
+    {
+      TK_WRN("Notice: '%s' has no playable '%s' (component %s, record %s); the mark stays "
+             "put instead of popping.",
+             kNoticePrefab,
+             kNoticeClip,
+             anim != nullptr ? "found" : "MISSING",
+             "MISSING");
     }
 
     m_noticeMark  = mark;
     m_noticeSpawn = prefab;
 
-    TK_LOG("Notice: (%s) is notified%s -- '%s' pops at its base.",
+    TK_LOG("Notice: (%s) is notified%s -- '%s' %s at its base.",
            NodeText(m_node).c_str(),
            GetTypeTag().empty() ? "" : (" as " + GetTypeTag()).c_str(),
-           kNoticeClip);
+           kNoticeClip,
+           record != nullptr ? "pops" : "cannot play");
   }
 
-  void Unit::UpdateNotice()
+  void Unit::UpdateNotice(float deltaTime)
   {
+    // Engine frame deltas arrive in milliseconds; the notice clock runs in seconds.
+    const float dt = deltaTime * 0.001f;
+
+    // A notice that was asked for with a delay is not a mark yet: count it down and spawn
+    // when it lands. It runs at the game's speed like everything else, so "half of the
+    // player's turn" stays half of the player's turn when a double click hurries it.
+    if (m_noticeArmed)
+    {
+      m_noticeDelayLeft -= dt * gTurnSpeed;
+      if (m_noticeDelayLeft <= 0.0f)
+      {
+        m_noticeArmed     = false;
+        m_noticeDelayLeft = 0.0f;
+        SpawnNotice();
+      }
+      return;
+    }
+
     if (m_noticeMark == nullptr)
     {
       return;
@@ -1557,7 +1610,15 @@ namespace ToolKit
     if (record == nullptr || record->m_animation == nullptr)
     {
       // Nothing is playing on the mark (the clip was never found, or something stopped
-      // it): there is nothing left to wait for, so the state ends here.
+      // it): there is nothing left to wait for, so the state ends here. This is worth a
+      // warning: the mark would otherwise vanish without a trace, which is exactly how a
+      // broken record looks from the outside.
+      TK_WRN("Notice: the mark on (%s) has nothing playing (%s); removing it. Check the "
+             "'%s' record on '%s'.",
+             NodeText(m_node).c_str(),
+             anim == nullptr ? "no anim controller" : "no active record",
+             kNoticeClip,
+             kNoticePrefab);
       RemoveNotice();
       return;
     }
@@ -1578,6 +1639,11 @@ namespace ToolKit
 
   void Unit::RemoveNotice()
   {
+    // Whatever the state was doing, it ends here: a delayed notice never spawns, a mark
+    // that is up leaves.
+    m_noticeArmed     = false;
+    m_noticeDelayLeft = 0.0f;
+
     if (m_noticeMark != nullptr)
     {
       // Removing the mark takes it out of the scene AND detaches its node from the unit
@@ -3537,24 +3603,41 @@ namespace ToolKit
     switch (m_state)
     {
       case State::Idle:
-        // First sighting: start chasing from here, remembering the way back.
+        // First sighting: THE NOTICE BEAT. The patrol raises the exclamation mark
+        // (Unit::Notify) and spends this whole turn on it -- it does not step. The chase
+        // starts on the NEXT turn (State::Noticed), so the player gets to SEE that it was
+        // seen before the pursuit moves; the turn it costs is the point, not a side
+        // effect.
         if (CanSee(playerNode))
         {
-          TK_LOG("Seeker: spotted the player at (%d, %d) heading %s; memorized and chasing.",
+          TK_LOG("Seeker: spotted the player at (%d, %d) heading %s; the notice costs this "
+                 "turn, chasing next turn.",
                  playerNode->ix,
                  playerNode->iz,
                  GridDirName(playerFacing));
-          // The moment it notices: the NOTIFIED state raises the exclamation mark at the
-          // patrol's base (Unit::Notify). A seeker that already sees the player again next
-          // turn is already notified, so the mark does not re-pop every turn.
-          Notify();
+          // The notice beat: notified NOW (it acts on the sighting from this turn on), but
+          // the mark pops HALF WAY THROUGH the player's turn. The decision lands the moment
+          // the player commits to a move, and a mark that popped then would shout at a
+          // player still standing on the tile it is about to leave; half a turn in, the
+          // move is visibly under way and the "!" reads as the reaction to it.
+          Notify(gTurnDuration * 0.5f);
           m_trail.clear();
           m_trail.push_back(m_node);
           SpotPlayer(playerNode, playerFacing);
           m_sighted = true;
-          m_state = State::Chasing;
-          StepChase(playerNode, playerFacing);
+          m_state   = State::Noticed;
         }
+        break;
+
+      case State::Noticed:
+        // The notice beat is over: follow, from the memory that sighting left behind
+        // (SpotPlayer recorded the tile and the heading, and StepChase reads them whether
+        // or not the player is still in view).
+        TK_LOG("Seeker: the notice is over; following the player from (%d, %d).",
+               m_lastSeen != nullptr ? m_lastSeen->ix : -1,
+               m_lastSeen != nullptr ? m_lastSeen->iz : -1);
+        m_state = State::Chasing;
+        StepChase(playerNode, playerFacing);
         break;
 
       case State::Chasing:
