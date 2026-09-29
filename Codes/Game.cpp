@@ -76,6 +76,13 @@ namespace ToolKit
     // the game's current speed like everything else.
     AdvanceCorpses(deltaTime * gTurnSpeed);
 
+    // The exclamation marks of the NOTIFIED state are the same kind of thing: a unit
+    // raised one, the mark pops and takes itself out. It runs here, before the turn
+    // phases, because a mark belongs to its unit and not to the turn being played out --
+    // a patrol that noticed the player while it was standing still pops even though
+    // nothing is acting.
+    UpdateNotices();
+
     if (m_won || m_lost)
     {
       return;
@@ -1165,6 +1172,23 @@ namespace ToolKit
            gCorpseSinkDepth,
            gCorpseSinkDuration,
            body.waitLeft);
+  }
+
+  void Game::UpdateNotices()
+  {
+    // The NOTIFIED state (see Unit::Notify): an exclamation pops at the unit's base and
+    // the unit takes it out again when the pop is over. One tick per unit per frame, in
+    // every phase -- a mark raised by a standing patrol has to pop while the player is
+    // still planning their move.
+    m_player.UpdateNotice();
+
+    for (auto& enemy : m_enemies)
+    {
+      if (enemy != nullptr)
+      {
+        enemy->UpdateNotice();
+      }
+    }
   }
 
   void Game::AdvanceCorpses(float deltaTime)

@@ -1,7 +1,7 @@
 <S name="seeker-patrol" version="v0.4.9">
 	<Object Cl="EntityNode">
 		<PB>
-			<P t="11" name="Id" v="16950413532786443435"/>
+			<P t="11" name="Id" v="8536952787982556413"/>
 			<P t="9" name="Name" v="root"/>
 			<P t="9" name="Tag" v="seeker-patrol"/>
 			<P t="10" name="Visible" v="1"/>
@@ -19,22 +19,22 @@
 	</Object>
 	<Object Cl="Entity">
 		<PB>
-			<P t="11" name="Id" v="7042725778542402331"/>
+			<P t="11" name="Id" v="17845533281743153923"/>
 			<P t="9" name="Name" v="patrol"/>
 			<P t="9" name="Tag" v=""/>
 			<P t="10" name="Visible" v="1"/>
 			<P t="10" name="TransformLock" v="0"/>
 		</PB>
-		<Entity pi="16950413532786443435">
+		<Entity pi="8536952787982556413">
 			<N is="0">
 				<T x="0.000000" y="0.000000" z="0.000000"/>
-				<R x="0.000000" y="1.000000" z="0.000000" w="-0.000000"/>
+				<R x="0.000000" y="1.000000" z="0.000000" w="0.000000"/>
 				<S x="0.999998" y="1.000000" z="0.999998"/>
 			</N>
 			<Ca>
 				<Object Cl="MeshComponent">
 					<PB>
-						<P t="11" name="Id" v="69279155795765505"/>
+						<P t="11" name="Id" v="16809770559404574917"/>
 						<P t="12" name="Mesh">
 							<ResourceRef Class="SkinMesh" File="Character/Linear-Patrol/animation_Character_Male_Police_004.skinMesh"/>
 						</P>
@@ -46,7 +46,7 @@
 				</Object>
 				<Object Cl="SkeletonComponent">
 					<PB>
-						<P t="11" name="Id" v="17342722962757049250"/>
+						<P t="11" name="Id" v="9451885654914339409"/>
 						<P t="17" name="SkeletonResource">
 							<ResourceRef Class="Skeleton" File="Character/Linear-Patrol/animation_Character_Male_Police_004.skeleton"/>
 						</P>
@@ -57,7 +57,7 @@
 				</Object>
 				<Object Cl="MaterialComponent">
 					<PB>
-						<P t="11" name="Id" v="12720842970232751732"/>
+						<P t="11" name="Id" v="796367666350459821"/>
 					</PB>
 					<Component>
 						<MaterialComponent MaterialCount="1">
@@ -69,7 +69,7 @@
 				</Object>
 				<Object Cl="AABBOverrideComponent">
 					<PB>
-						<P t="11" name="Id" v="4618652392278271957"/>
+						<P t="11" name="Id" v="5221887966122973911"/>
 						<P t="5" name="PositionOffset" x="-0.395471" y="0.029351" z="-0.177922"/>
 						<P t="5" name="Size" x="0.755284" y="1.856616" z="0.383151"/>
 						<P t="18" name="UpdateBoundaryFromMesh"/>
@@ -80,7 +80,7 @@
 				</Object>
 				<Object Cl="AnimControllerComponent">
 					<PB>
-						<P t="11" name="Id" v="12090410566757305182"/>
+						<P t="11" name="Id" v="7857655492863703528"/>
 						<P t="16" name="Records">
 							<List size="45">
 								<0 SignalName="rest" ApplyRootMotion="0">

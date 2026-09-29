@@ -11,6 +11,7 @@
 #include "GridGraph.h"
 
 #include <Entity.h>
+#include <Prefab.h>
 
 #include <functional>
 
@@ -79,7 +80,7 @@ namespace ToolKit
   {
    public:
     Unit() = default;
-    virtual ~Unit() = default;
+    virtual ~Unit();
 
     // Binds the unit to its root entity and the grid it lives on, then snaps it
     // onto the node it currently stands at. Returns false when the entity is
@@ -313,6 +314,40 @@ namespace ToolKit
     // move. Standing still (or turning in place) it is simply the tile center.
     virtual Vec3 GetFollowPosition() const;
 
+    // The entity the NOTIFIED state hangs its exclamation from (see SpawnNotice). The
+    // ROOT by default -- the unit's own base -- but AnimatedUnit answers with its ACTOR:
+    // the top root only jumps onto the destination tile when a move LANDS, while the actor
+    // is what root motion actually carries across the grid, so a mark parented to the root
+    // stands still while its unit walks away from it.
+    virtual EntityPtr GetNoticeAnchor() const { return m_root; }
+
+    // NOTIFIED: the unit has just NOTICED something -- a patrol that spotted the
+    // player, a guard a kill happened in front of, whatever the game calls it for.
+    // Entering the state puts the "exclamation" prefab at the unit's BASE (parented
+    // under the unit's root, so it rides the unit) and plays its ExclamationPop clip
+    // once; when that clip has played the mark is removed and the state ends with it.
+    // The state is a pure SIGNAL: it says something out loud instead of leaving it in
+    // the unit's head, and it changes nothing about how the unit moves or decides.
+    // Calling it while the mark is already up does nothing (the unit is already
+    // notified); once the pop is over, the next call pops a fresh mark.
+    void Notify();
+
+    // True while the unit is in the NOTIFIED state, i.e. its mark is popping.
+    bool IsNotified() const { return m_noticeMark != nullptr; }
+
+    // The spawned exclamation entity (null when not notified). Exposed so the game can
+    // log or hand it around; it is owned by the unit and removed by UpdateNotice.
+    EntityPtr GetNoticeMark() const { return m_noticeMark; }
+
+    // Advances the NOTIFIED state: keeps the mark's clip at the game's current speed
+    // (gTurnSpeed, so a hurried turn hurries the pop too) and removes it once the pop
+    // has played. The game calls this EVERY frame -- whatever the turn phase -- so the
+    // mark of a patrol that is standing still pops and disappears while the player is
+    // still thinking about their move. It needs no frame delta of its own: the pop is an
+    // engine animation record, which the global AnimationPlayer advances (and the editor
+    // holds when the simulation is paused).
+    void UpdateNotice();
+
     // The grid-axis direction the unit faces: its world forward (local -Z)
     // snapped to the nearest axis. Grid movement is axis-aligned, so a unit
     // faces either straight along X or straight along Z. AnimatedUnit overrides
@@ -326,6 +361,18 @@ namespace ToolKit
    protected:
     // Snaps the root entity onto the given node (world position = node center).
     void PlaceOnNode(GridNode* node);
+
+    // Spawns the exclamation prefab for the NOTIFIED state: instantiates it, PARENTS the
+    // mark under the unit's root at the unit's base and starts its pop clip. The scene
+    // comes from the unit's own root entity. Fails soft (a log and no mark) when there is
+    // no scene or the prefab cannot be instantiated, so a missing prefab never breaks an
+    // AI reaction.
+    void SpawnNotice();
+
+    // Removes the NOTIFIED state's mark (its prefab instance and the prefab entity
+    // itself) from the scene. Safe to call when nothing is up, and from Reset / the
+    // destructor, so no exclamation can survive into the next play session.
+    void RemoveNotice();
 
     // Rotates the root entity so its forward (-Z) points along direction. Used
     // by PlaceOnNode whenever a unit steps from one node to another, so every
@@ -355,6 +402,12 @@ namespace ToolKit
     GridNode* m_glideNode = nullptr; // Destination node, snapped on arrival.
     Quaternion m_arriveOrient;       // Orientation to apply on arrival.
     bool m_hasArriveOrient = false;
+
+    // The NOTIFIED state's exclamation mark (see Notify): the instantiated
+    // ExclamationNode the pop plays on, and the prefab entity that owns the instance --
+    // both have to leave the scene together when the pop is over.
+    EntityPtr m_noticeMark;
+    PrefabPtr m_noticeSpawn;
   };
 
   // A unit that moves its tile steps with the SHARED root-motion animation
@@ -392,6 +445,13 @@ namespace ToolKit
     // for (see Unit::GetFollowPosition). A turning in-place action goes nowhere, so it is
     // the tile center as usual.
     Vec3 GetFollowPosition() const override;
+
+    // The ACTOR carries the character across the grid (root motion moves it, not the top
+    // root), so that is where a spawned effect has to hang to travel with the body.
+    EntityPtr GetNoticeAnchor() const override
+    {
+      return (m_actor != nullptr) ? m_actor : m_root;
+    }
 
     // The tile the running walk is heading to (see Unit::GetMoveDestination); the
     // glide fallback answers through the base implementation.

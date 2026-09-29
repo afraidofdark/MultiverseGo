@@ -13,6 +13,8 @@
 #include <AnimationControllerComponent.h>
 #include <Logger.h>
 #include <MathUtil.h>
+#include <Prefab.h>
+#include <Scene.h>
 #include <StateMachine.h>
 
 #include <algorithm>
@@ -23,6 +25,14 @@ namespace ToolKit
 {
   namespace
   {
+    // The NOTIFIED state's assets: the prefab the game spawns at a unit's base when it
+    // notices something, the node inside it that carries the pop, and the clip itself.
+    // The prefab path is relative to the engine's Prefabs resource folder (see
+    // ToolKit::PrefabPath), exactly like the PrefabPath a scene stores.
+    constexpr const char* kNoticePrefab = "Prototype/exclamation.scene";
+    constexpr const char* kNoticeNode   = "ExclamationNode";
+    constexpr const char* kNoticeClip   = "ExclamationPop";
+
     // Debug helper: readable name for a grid direction.
     const char* GridDirName(GridDir d)
     {
@@ -1424,6 +1434,177 @@ namespace ToolKit
     return m_root->m_node->GetTranslation(TransformationSpace::TS_WORLD);
   }
 
+  Unit::~Unit()
+  {
+    // The exclamation mark is a scene entity the unit owns: a unit that leaves the game
+    // (a captured patrol, the eaten player) must not leave its mark behind.
+    RemoveNotice();
+  }
+
+  void Unit::Notify()
+  {
+    if (m_root == nullptr)
+    {
+      return;
+    }
+
+    if (m_noticeMark != nullptr)
+    {
+      // Already in the NOTIFIED state: the pop that is playing IS the notice. Restarting
+      // it here would make a patrol that keeps seeing the player flicker every turn.
+      return;
+    }
+
+    SpawnNotice();
+  }
+
+  void Unit::SpawnNotice()
+  {
+    ScenePtr scene = m_root->m_scene.lock();
+    if (scene == nullptr)
+    {
+      TK_WRN("Notice: a unit cannot be notified, its root entity is not in a scene.");
+      return;
+    }
+
+    // Instantiate the prefab the way the scene loader does: load it, initiate it against
+    // this scene and add the prefab entity. AddEntity LINKS a prefab itself once the scene
+    // is loaded (Scene.cpp), which is what brings the instanced entities into the scene --
+    // calling Link here as well would trip its "don't relink the same prefab" assert.
+    PrefabPtr prefab = MakeNewPtr<Prefab>();
+    prefab->SetPrefabPathVal(kNoticePrefab);
+    prefab->Load();
+    prefab->Init(scene);
+    scene->AddEntity(prefab);
+
+    EntityPtr mark = nullptr;
+    for (EntityPtr instanced : prefab->GetInstancedEntities())
+    {
+      if (instanced != nullptr && instanced->GetNameVal() == kNoticeNode)
+      {
+        mark = instanced;
+        break;
+      }
+    }
+
+    if (mark == nullptr || mark->m_node == nullptr)
+    {
+      TK_ERR("Notice: '%s' has no '%s' entity; the notice is skipped.",
+             kNoticePrefab,
+             kNoticeNode);
+      scene->RemoveEntity(prefab);
+      return;
+    }
+
+    // AT THE UNIT'S BASE: the mark hangs from the unit's anchor (the ACTOR when the unit
+    // has one -- that is the node root motion carries, so the mark walks with the body
+    // instead of standing on the tile the walk left) with a clean local transform, so it
+    // starts exactly where the unit stands and rides it from there -- the pop clip lifts it
+    // above the base on its own. Link parented it under the PREFAB entity, and a node can
+    // only be added to a new parent while it has none (Node::InsertChild asserts on that),
+    // so it has to be taken out of the prefab's hierarchy first.
+    EntityPtr anchor = GetNoticeAnchor();
+    if (anchor == nullptr)
+    {
+      anchor = m_root;
+    }
+
+    mark->m_node->OrphanSelf();
+    anchor->m_node->AddChild(mark->m_node);
+    mark->m_node->SetTranslation(Vec3(0.0f), TransformationSpace::TS_LOCAL);
+    mark->m_node->SetOrientation(Quaternion(1.0f, 0.0f, 0.0f, 0.0f),
+                                 TransformationSpace::TS_LOCAL);
+    mark->m_node->SetScale(Vec3(1.0f));
+
+    // The pop: a one-shot node animation (it holds its last frame, and UpdateNotice
+    // removes the mark when it gets there). No root motion -- the clip moves the mark's
+    // own node, there is no skeleton under it.
+    if (AnimControllerComponentPtr anim = mark->GetComponent<AnimControllerComponent>())
+    {
+      if (AnimRecordPtr record = anim->GetAnimRecord(kNoticeClip))
+      {
+        record->m_loop            = false;
+        record->m_applyRootMotion = false;
+        record->m_timeMultiplier  = gTurnSpeed;
+        anim->Play(kNoticeClip);
+      }
+      else
+      {
+        TK_WRN("Notice: the '%s' prefab carries no '%s' clip.", kNoticePrefab, kNoticeClip);
+      }
+    }
+
+    m_noticeMark  = mark;
+    m_noticeSpawn = prefab;
+
+    TK_LOG("Notice: (%s) is notified%s -- '%s' pops at its base.",
+           NodeText(m_node).c_str(),
+           GetTypeTag().empty() ? "" : (" as " + GetTypeTag()).c_str(),
+           kNoticeClip);
+  }
+
+  void Unit::UpdateNotice()
+  {
+    if (m_noticeMark == nullptr)
+    {
+      return;
+    }
+
+    AnimControllerComponentPtr anim =
+        m_noticeMark->GetComponent<AnimControllerComponent>();
+
+    AnimRecordPtr record = (anim != nullptr) ? anim->GetActiveRecord() : nullptr;
+    if (record == nullptr || record->m_animation == nullptr)
+    {
+      // Nothing is playing on the mark (the clip was never found, or something stopped
+      // it): there is nothing left to wait for, so the state ends here.
+      RemoveNotice();
+      return;
+    }
+
+    // The pop follows the game's speed like everything else, so a hurried turn (and the
+    // pause in between) carries the mark with it instead of leaving it ticking in real
+    // time.
+    record->m_timeMultiplier = gTurnSpeed;
+
+    // A one-shot holds its final frame, so the mark is invisible-by-pose at its end and
+    // removing it there is a clean cut rather than a pop out of existence.
+    if (record->m_currentTime >= record->m_animation->m_duration)
+    {
+      TK_LOG("Notice: the pop is over on (%s); the mark leaves.", NodeText(m_node).c_str());
+      RemoveNotice();
+    }
+  }
+
+  void Unit::RemoveNotice()
+  {
+    if (m_noticeMark != nullptr)
+    {
+      // Removing the mark takes it out of the scene AND detaches its node from the unit
+      // root it was parented to (Scene::RemoveEntity orphans the removed entity), so
+      // nothing of it is left hanging on a unit that outlives the pop.
+      if (ScenePtr scene = m_noticeMark->m_scene.lock())
+      {
+        scene->RemoveEntity(m_noticeMark);
+      }
+
+      m_noticeMark = nullptr;
+    }
+
+    if (m_noticeSpawn != nullptr)
+    {
+      // The prefab entity owns the instance, and removing it unlinks whatever is left of
+      // it (the mark itself is already gone). Dropping the last reference then frees the
+      // prefab, so the next notice instantiates a FRESH copy instead of reusing this one.
+      if (ScenePtr scene = m_noticeSpawn->m_scene.lock())
+      {
+        scene->RemoveEntity(m_noticeSpawn);
+      }
+
+      m_noticeSpawn = nullptr;
+    }
+  }
+
   Vec3 Unit::GetFollowPosition() const
   {
     // A unit that does not animate simply stands on a tile: its node IS the point.
@@ -1487,6 +1668,10 @@ namespace ToolKit
 
   void Unit::Reset()
   {
+    // A play session may end while an exclamation is still popping: the mark belongs to
+    // the session, not to the scene, so it leaves with it (see RemoveNotice).
+    RemoveNotice();
+
     m_root   = nullptr;
     m_grid   = nullptr;
     m_node   = nullptr;
@@ -3359,6 +3544,10 @@ namespace ToolKit
                  playerNode->ix,
                  playerNode->iz,
                  GridDirName(playerFacing));
+          // The moment it notices: the NOTIFIED state raises the exclamation mark at the
+          // patrol's base (Unit::Notify). A seeker that already sees the player again next
+          // turn is already notified, so the mark does not re-pop every turn.
+          Notify();
           m_trail.clear();
           m_trail.push_back(m_node);
           SpotPlayer(playerNode, playerFacing);

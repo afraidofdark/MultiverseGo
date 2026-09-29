@@ -796,6 +796,33 @@ apply to all code in both repositories.
   game also scales what IT advances -- the corpse sink and the master camera follow --
   with the same factor (`Game::Frame`).
 
+## The NOTIFIED state (Codes/Unit.h/cpp)
+
+- `Unit::Notify()` IS the state: the unit has just NOTICED something. It puts the
+  `exclamation` prefab at the unit's BASE and plays its `ExclamationPop` clip once.
+  Spawning does what the scene loader does for a prefab (`Prefab::Load` ->
+  `Init(scene)` -> `Scene::AddEntity`; AddEntity is what LINKS a prefab once the scene is
+  loaded, and linking calls the engine's "don't relink the same prefab" assert if it is
+  done again by hand); the mark's node (`ExclamationNode`) is then RE-PARENTED under
+  `Unit::GetNoticeAnchor()` -- the ACTOR for an animated unit, its root otherwise -- with a
+  clean local transform. THE ANCHOR MATTERS: the top root only jumps onto the destination
+  tile when a move LANDS, while the actor is the node root motion carries across the grid,
+  so a mark hung from the root stands still while its unit walks away from it. The pop is a
+  NODE animation -- its track names the entity and the engine applies it by that name, no
+  skeleton involved -- and the clip lifts the mark ~1.9 u above the base itself.
+- `Unit::UpdateNotice()` ends the state, called by `Game::UpdateNotices` in EVERY phase (a
+  standing patrol's mark has to pop while the player is still thinking) and keeping the
+  pop at the game's speed (`gTurnSpeed`) like every other animation. The pop is a one-shot
+  that holds its last frame, so the state ends the frame its record reaches the clip
+  length: the mark leaves the scene (`Scene::RemoveEntity`, which also detaches its node
+  from the unit root) and the prefab instance with it. `Reset()` and the destructor do the
+  same, so no exclamation can survive into the next play session.
+- `Notify()` while a mark is already up does nothing: one pop per notice, so a patrol that
+  keeps seeing the player does not flicker. After the pop the next call pops a fresh mark.
+  The state is a pure SIGNAL -- it changes nothing about how the unit moves or decides.
+- Raised today by `SeekerPatrol::OnTurn` on its FIRST sighting of the player.
+  `IsNotified()` reads the state; `Notify()` is the hook for anywhere else.
+
 ## Master camera (Codes/FollowUpCameraController.h/cpp)
 
 - The game can be played through a camera placed in the scene BY HAND instead of
